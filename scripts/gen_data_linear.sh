@@ -1,0 +1,93 @@
+DEVICES=${1}
+TODAY=`date +%y%m%d%H%M`
+
+MODEL_PATH=meta-llama
+MODEL_NAME=Llama-2-7b-hf
+CONFIG=config/llama.json
+
+N_DATA=250
+# N_DATA=500
+# N_DATA=1000
+N_SAMPLE=128
+
+QUANT_METHOD=hqq
+LARGE_WBITS=4
+LARGE_GROUP_SIZE=128
+LARGE_AXIS=1
+LARGE_QSCALE=false
+LARGE_QZERO=false
+LARGE_MODEL_PATH=/SSD/hqq/Llama-2-7b-hf_${LARGE_WBITS}bit_${LARGE_GROUP_SIZE}gs_${LARGE_AXIS}axis_qscale_${LARGE_QSCALE}_qzero_${LARGE_QZERO}
+
+SMALL_WBITS=2
+# SMALL_GROUP_SIZE=64
+SMALL_GROUP_SIZE=128
+SMALL_AXIS=1
+SMALL_QSCALE=false
+SMALL_QZERO=false
+SMALL_MODEL_PATH=/SSD/hqq/Llama-2-7b-hf_${SMALL_WBITS}bit_${SMALL_GROUP_SIZE}gs_${SMALL_AXIS}axis_qscale_${SMALL_QSCALE}_qzero_${SMALL_QZERO}
+
+PASS_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
+
+LOSS_CSV_FILE=data/${MODEL_NAME}_${QUANT_METHOD}_loss_${N_DATA}_range_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_axis_${SMALL_AXIS}_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_lqs_${LARGE_QSCALE}_lqz_${LARGE_QZERO}_sb_${SMALL_WBITS}_sgs_${SMALL_GROUP_SIZE}_sqs_${SMALL_QSCALE}_sqz_${SMALL_QZERO}.json
+PPL_CSV_FILE=data/${MODEL_NAME}_${QUANT_METHOD}_ppl_${N_DATA}_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_axis_${SMALL_AXIS}_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_lqs_${LARGE_QSCALE}_lqz_${LARGE_QZERO}_sb_${SMALL_WBITS}_sgs_${SMALL_GROUP_SIZE}_sqs_${SMALL_QSCALE}_sqz_${SMALL_QZERO}.json
+
+SEC_OBJ_RANGE_SMALL=${SMALL_WBITS}
+SEC_OBJ_RANGE_LARGE=${LARGE_WBITS}
+SEC_OBJ_RANGE="${SEC_OBJ_RANGE_SMALL} ${SEC_OBJ_RANGE_LARGE}"
+
+# QUANT_METHOD=gptq
+# # BACKEND='BITBLAS'
+# # BACKEND_SMALL='bitblas'
+# BACKEND='AUTO'
+# BACKEND_SMALL='auto'
+# # BACKEND='QBITS'
+# # BACKEND_SMALL='qbits'
+
+# SMALL_WBITS=2
+# SMALL_GROUP_SIZE=64
+# SMALL_MODEL_PATH=/SSD/gptqmodel/${MODEL_NAME}_${SMALL_WBITS}bit_${SMALL_GROUP_SIZE}gs_${BACKEND_SMALL}
+# LARGE_WBITS=4
+# LARGE_GROUP_SIZE=128
+# LARGE_MODEL_PATH=/SSD/gptqmodel/${MODEL_NAME}_${LARGE_WBITS}bit_${LARGE_GROUP_SIZE}gs_${BACKEND_SMALL}
+
+# LOSS_CSV_FILE=data/${MODEL_NAME}_${QUANT_METHOD}_loss_${N_DATA}_range_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_sb_${SMALL_WBITS}_sgs${SMALL_GROUP_SIZE}.csv
+# PPL_CSV_FILE=data/${MODEL_NAME}_${QUANT_METHOD}_ppl_${N_DATA}_range_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_sb_${SMALL_WBITS}_sgs${SMALL_GROUP_SIZE}.csv
+
+# PASS_LIST="0.self_attn.q_proj 1.mlp.down_proj 3.self_attn.q_proj 4.self_attn.q_proj 4.mlp.up_proj 6.self_attn.q_proj 7.self_attn.q_proj 30.mlp.down_proj 31.mlp.down_proj 1.self_attn.v_proj 2.self_attn.q_proj"
+
+# SEC_OBJ_RANGE_SMALL=2
+# SEC_OBJ_RANGE_LARGE=4
+# SEC_OBJ_RANGE="${SEC_OBJ_RANGE_SMALL} ${SEC_OBJ_RANGE_LARGE}"
+
+# QUANT_METHOD=owq
+# SMALL_WBITS=2.01
+# SMALL_MODEL_PATH=/SSD/owq/${MODEL_NAME}_${SMALL_WBITS}_wikitext2_fake.pth
+
+# LARGE_WBITS=4.01
+# LARGE_MODEL_PATH=/SSD/owq/${MODEL_NAME}_${LARGE_WBITS}_wikitext2.pth
+
+# LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${QUANT_METHOD}_loss_lb_${LARGE_WBITS}_sb_${SMALL_WBITS}.csv
+# PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${QUANT_METHOD}_ppl_lb_${LARGE_WBITS}_sb_${SMALL_WBITS}.csv
+
+# PASS_LIST="31.mlp.down_proj"
+# SEC_OBJ_RANGE_SMALL=${SMALL_WBITS}
+# SEC_OBJ_RANGE_LARGE=${LARGE_WBITS}
+# SEC_OBJ_RANGE="${SEC_OBJ_RANGE_SMALL} ${SEC_OBJ_RANGE_LARGE}"
+
+NAN_VALUE=10
+
+CUDA_VISIBLE_DEVICES=${DEVICES} python gen_data_linear.py \
+--model_name ${MODEL_PATH}/${MODEL_NAME} \
+--large_model_path ${LARGE_MODEL_PATH} \
+--large_model_bits ${LARGE_WBITS} \
+--small_model_path ${SMALL_MODEL_PATH} \
+--small_model_bits ${SMALL_WBITS} \
+--pass_linear_list ${PASS_LIST} \
+--loss_json_file ${LOSS_CSV_FILE} \
+--ppl_json_file ${PPL_CSV_FILE} \
+--n_data ${N_DATA} \
+--n_sample ${N_SAMPLE} \
+--sec_obj_range ${SEC_OBJ_RANGE} \
+--quant_method ${QUANT_METHOD} \
+--pass_linear_list ${PASS_LIST} \
+--nan_value ${NAN_VALUE}
