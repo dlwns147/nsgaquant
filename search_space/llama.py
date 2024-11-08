@@ -165,7 +165,7 @@ class LlamaSearchSpace:
                 }
 
 
-class LlamaAWQSearchSpace(LlamaSearchSpace):
+class LlamaLinearGroupSearchSpace:
     def __init__(self, n_block, pass_linear_list=[], quant_model_bits=[], config=None, sec_obj='bits', sec_obj_range=[], layer_prune_range=[]):
         self.n_block = n_block  # number of blocks
 

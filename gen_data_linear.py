@@ -2,13 +2,11 @@ import torch
 import argparse
 from tqdm import tqdm
 import numpy as np
-import gc
 import json
-import torch.nn as nn
 
 from time import time
 
-from search_space.llama import LlamaSearchSpace
+from search_space.llama import LlamaSearchSpace, LlamaLinearGroupSearchSpace
 from evaluator import LlamaEvaluator
 from accelerate import Accelerator
 
@@ -23,10 +21,11 @@ def gen_data_linear(args):
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
 
-    search_space = LlamaSearchSpace(
-        num_blocks=config['n_block'],
-        quant_model_bits=args.quant_model_bits,
+    search_space = LlamaLinearGroupSearchSpace if args.use_linear_group else LlamaSearchSpace
+    search_space = search_space(
         config=config,
+        n_block=config['n_block'],
+        quant_model_bits=args.quant_model_bits,
         pass_linear_list=args.pass_linear_list,
         sec_obj_range=args.sec_obj_range,
         layer_prune_range=args.layer_prune_range
@@ -124,6 +123,8 @@ if __name__ == '__main__':
     parser.add_argument('--max_value', type=float, default=50,
                         help='')
     parser.add_argument('--layer_prune_range', type=float, nargs='+', default=[1., 1.], 
+                        help='')
+    parser.add_argument('--use_linear_group', action='store_true',
                         help='')
     
     cfgs = parser.parse_args()

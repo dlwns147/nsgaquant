@@ -21,7 +21,7 @@ from pymoo.operators.crossover.binx import BinomialCrossover
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.operators.mutation.pm import PolynomialMutation
 
-from search_space.llama import LlamaSearchSpace
+from search_space.llama import LlamaSearchSpace, LlamaLinearGroupSearchSpace
 from acc_predictor.factory import get_acc_predictor
 from utils.func_utils import prepare_eval_folder, get_net_info
 from utils.ga_utils import MySampling, BinaryCrossover, MyMutation, IntPolynomialMutation, MyTwoPointCrossover, MyUniformCrossover, IntegerFromFloatMutation
@@ -71,7 +71,8 @@ class Search:
             datasets=[kwargs.pop('dataset', 'wikitext2')],
             loss_func=self.loss_func
         )
-        self.search_space = LlamaSearchSpace(
+        search_space = LlamaLinearGroupSearchSpace if kwargs.pop('use_linear_group', False) else LlamaSearchSpace
+        self.search_space = search_space(
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
             pass_linear_list=kwargs.pop('pass_linear_list', []),
@@ -468,6 +469,8 @@ if __name__ == '__main__':
     parser.add_argument('--loss_func', type=str, default='cross_entropy',
                         help='')
     parser.add_argument('--layer_prune_range', type=float, nargs='+', default=[1, 1], 
+                        help='')
+    parser.add_argument('--use_linear_group', type=bool, default=False,
                         help='')
     
     cfgs = parser.parse_args()

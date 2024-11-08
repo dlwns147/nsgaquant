@@ -86,7 +86,7 @@ N_SAMPLE=128
 METHOD=awq
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
-SCALE_BITS=4
+SCALE_BITS=3
 GROUP_SIZE=128
 
 QMODEL_PATHS=()
@@ -111,13 +111,13 @@ LAYER_PRUNE_RANGE_SMALL=1.0
 LAYER_PRUNE_RANGE_LARGE=1.0
 LAYER_PRUNE_RANGE="${LAYER_PRUNE_RANGE_SMALL} ${LAYER_PRUNE_RANGE_LARGE}"
 
-LOSS_FILE=data/${MODEL_NAME}_${METHOD}_${sec_obj}_loss_${Q_BITS_TEXT}_${GROUP_SIZE}gs_${SCALE_BITS}scale_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}.json
-PPL_FILE=data/${MODEL_NAME}_${METHOD}_${sec_obj}_ppl_${Q_BITS_TEXT}_${GROUP_SIZE}gs_${SCALE_BITS}scale_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}.json
+LOSS_FILE=data/${MODEL_NAME}_${METHOD}_${SEC_OBJ}_loss_${Q_BITS_TEXT}_group_${GROUP_SIZE}gs_${SCALE_BITS}scale_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}.json
+PPL_FILE=data/${MODEL_NAME}_${METHOD}_${SEC_OBJ}_ppl_${Q_BITS_TEXT}_group_${GROUP_SIZE}gs_${SCALE_BITS}scale_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}.json
 
 MAX_VALUE=10
-N_PROC=4
+N_PROC=1
 
-CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=0 gen_data_linear.py \
+CUDA_VISIBLE_DEVICES=${DEVICES} python gen_data_linear.py \
 --model_name ${MODEL_PATH}/${MODEL_NAME} \
 --quant_model_paths "${QMODEL_PATHS[@]}" \
 --quant_model_bits ${Q_BITS} \
@@ -125,11 +125,12 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --ppl_json_file ${PPL_FILE} \
 --n_data ${N_DATA} \
 --n_sample ${N_SAMPLE} \
---sec_obj ${SEC_OBJ}
+--sec_obj ${SEC_OBJ} \
 --sec_obj_range ${SEC_OBJ_RANGE} \
 --method ${METHOD} \
 --max_value ${MAX_VALUE} \
---layer_prune_range ${LAYER_PRUNE_RANGE}
+--layer_prune_range ${LAYER_PRUNE_RANGE} \
+--use_linear_group
 # --pass_linear_list ${PASS_LIST} \
 # --large_model_path ${LARGE_MODEL_PATH} \
 # --large_model_bits ${LARGE_WBITS} \
