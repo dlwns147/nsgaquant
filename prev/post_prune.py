@@ -12,7 +12,6 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from accelerate import Accelerator
 
 class HighTradeoffPoints(DecisionMaking):
 
@@ -57,7 +56,6 @@ class HighTradeoffPoints(DecisionMaking):
 
 def main(args):
     print(args)
-    accelerator = Accelerator()
 
     # preferences
     if args.prefer:
@@ -72,16 +70,16 @@ def main(args):
     subnets, metric, sec_obj = [v[0] for v in archive], [v[1] for v in archive], [v[2] for v in archive]
     sort_idx = np.argsort(metric)
     F = np.column_stack((metric, sec_obj))[sort_idx, :]
-    if len(args.target_bits_range) == 2:
-        assert args.target_bits_range[0] >= min(args.quant_model_bits) and args.target_bits_range[1] <= max(args.quant_model_bits), f'Target bits range should be in [small model bits, large model bits]'
-        range_idx = np.argwhere(np.logical_and(F[:, 1] > args.target_bits_range[0], F[:, 1] < args.target_bits_range[1])).flatten()
-        pf = F[range_idx, :]
-        ps = np.array(subnets)[sort_idx][range_idx]
-
-    elif args.only_front:
+    if args.only_front:
         front = NonDominatedSorting().do(F, only_non_dominated_front=True)
         pf = F[front, :]
         ps = np.array(subnets)[sort_idx][front]
+    elif len(args.target_obj_range) == 2:
+        assert args.target_obj_range[0] >= 0 and args.target_obj_range[1] <= 1, f'Target sparsity range should be in [0, 1]'
+        range_idx = np.argwhere(np.logical_and(F[:, 1] > args.target_obj_range[0], F[:, 1] < args.target_obj_range[1])).flatten()
+        pf = F[range_idx, :]
+        ps = np.array(subnets)[sort_idx][range_idx]
+
     else:
         pf = F
         ps = np.array(subnets)[sort_idx]
@@ -98,19 +96,20 @@ def main(args):
     # always add most accurate architectures
     # I = np.append(I, 0)
 
+    arch = {'self_attn' : np.zeros((32)), 'mlp' : np.zeros((32))}
     for idx in I:
-        print(f'Selected arch[{idx}] bits: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, arch: {ps[idx]}')
+        # print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, arch: {ps[idx]}, removed_attn_layers: {np.where(np.array(ps[idx]["self_attn"]) == 0)}, removed_mlp_layers: {np.where(np.array(ps[idx]["mlp"]) == 0)}')
+        # print(f"attn difference: {np.where(np.logical_xor(ps[idx]['self_attn'], arch['self_attn']))}, mlp difference: {np.where(np.logical_xor(ps[idx]['mlp'], arch['mlp']))}")
+        print(f"{idx} attn: {np.where(np.array(ps[idx]['self_attn']) == 0)[0].tolist()}, mlp: {np.where(np.array(ps[idx]['mlp']) == 0)[0].tolist()}")
+        arch = ps[idx]
         
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
 
     evaluator = LlamaEvaluator(
-        config=config,
-        accelerator=accelerator,
+        config,
         model_name=args.model_name,
         method=args.method,
-        quant_model_bits=args.quant_model_bits,
-        quant_model_paths=args.quant_model_paths,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
         datasets=args.datasets
@@ -123,7 +122,7 @@ def main(args):
     metric_list = []
     for idx in tqdm(I):
         arch = ps[idx]
-        metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
+        metric, complexity = evaluator.eval(arch, 'ppl', args.method)
         arch_list.append(arch)
         metric_list.append(pf[idx, 0])
         ppl_list.append({d: metric[d] for d in args.datasets})
@@ -182,13 +181,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--config', type=str, default='config/llama.json',
-                        help='')
-    parser.add_argument('--method', type=str, nargs='+', default=[],
-                        help='')
-    parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
-                        help='')
-    parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
-                        help='')
+                        help='test batch size for inference')
     parser.add_argument('--save', type=str, default='.tmp',
                         help='location of dir to save')
     parser.add_argument('--expr', type=str, default='',
@@ -203,7 +196,7 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--debug', type=bool, default=True,
                         help='')
-    parser.add_argument('--sec_obj', type=str, default='bits',
+    parser.add_argument('--sec_obj', type=str, default='sparsity',
                         help='second objective to optimize simultaneously')
     parser.add_argument('--datasets', type=str, nargs='+', default=['wikitext2'], 
                         help='linear list not to replace')
@@ -217,7 +210,9 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--results_arch_file', type=str, default='results_arch.json',
                         help='')
-    parser.add_argument('--target_bits_range', type=float, nargs='+', default=[],
+    parser.add_argument('--target_obj_range', type=float, nargs='+', default=[],
+                        help='')
+    parser.add_argument('--method', type=str, default='layer_prune',
                         help='')
 
     cfgs = parser.parse_args()

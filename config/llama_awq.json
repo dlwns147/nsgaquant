@@ -2,13 +2,12 @@
     "meta-llama/Llama-2-7b-hf": {
         "n_block": 32,
         "n_linear": 7,
-        "n_layer": 2,
-        "layer": ["self_attn", "mlp"],
-        "layer_numel": {
+        "module": ["self_attn", "mlp"],
+        "module_numel": {
             "self_attn": 67108864,
             "mlp": 135266304
         },
-        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"],
+        "linear": ["self_attn.q_proj,self_attn.k_proj,self_attn.v_proj",  "self_attn.o_proj", "mlp.up_proj, mlp.gate_proj", "mlp.down_proj"],
         "linear_numel": {
             "self_attn.q_proj": 16777216,
             "self_attn.k_proj": 16777216,
@@ -19,7 +18,6 @@
             "mlp.gate_proj": 45088768
         },
         "hierarchy": {"self_attn.q_proj": "self_attn", "self_attn.k_proj": "self_attn", "self_attn.v_proj": "self_attn", "self_attn.o_proj": "self_attn", "mlp.gate_proj": "mlp", "mlp.up_proj": "mlp", "mlp.down_proj": "mlp"},
-        "norm": {},
         "model_numel": 6476005376,
         "model": "model", 
         "layers": "model.layers"
@@ -27,11 +25,11 @@
     "meta-llama/Llama-2-13b-hf": {
         "n_block": 40,
         "n_linear": 7,
-        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"]
+        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.down_proj", "mlp.up_proj", "mlp.gate_proj"]
     },
     "meta-llama/Llama-2-70b-hf": {
         "n_block": 80,
         "n_linear": 7,
-        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"]
+        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.down_proj", "mlp.up_proj", "mlp.gate_proj"]
     }
 }

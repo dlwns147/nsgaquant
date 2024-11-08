@@ -193,14 +193,21 @@ def look_up_latency(net, lut, resolution=224):
 
 def compute_bits(arch, config):
     memory_usage = 0
-    for linear, bits in arch.items():
-        for bit in bits:
-            memory_usage += config['linear_numel'][linear] * bit
+    for linear_group, bits in arch['linear'].items():
+        for blk, bit in enumerate(bits):
+            for linear in linear_group.split(','):
+                # import pdb; pdb.set_trace()
+                memory_usage += config['linear_numel'][linear] * bit * arch['layer'][config['hierarchy'][linear]][blk]
     return memory_usage / config['model_numel']
+
+def compute_sparsity(arch):
+    return np.concatenate([v for v in arch['layer'].values()]).mean()
 
 def get_net_info(arch, config):
     net_info = {}
     net_info['bits'] = compute_bits(arch, config)
+    net_info['sparsity'] = compute_sparsity(arch)
+    # net_info['params'] = 
     
     # from ofa.imagenet_codebase.utils.pytorch_utils import count_parameters, measure_net_latency
 
@@ -264,5 +271,12 @@ def setsubattr(obj, attr, value):
     else :
         setattr(obj, attr, value)
 
-def getblock(model, config, blk_idx):
-    return getsubattr(model, config['layers'])[blk_idx]
+def delsubattr(obj, attr):
+    attrs = attr.split('.')
+    if len(attrs) > 1:
+        return delsubattr(getattr(obj, attrs[0]), '.'.join(attrs[1:]))
+    else:
+        return delattr(obj, attr)
+
+def getblock(model, config):
+    return getsubattr(model, config['layers'])

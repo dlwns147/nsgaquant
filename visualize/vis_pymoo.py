@@ -38,16 +38,18 @@ np.random.seed(0)
 problem = Problem(n_var=1, xl=0.0, xu=1.0)
 
 # X = np.full((5000, 1), 0.5)
-n_var = 50
+# n_var = 50
 # n_var = 224
 # n_var = 280
-# n_var = 560
-# X = np.full((n_var, 1), 0.5)
-X = np.random.randint(0, 2, size=(n_var, 1))
+n_var = 560
+X = np.full((n_var, 1), 0.5)
+# X = np.random.randint(0, 2, size=(n_var, 1))
 # pop = Population.new(X=X)
 
 # mutation = PolynomialMutation(prob=1.0, eta=1)
-mutation = PolynomialMutation(prob=(1/n_var), eta=1)
+# mutation = PolynomialMutation(prob=(1/n_var), eta=1)
+mutation = PolynomialMutation(prob=0.02, eta=1)
+# mutation = PolynomialMutation(prob=0.05, eta=1)
 # mutation = PolynomialMutation(prob=0.1, eta=1)
 # mutation = PolynomialMutation(prob=0.2, eta=1)
 
@@ -58,7 +60,7 @@ total_var = n_var * n_off * n_gen
 for _ in tqdm(range(n_off * n_gen)):
     pop = Population.new(X=X)
     off = mutation(problem, pop)
-    Xp = off.get("X")
+    Xp = off.get("X").round().astype(int)
 
     diff = np.where(X == Xp, 0, Xp)
     diff = diff[np.flatnonzero(diff)].flatten()

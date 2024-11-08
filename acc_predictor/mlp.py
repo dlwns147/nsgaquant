@@ -120,7 +120,8 @@ def train(net, x, y, trn_split=0.8, pretrained=None, device='cpu',
 
     validate(best_net, inputs, target, device=device)
 
-    return best_net.to('cpu')
+    # return best_net.to('cpu')
+    return best_net
 
 
 def train_one_epoch(net, data, target, criterion, optimizer, device):

@@ -7,7 +7,7 @@
             "self_attn": 67108864,
             "mlp": 135266304
         },
-        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "fc1", "fc2"],
+        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.out_proj", "fc1", "fc2"],
         "linear_numel": {
             "self_attn.q_proj": 16777216,
             "self_attn.k_proj": 16777216,
@@ -19,16 +19,16 @@
         },
         "model_numel": 6476005376,
         "model": "model", 
-        "layers": "model.layers"
+        "layers": "model.decoder.layers"
     },
     "facebook/opt-13b": {
         "n_block": 40,
         "n_linear": 7,
-        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.down_proj", "mlp.up_proj", "mlp.gate_proj"]
+        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.out_proj", "fc1", "fc2"]
     },
     "facebook/opt-30b": {
         "n_block": 80,
         "n_linear": 7,
-        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.down_proj", "mlp.up_proj", "mlp.gate_proj"]
+        "linear": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.out_proj", "fc1", "fc2"]
     }
 }

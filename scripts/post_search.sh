@@ -5,67 +5,72 @@ MODEL_PATH=meta-llama
 MODEL_NAME=Llama-2-7b-hf
 CONFIG=config/llama.json
 
-QUANT_METHOD=hqq
-LARGE_WBITS=4
-LARGE_GROUP_SIZE=128
-LARGE_AXIS=1
-LARGE_QSCALE=false
-LARGE_QZERO=false
-LARGE_MODEL_PATH=/SSD/hqq/Llama-2-7b-hf_${LARGE_WBITS}bit_${LARGE_GROUP_SIZE}gs_${LARGE_AXIS}axis_qscale_${LARGE_QSCALE}_qzero_${LARGE_QZERO}
+# METHOD="hqq layer_prune"
+# METHOD_TEXT="hqq_layer_prune"
+# METHOD="hqq"
+# METHOD_TEXT="hqq"
+# Q_BITS="2 3 4"
+# Q_BITS_TEXT="234"
+# GROUP_SIZE=128
+# AXIS=1
+# QSCALE=false
+# QZERO=false
 
-SMALL_WBITS=2
-# SMALL_GROUP_SIZE=64
-SMALL_GROUP_SIZE=128
-SMALL_AXIS=1
-SMALL_QSCALE=false
-SMALL_QZERO=false
-SMALL_MODEL_PATH=/SSD/hqq/Llama-2-7b-hf_${SMALL_WBITS}bit_${SMALL_GROUP_SIZE}gs_${SMALL_AXIS}axis_qscale_${SMALL_QSCALE}_qzero_${SMALL_QZERO}
+# QMODEL_PATHS=()
+# for B in ${Q_BITS}
+# do
+#     QMODEL_PATHS+=( "/SSD/hqq/Llama-2-7b-hf_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
+# done
 
-# QUANT_METHOD=gptq
-# # BACKEND='BITBLAS'
-# # BACKEND_SMALL='bitblas'
-# BACKEND='AUTO'
-# BACKEND_SMALL='auto'
-# # BACKEND='QBITS'
-# # BACKEND_SMALL='qbits'
-
-# SMALL_WBITS=2
-# SMALL_GROUP_SIZE=64
-# SMALL_MODEL_PATH=/SSD/gptqmodel/${MODEL_NAME}_${SMALL_WBITS}bit_${SMALL_GROUP_SIZE}gs_${BACKEND_SMALL}
-# LARGE_WBITS=4
-# LARGE_GROUP_SIZE=128
-# LARGE_MODEL_PATH=/SSD/gptqmodel/${MODEL_NAME}_${LARGE_WBITS}bit_${LARGE_GROUP_SIZE}gs_${BACKEND_SMALL}
-
-# QUANT_METHOD=owq
+# METHOD=owq
 # SMALL_WBITS=2.1
 # SMALL_MODEL_PATH=/SSD/owq/${MODEL_NAME}_${SMALL_WBITS}_wikitext2_fake.pth
 
 # LARGE_WBITS=4.1
 # LARGE_MODEL_PATH=/SSD/owq/${MODEL_NAME}_${LARGE_WBITS}_wikitext2.pth
 
+METHOD=awq
+METHOD_TEXT=awq
+Q_BITS="2 3 4"
+Q_BITS_TEXT="234"
+GROUP_SIZE=128
+SCALE_BIT=3
+
+QMODEL_PATHS=()
+for B in ${Q_BITS}
+do
+    QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BIT}bit_awq.pt" )
+done
 
 OBJ=bits
-PREFER="metric#2.0 bits#3.25"
+PREFER="metric#1.0 bits#2.25"
 EXPR_FOLDER=save/search
-
+EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_3scale_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411071632/iter_299.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411061920/iter_299.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411021226/iter_299.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_nsga2_2_4_obj_2_4_mut_0.1_layer_prune_0.95_1.0_2410311536/iter_299.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_2_4_0.01_2410211524/iter_300.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_2_4_mut_prob_0.1_2410101147/iter_300.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_2_4_mut_prob_0.2_2410101159/iter_300.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_2_4_mut_prob_0.02_2410101352/iter_300.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_gptq_iter_300_nsga2_2_4_2410070911/iter_270.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_owq_iter_300_nsga2_2.1_4.1_2410071301/iter_300.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_owq_iter_300_nsga2_2.01_4.01_2410071302/iter_300.stats
-EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_2_4_2410071303/iter_300.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_2_4_2410071303/iter_300.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_300_nsga2_2_4_2410051059/iter_300.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_200_nsga2_2_4_2410051103/iter_200.stats
-TARGET_BITS_RANGE="3.245 3.255"
-SAVE=save/result/${TODAY}
-N=10
+MIN_BITS=2.245
+MAX_BITS=2.255
+# TARGET_BITS_RANGE="${MIN_BITS} ${MAX_BITS}"
+SAVE=save/result/${TODAY}_${METHOD_TEXT}_${MIN_BITS}_${MAX_BITS}
+N=5
 DATASETS=wikitext2
 
 CUDA_VISIBLE_DEVICES=${DEVICES} python post_search.py \
     --model_name ${MODEL_PATH}/${MODEL_NAME} \
     --config ${CONFIG} \
-    --large_model_path ${LARGE_MODEL_PATH} \
-    --large_model_bits ${LARGE_WBITS} \
-    --small_model_path ${SMALL_MODEL_PATH} \
-    --small_model_bits ${SMALL_WBITS} \
+    --quant_model_paths "${QMODEL_PATHS[@]}" \
+    --quant_model_bits ${Q_BITS} \
     --sec_obj ${OBJ} \
     -n ${N} \
     --save ${SAVE} \
@@ -73,8 +78,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} python post_search.py \
     --prefer ${PREFER} \
     --datasets ${DATASETS} \
     --only_front False \
-    --target_bits_range ${TARGET_BITS_RANGE} \
-    --quant_method ${QUANT_METHOD}
+    --target_bits_range ${MIN_BITS} ${MAX_BITS} \
+    --method ${METHOD}
 
 
     # --greedy_search_result_path ${GREEDY_SEARCH}

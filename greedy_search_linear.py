@@ -158,9 +158,6 @@ def greedy_search_linear(args):
     #     results = eval_zero_shot(model_name, skip_attn_list, skip_mlp_list, tasks, parallelize=parallelize)
     #     results = results['results']
 
-def main(args):
-    greedy_search_linear(args)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str, default='',
@@ -197,5 +194,5 @@ if __name__ == '__main__':
     parser.add_argument('--descending', action='store_true', default=False)
 
     cfgs = parser.parse_args()
-    main(cfgs)
+    greedy_search_linear(cfgs)
 

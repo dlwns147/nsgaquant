@@ -11,6 +11,49 @@ from pymoo.core.crossover import Crossover
 from pymoo.core.variable import get, Real
 from .func_utils import get_net_info
 
+
+def apply_float_operation(problem, fun):
+
+    # save the original bounds of the problem
+    _xl, _xu = problem.xl, problem.xu
+
+    # copy the arrays of the problem and cast them to float
+    xl, xu = problem.xl.astype(float), problem.xu.astype(float)
+
+    # modify the bounds to match the new crossover specifications and set the problem
+    problem.xl = xl - (0.5 - 1e-7)
+    problem.xu = xu + (0.5 - 1e-7)
+
+    # perform the crossover
+    off = fun()
+
+    # now round to nearest integer for all offsprings
+    off = np.rint(off).astype(int)
+
+    # reset the original bounds of the problem and design space values
+    problem.xl = _xl
+    problem.xu = _xu
+
+    return off
+
+
+class IntegerFromFloatMutation(Mutation):
+
+    def __init__(self, clazz=None, **kwargs):
+        if clazz is None:
+            raise Exception("Please define the class of the default mutation to use IntegerFromFloatMutation.")
+
+        self.mutation = clazz(**kwargs)
+        super().__init__()
+
+    def _do(self, problem, X, **kwargs):
+        def fun():
+            return self.mutation._do(problem, X, **kwargs)
+
+        return apply_float_operation(problem, fun)
+
+
+
 class IntPolynomialMutation(PolynomialMutation):
 
     def _do(self, problem, X, params=None, **kwargs):
