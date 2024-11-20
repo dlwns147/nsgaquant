@@ -17,7 +17,7 @@ def get_acc_predictor(model, inputs, targets, device='cpu'):
 
     elif model == 'mlp':
         from acc_predictor.mlp import MLP
-        acc_predictor = MLP(n_feature=inputs.shape[1])
+        acc_predictor = MLP(n_feature=inputs.shape[1], device=device)
         acc_predictor.fit(x=inputs, y=targets, device=device)
 
     elif model == 'as':

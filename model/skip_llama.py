@@ -194,8 +194,6 @@ class LlamaDecoderSkipLayer(nn.Module):
 
         return outputs
 
-
-    
 def block_replace(model):
 
     for i in range(len(model.model.layers)):

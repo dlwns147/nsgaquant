@@ -1,16 +1,19 @@
 DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
+PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-MODEL_PATH=meta-llama
+MODEL_PATH=/SSD/huggingface/meta-llama
 MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
+
+Q_BITS="2 3 4"
+Q_BITS_TEXT="234"
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
-# METHOD="hqq"
-# METHOD_TEXT="hqq"
-# Q_BITS="2 3 4"
-# Q_BITS_TEXT="234"
+# METHOD=hqq
+# METHOD_TEXT=hqq
 # GROUP_SIZE=128
 # AXIS=1
 # QSCALE=false
@@ -19,7 +22,7 @@ CONFIG=config/llama.json
 # QMODEL_PATHS=()
 # for B in ${Q_BITS}
 # do
-#     QMODEL_PATHS+=( "/SSD/hqq/Llama-2-7b-hf_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
+#     QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
 # done
 
 # METHOD=owq
@@ -31,23 +34,74 @@ CONFIG=config/llama.json
 
 METHOD=awq
 METHOD_TEXT=awq
-Q_BITS="2 3 4"
-Q_BITS_TEXT="234"
 GROUP_SIZE=128
-SCALE_BIT=3
+SCALE_BITS=2
+# SCALE_BITS=3
 
 QMODEL_PATHS=()
 for B in ${Q_BITS}
 do
-    QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BIT}bit_awq.pt" )
+    # QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt" )
+    QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}scale_asym.pt" )
 done
 
 OBJ=bits
-PREFER="metric#1.0 bits#2.25"
+TARGET_BITS=3.0
+THRESHOLD=0.005
+PREFER="metric#0.0 bits#${TARGET_BITS}"
 EXPR_FOLDER=save/search
-EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_3scale_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411071632/iter_299.stats
+
+MIN_BITS=$(echo "scale=3; $TARGET_BITS - $THRESHOLD" | bc)
+MAX_BITS=$(echo "scale=3; $TARGET_BITS + $THRESHOLD" | bc)
+
+# EXPR_FILE=2411191158_Llama-2-13b-hf_bits_loss_awq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_449.stats
+# EXPR_FILE=2411191444_Llama-2-13b-hf_bits_loss_awq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_449.stats
+# EXPR_FILE=2411191756_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
+# EXPR_FILE=2411191240_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+# EXPR_FILE=2411181902_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
+# EXPR_FILE=2411172147_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
+# EXPR_FILE=2411172038_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
+# EXPR_FILE=2411161720_Llama-2-13b-hf_bits_loss_awq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_449.stats
+# EXPR_FILE=2411152010_Llama-2-13b-hf_bits_loss_awq_iter_375_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_374.stats
+# EXPR_FILE=2411151949_Llama-2-13b-hf_bits_loss_hqq_iter_375_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_374.stats
+# EXPR_FILE=2411141716_Llama-2-13b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+# EXPR_FILE=2411141831_Llama-2-13b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+EXPR_FILE=2411131600_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+# EXPR_FILE=2411131629_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+# EXPR_FILE=2411131600_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+# EXPR_FILE=2411121845_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_2411121523/iter_291.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_64_128gs_4scale_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411120948/iter_299.stats
+# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_3scale_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411071632/iter_299.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411061920/iter_299.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411021226/iter_299.stats
+
+SAVE=save/result/${TODAY}_${METHOD_TEXT}_${MIN_BITS}_${MAX_BITS}
+N=5
+DATASETS=wikitext2
+
+N_PROC=1
+CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} post_search.py \
+--model_path ${MODEL_PATH} \
+--model_name ${MODEL_NAME} \
+--config ${CONFIG} \
+--quant_model_paths "${QMODEL_PATHS[@]}" \
+--quant_model_bits ${Q_BITS} \
+--sec_obj ${OBJ} \
+-n ${N} \
+--save ${SAVE} \
+--debug \
+--expr ${EXPR_FOLDER}/${EXPR_FILE} \
+--prefer ${PREFER} \
+--datasets ${DATASETS} \
+--target_bits_range ${MIN_BITS} ${MAX_BITS} \
+--method ${METHOD}
+# --only_front \
+
+
+    # --greedy_search_result_path ${GREEDY_SEARCH}
+# GREEDY_SEARCH=''
+# GREEDY_SEARCH=csv/greedy_search/Llama-2-7b-hf_ppl_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.csv
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_nsga2_2_4_obj_2_4_mut_0.1_layer_prune_0.95_1.0_2410311536/iter_299.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_2_4_0.01_2410211524/iter_300.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_2_4_mut_prob_0.1_2410101147/iter_300.stats
@@ -59,60 +113,5 @@ EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_3scale_obj_2_4_mut_0.05
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_2_4_2410071303/iter_300.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_300_nsga2_2_4_2410051059/iter_300.stats
 # EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_200_nsga2_2_4_2410051103/iter_200.stats
-MIN_BITS=2.245
-MAX_BITS=2.255
 # TARGET_BITS_RANGE="${MIN_BITS} ${MAX_BITS}"
-SAVE=save/result/${TODAY}_${METHOD_TEXT}_${MIN_BITS}_${MAX_BITS}
-N=5
-DATASETS=wikitext2
-
-CUDA_VISIBLE_DEVICES=${DEVICES} python post_search.py \
-    --model_name ${MODEL_PATH}/${MODEL_NAME} \
-    --config ${CONFIG} \
-    --quant_model_paths "${QMODEL_PATHS[@]}" \
-    --quant_model_bits ${Q_BITS} \
-    --sec_obj ${OBJ} \
-    -n ${N} \
-    --save ${SAVE} \
-    --expr ${EXPR_FOLDER}/${EXPR_FILE} \
-    --prefer ${PREFER} \
-    --datasets ${DATASETS} \
-    --only_front False \
-    --target_bits_range ${MIN_BITS} ${MAX_BITS} \
-    --method ${METHOD}
-
-
-    # --greedy_search_result_path ${GREEDY_SEARCH}
-# GREEDY_SEARCH=''
-# GREEDY_SEARCH=csv/greedy_search/Llama-2-7b-hf_ppl_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.csv
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_2.495_2.505_2410050639/iter_100.stats
-# TARGET_BITS_RANGE="2.495 2.505"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_2.995_3.005_2410050901/iter_100.stats
-# TARGET_BITS_RANGE="2.995 3.005"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_3.495_3.505_2410050639/iter_100.stats
-# TARGET_BITS_RANGE="3.495 3.505"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_2.19_2.21_2410041204/iter_100.stats
-# TARGET_BITS_RANGE="2.19 2.21"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_2.39_2.41_2410041204/iter_100.stats
-# TARGET_BITS_RANGE="2.39 2.41"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_2.59_2.61_2410041204/iter_100.stats
-# TARGET_BITS_RANGE="2.59 2.61"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_2.79_2.81_2410041204/iter_100.stats
-# TARGET_BITS_RANGE="2.79 2.81"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_3.19_3.21_2410041644/iter_100.stats
-# TARGET_BITS_RANGE="3.19 3.21"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_3.39_3.41_2410041644/iter_100.stats
-# TARGET_BITS_RANGE="3.39 3.41"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_3.59_3.61_2410041644/iter_100.stats
-# TARGET_BITS_RANGE="3.59 3.61"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_3.79_3.81_2410041645/iter_100.stats
-# TARGET_BITS_RANGE="3.79 3.81"
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_ga_2410032303/iter_100.stats # 2.99~3.01
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_nsga2_2410032317/iter_100.stats # 2.9~4.0
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_iter_100_nsga2_2410032323/iter_100.stats # 2.9~3.5
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_2410021827/iter_200.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_2409292036/iter_400.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_2409291516/iter_300.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_2409291301/iter_200.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_2409282026/iter_100.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_2409282026/iter_51.stats
+# QMODEL_PATHS=("/SSD/awq/${MODEL_NAME}_w2_g64_fake_${SCALE_BITS}bit_128gs_awq.pt" "/SSD/awq/${MODEL_NAME}_w3_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt" "/SSD/awq/${MODEL_NAME}_w4_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt")

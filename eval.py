@@ -5,8 +5,8 @@ from transformers import AutoModelForCausalLM
 # from gptqmodel import GPTQModel
 # # from gptqmodel.utils import get_backend
 
-from utils.data_utils import get_loader
-from utils.eval_utils import eval_metric
+from utils.data import get_loader
+from utils.eval import eval_metric
 
 model_path = 'meta-llama'
 model_name = 'Llama-2-7b-hf'

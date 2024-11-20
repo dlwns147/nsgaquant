@@ -55,8 +55,8 @@ def gen_data_linear(args):
     for arch in tqdm(archs):
         iter_start = time()
 
-        # ppl, complexity = evaluator.eval(arch, 'ppl')
-        # ppl_archive.append([arch, ppl[args.dataset], complexity[args.sec_obj]])
+        ppl, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='ppl')
+        ppl_archive.append([arch, ppl[args.dataset], complexity[args.sec_obj]])
         loss, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='loss')
         loss = min(np.nan_to_num(loss[args.dataset], nan=args.max_value), args.max_value)
         loss_archive.append([arch, loss, complexity[args.sec_obj]])
@@ -68,13 +68,13 @@ def gen_data_linear(args):
         # complexity_list.append(complexity)
 
         if accelerator.is_main_process:
-            # if args.ppl_json_file:
-            #     with open(args.ppl_json_file, 'w') as f:
-            #         json.dump({'archive': ppl_archive}, f, ensure_ascii=False, indent=4)
+            if args.ppl_json_file:
+                with open(args.ppl_json_file, 'w') as f:
+                    json.dump({'archive': ppl_archive}, f, ensure_ascii=False, indent=4)
 
-            if args.loss_json_file:
-                with open(args.loss_json_file, 'w') as f:
-                    json.dump({'archive': loss_archive, 'iteration': 0}, f, ensure_ascii=False, indent=4)
+            # if args.loss_json_file:
+            #     with open(args.loss_json_file, 'w') as f:
+            #         json.dump({'archive': loss_archive, 'iteration': 0}, f, ensure_ascii=False, indent=4)
         accelerator.wait_for_everyone()
     # from matplotlib import pyplot as plt
     # plt.hist(complexity_list)

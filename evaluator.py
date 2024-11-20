@@ -18,10 +18,9 @@ from hqq.utils.patching import prepare_for_inference
 # from gptqmodel.utils import get_backend
 
 from utils.owq.utils.modelutils import load_model
-from utils.func_utils import setsubattr, getsubattr, delsubattr, getblock, get_net_info
-from utils.data_utils import get_loader
-from utils.eval_utils import eval_metric, get_logits
-# from awq.quantize.quantizer import real_quantize_model_weight
+from utils.func import setsubattr, getsubattr, delsubattr, getblock, get_net_info
+from utils.data import get_loader
+from utils.eval import eval_metric, get_logits
 
 from model.skip_llama import block_replace
 
@@ -34,7 +33,9 @@ class LlamaEvaluator:
                  config,
                  accelerator,
                  method=[],
-                 model_name='',
+                #  model_path='',
+                #  model_name='',
+                 model_id='',
                  quant_model_paths=[],
                  quant_model_bits=[],
                  datasets=['wikitext2'],
@@ -45,46 +46,58 @@ class LlamaEvaluator:
                  cache_dir=None,
                  loss_func='cross_entropy'):
         
+        # model_id = os.path.join(model_path, model_name)
         self.method = method
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
         # device = torch.device("cuda:0")
+
+        with accelerator.main_process_first():
+            self.train_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, n_sample=n_sample, train=True, seed=seed, seqlen=seqlen)) for dataset in datasets}
+            self.test_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, train=False, seqlen=seqlen)) for dataset in datasets}
+
+        self.loss_func = loss_func
+        if loss_func == 'jsd':
+            model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map='auto')
+            self.dense_logits = {dataset: get_logits(model, loader) for dataset, loader in self.train_loaders.items()}
+            del model; gc.collect(); torch.cuda.empty_cache()
+        else:
+            self.dense_logits = {dataset: None for dataset in self.train_loaders.keys()}
+
+        self.quant_models = list()
         if 'hqq' in method:
             with accelerator.main_process_first():
-                self.quant_models = [AutoHQQHFModel.from_quantized(path, device_map='auto') for path in quant_model_paths]
+                self.model = AutoHQQHFModel.from_quantized(quant_model_paths[np.argmax(quant_model_bits)], device_map='auto')
+                self.remove_linears(self.model, config)
+                self.quant_models = [AutoHQQHFModel.from_quantized(p, device_map='auto') for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
-            self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)])
-            self.remove_linears(self.model, config)
+
         elif 'gptq' in method:
             self.quant_models = [GPTQModel.from_quantized(path, device_map=device_map, backend=get_backend('AUTO')).model for path in quant_model_paths]
             self.quant_model_bits = quant_model_bits
             self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)]).to(accelerator.device)
             self.remove_linears(self.model, config)
+
         elif 'owq' in method:
-            self.quant_models = [load_model(model_name, path, device=device_map) for path in quant_model_paths]
+            self.quant_models = [load_model(model_id, path, device=device_map) for path in quant_model_paths]
             self.quant_model_bits = quant_model_bits
             self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)]).to(accelerator.device)
             self.remove_linears(self.model, config)
+
         elif 'awq' in method :
             with accelerator.main_process_first():
-                self.model = AutoModelForCausalLM.from_pretrained(quant_model_paths[np.argmax(quant_model_bits)], torch_dtype='auto', device_map=accelerator.device)
+                self.model = AutoModelForCausalLM.from_pretrained(quant_model_paths[np.argmax(quant_model_bits)], torch_dtype='auto', device_map='auto')
                 self.remove_linears(self.model, config)
-                self.quant_models = [AutoModelForCausalLM.from_pretrained(path, torch_dtype='auto', device_map=accelerator.device) for path in quant_model_paths]
+                self.quant_models = [AutoModelForCausalLM.from_pretrained(p, torch_dtype='auto', device_map='auto') for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
             # self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)])
         else:
-            self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
+            self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
+
         if 'layer_prune' in method:
             self.model = block_replace(self.model)
 
         self.config = config
         self.seqlen = seqlen
-        with accelerator.main_process_first():
-            self.train_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_name, n_sample=n_sample, train=True, seed=seed, seqlen=seqlen)) for dataset in datasets}
-            self.test_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_name, train=False, seqlen=seqlen)) for dataset in datasets}
-            # self.train_loaders = {dataset: get_loader(dataset, model=model_name, n_sample=n_sample, train=True, seed=seed, seqlen=seqlen) for dataset in datasets}
-            # self.test_loaders = {dataset: get_loader(dataset, model=model_name, train=False, seqlen=seqlen) for dataset in datasets}
-        
-        # print(f'self.train_loaders : {len(self.train_loaders["wikitext2"])}, self.test_loaders : {len(self.test_loaders["wikitext2"])}, {accelerator.device}')
             
         self.model.eval()
         self.model.use_cache = False
@@ -92,8 +105,6 @@ class LlamaEvaluator:
             q_model.eval()
             q_model.use_cache = False
 
-        self.loss_func = loss_func
-        self.dense_logits = {dataset: (get_logits(self.model, loader, bs=1, seqlen=seqlen, device=self.device) if self.loss_func == 'jsd' else None) for dataset, loader in self.train_loaders.items()}
         accelerator.wait_for_everyone()
 
     def sample(self, arch):
@@ -126,10 +137,8 @@ class LlamaEvaluator:
                             getblock(self.model, self.config)[blk_idx].use_attn()
                         elif layer == 'mlp':
                             getblock(self.model, self.config)[blk_idx].use_mlp()
-        gc.collect()
-        torch.cuda.empty_cache()
         # print(f'sample time : {(time() - sample_start):.2f}, device : {accelerator.device}')
-        # accelerator.wait_for_everyone()        
+        # accelerator.wait_for_everyone()
         
         return self.model
     
@@ -158,8 +167,9 @@ class LlamaEvaluator:
     
     def remove_linears(self, model, config):
         for blk in getblock(model, config):
-            for linear in config['linear']:
-                delsubattr(blk, linear)
+            for linear_group in config['linear']:
+                for linear in linear_group.split(','):
+                    delsubattr(blk, linear)
         gc.collect()
         torch.cuda.empty_cache()
 

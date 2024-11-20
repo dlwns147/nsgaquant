@@ -5,8 +5,8 @@ from tqdm import tqdm
 
 import torch
 import torch.nn as nn
-from .data_utils import *
-from .loss_utils import JSD
+from .data import *
+from .loss import JSD
 
 # Function to evaluate perplexity (ppl) on a specified model and tokenizer
 @torch.no_grad()
@@ -28,7 +28,7 @@ def load_and_eval_ppl(model, model_name='', device=torch.device("cuda:0"), datas
     return ppl_test 
 
 @torch.no_grad()
-def eval_ppl(model, accelerator, loader, seqlen=2048, device=None):
+def eval_ppl(model, accelerator, loader, seqlen=2048):
     # # Get input IDs
     # testenc = testenc.input_ids
 
@@ -40,7 +40,7 @@ def eval_ppl(model, accelerator, loader, seqlen=2048, device=None):
     # print(f"n_sample {n_sample}")
     
     # Loop through each batch
-    for inputs in loader:
+    for inputs in tqdm(loader, desc='Eval PPL'):
 
         # Forward pass through the model
         outputs = model(inputs)
@@ -105,28 +105,13 @@ def eval_ppl(model, accelerator, loader, seqlen=2048, device=None):
     return ppl.item()
 
 @torch.no_grad()
-def get_logits(model, testenc, bs=1, seqlen=2048, device=None):
-    # Get input IDs
-    testenc = testenc.input_ids
-
-    # Calculate number of samples
-    nsamples = testenc.numel() // seqlen
-  
+def get_logits(model, loader):    
     # List to store negative log likelihoods
     logits = []
+    for inputs in loader:
 
-    # Loop through each batch
-    for i in range(0,nsamples,bs):
-
-        # Calculate end index
-        j = min(i+bs, nsamples)
-
-        # Prepare inputs and move to device
-        inputs = testenc[:,(i * seqlen):(j * seqlen)].to(device)
-        inputs = inputs.reshape(j-i, seqlen)
-
-        # Forward pass through the model
-        lm_logits = model(inputs).logits
+        outputs = model(inputs)
+        lm_logits = outputs.logits
         logits.append(lm_logits)
 
     dense_logits_list = torch.cat(logits, dim=0).detach()
@@ -162,7 +147,7 @@ def eval_loss(model, accelerator, loader, seqlen=2048, loss_func='cross_entropy'
             loss = loss_fct(shift_logits, shift_labels)
         elif loss_func == 'jsd':
             dense_logits = dense_logits_list[i]
-            dense_logits = dense_logits[:, :-1, :].reshape(-1, shift_logits.size(-1)).contiguous()
+            dense_logits = dense_logits[:-1, :].reshape(-1, shift_logits.size(-1)).contiguous()
             loss_fct = JSD()
             loss = loss_fct(shift_logits, dense_logits)
         else:

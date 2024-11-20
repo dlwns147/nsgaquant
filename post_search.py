@@ -82,6 +82,7 @@ def main(args):
         front = NonDominatedSorting().do(F, only_non_dominated_front=True)
         pf = F[front, :]
         ps = np.array(subnets)[sort_idx][front]
+        
     else:
         pf = F
         ps = np.array(subnets)[sort_idx]
@@ -107,7 +108,7 @@ def main(args):
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
-        model_name=args.model_name,
+        model_id=f'{args.model_path}/{args.model_name}',
         method=args.method,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
@@ -128,7 +129,7 @@ def main(args):
         metric_list.append(pf[idx, 0])
         ppl_list.append({d: metric[d] for d in args.datasets})
         complexity_list.append(complexity[args.sec_obj])
-        print(f'Selected arch[{idx}] bits: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f}\n')
+        print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}\n')
 
     if args.debug:
         # print(ps[I])
@@ -179,6 +180,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model_path', type=str, default='',
+                        help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--config', type=str, default='config/llama.json',
@@ -201,16 +204,14 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--n_sample', type=int, default=128,
                         help='')
-    parser.add_argument('--debug', type=bool, default=True,
-                        help='')
+    parser.add_argument('--debug', action='store_true', help='')
     parser.add_argument('--sec_obj', type=str, default='bits',
                         help='second objective to optimize simultaneously')
     parser.add_argument('--datasets', type=str, nargs='+', default=['wikitext2'], 
                         help='linear list not to replace')
     parser.add_argument('--greedy_search_result_path', type=str, default='',
                         help='')
-    parser.add_argument('--only_front', type=bool, default=True,
-                        help='')
+    parser.add_argument('--only_front', action='store_true', help='')
     parser.add_argument('--results_file', type=str, default='results.txt',
                         help='')
     parser.add_argument('--results_csv_file', type=str, default='results.csv',

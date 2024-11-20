@@ -9,6 +9,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
+from accelerate import Accelerator
 
 
 DEFAULT_CFG = {
@@ -196,18 +197,27 @@ def compute_bits(arch, config):
     for linear_group, bits in arch['linear'].items():
         for blk, bit in enumerate(bits):
             for linear in linear_group.split(','):
-                # import pdb; pdb.set_trace()
                 memory_usage += config['linear_numel'][linear] * bit * arch['layer'][config['hierarchy'][linear]][blk]
     return memory_usage / config['model_numel']
 
 def compute_sparsity(arch):
     return np.concatenate([v for v in arch['layer'].values()]).mean()
 
+def compute_params(arch, config):
+    params = 0
+    total_params = 0
+    for layer, layer_arch in arch['layer'].items():
+        for layer_mask in layer_arch:
+            total_params += config['layer_numel'][layer]
+            params += config['layer_numel'][layer] * layer_mask
+            
+    return params / total_params
+
 def get_net_info(arch, config):
     net_info = {}
     net_info['bits'] = compute_bits(arch, config)
     net_info['sparsity'] = compute_sparsity(arch)
-    # net_info['params'] = 
+    net_info['params'] = compute_params(arch, config)
     
     # from ofa.imagenet_codebase.utils.pytorch_utils import count_parameters, measure_net_latency
 
@@ -277,6 +287,43 @@ def delsubattr(obj, attr):
         return delsubattr(getattr(obj, attrs[0]), '.'.join(attrs[1:]))
     else:
         return delattr(obj, attr)
+    
+def hassubattr(obj, attr):
+    attrs = attr.split('.')
+    if len(attrs) > 1:
+        return hassubattr(getattr(obj, attrs[0]), '.'.join(attrs[1:]))
+    else:
+        return hasattr(obj, attr)
 
 def getblock(model, config):
     return getsubattr(model, config['layers'])
+
+
+def init_accelerator(gpu_id, config):
+    gpu_id = gpu_id.split(',')
+    accelerator = Accelerator()
+    assert len(gpu_id) % accelerator.num_processes == 0, 'Total number of gpus (args.gpu_id) should be divisible by num_processes'
+
+    gpu_start_idx = accelerator.device.index if accelerator.device.index is not None else 0
+    n_proc = accelerator.num_processes
+    gpu_per_proc = len(gpu_id) // n_proc
+    n_block = int(config['n_block'])
+    assert n_block % gpu_per_proc == 0, f'n_block {n_block} is not divisible by {gpu_per_proc}'
+
+    blk_per_gpu = n_block // gpu_per_proc
+    cur_gpu_id = list(range(gpu_start_idx, len(gpu_id), n_proc))
+    # print(f'os.environ["CUDA_VISIBLE_DEVICES"] : {os.environ["CUDA_VISIBLE_DEVICES"]}, device : {accelerator.device}')
+
+    device_map = dict()
+    for pre_layer in config['pre_layer']:
+        device_map[pre_layer] = cur_gpu_id[0]
+
+    for layer_idx in range(n_block):
+        device_map[f"{config['layers']}.{layer_idx}"] = cur_gpu_id[layer_idx // blk_per_gpu]
+            
+    for post_layer in config['post_layer']:
+        device_map[post_layer] = cur_gpu_id[-1]
+
+    # print(f'cur_gpu_ids : {cur_gpu_id}, blk_per_gpu : {blk_per_gpu}, device : {accelerator.device}, device_map : {device_map}')
+
+    return accelerator, device_map

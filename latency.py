@@ -49,6 +49,8 @@ def main(args):
 
     # exit()
 
+    measure_latency(model, generation=True, batch_size=args.batch_size, device=evaluator.device, iteration=args.iteration, max_time=args.max_time)
+
     n_blk = 32
     arch = {'self_attn': [1] * n_blk, 'mlp': [1] * n_blk}
     model = evaluator.sample(arch)

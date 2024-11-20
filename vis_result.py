@@ -4,35 +4,61 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import get_net_info
 
-ppl_arch_figure = '/NAS/SJ/nsgaquant/fig/vis_234_results.png'
 
-model_name='meta-llama/Llama-2-7b-hf'
+# model_path = 'meta-llama'
+# model_name='Llama-2-7b-hf'
 
-nsga_24_ppl = [5.918757439, 6.308952332, 6.907948494, 7.69556284, 8.753380775, 10.45113373, 14.50975132]
-nsga_234_ppl = [5.811964035, 5.951051235, 6.172879219, 6.465126991, 7.138121128, 8.756361961, 12.21780586]
+ppl_arch_figure = f'/NAS/SJ/nsgaquant/fig/awq_results.png'
+
+awq_llama2_7b_nsga_ppl = [5.74, 5.82, 5.95, 6.18, 6.88, 8.09, 10.38]
+awq_llama2_13b_nsga_ppl = [5.060882092, 5.118550301, 5.208967686, 5.353271008, 5.698880196, 6.37257576, 7.591520786]
 bits = [3.75, 3.5, 3.25, 3.0, 2.75, 2.5, 2.25]
 
 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 fig.subplots_adjust(hspace=0.5, wspace=0.3)
 
-axes[0].scatter(bits, nsga_24_ppl, s=5, label='NSGA 2/4-bits 128gs')
-axes[0].scatter(bits, nsga_234_ppl, s=5, label='NSGA 2/3/4-bits 128gs')
-axes[0].scatter([3], [7.99], s=5, label='HQQ 3bits 128gs')
-axes[0].set_title('PPL')
+# axes[0].scatter(bits, nsga_24_ppl, s=5, label='NSGA 2/4-bits 128gs')
+axes[0].plot(bits, awq_llama2_7b_nsga_ppl, label='NSGA 2/3/4-bits 128gs', color='b')
+axes[0].scatter([3], [6.25], s=7, label='AWQ 128gs', color='r')
+axes[0].scatter([3], [7.16], s=7, label='LLM-MQ', color='teal')
+axes[0].scatter([3], [6.14], s=7, label='CMPQ', color='gray')
+axes[0].set_title('Llama-2-7b')
 axes[0].set_xlabel('Bits')
 axes[0].set_ylabel('PPL')
 axes[0].legend(loc='upper right')
 
-# axes[1].plot(sparsity, sleb_128_ppl, label='Greedy Search 128 (1200s)')
-# axes[1].plot(sparsity, sleb_256_ppl, label='Greedy Search 256 (2800s)')
-# axes[1].plot(sparsity, nsga_layer_ppl, label='NSGA2 (2400s)')
-# # axes[1].scatter(greedy_bits, greedy_loss, color='r', s=3, label='Greedy search')
-# axes[1].set_title('PPL')
-# axes[1].set_xlabel('Sparsity')
+axes[1].plot(bits, awq_llama2_13b_nsga_ppl, label='NSGA 2/3/4-bits 128gs', color='b')
+axes[1].scatter([3], [5.32], s=7, label='AWQ 128gs', color='r')
+axes[1].scatter([3], [5.89], s=7, label='LLM-MQ', color='teal')
+axes[1].scatter([3], [5.34], s=7, label='CMPQ', color='gray')
+axes[1].set_title('Llama-2-13b')
+axes[1].set_xlabel('Bits')
+axes[1].set_ylabel('PPL')
+axes[1].legend(loc='upper right')
+
+# ppl_arch_figure = f'/NAS/SJ/nsgaquant/fig/hqq_results.png'
+
+# hqq_llama2_7b_nsga_ppl = [5.74, 5.80, 5.91, 6.06, 6.34, 7.08, 8.65, 12.14]
+# hqq_llama2_13b_nsga_ppl = [4.99743509292602, 5.047353268, 5.122300625, 5.243927002, 5.41167593, 5.852484226, 6.700005531, 8.389808655]
+# bits = [4, 3.75, 3.5, 3.25, 3.0, 2.75, 2.5, 2.25]
+
+# axes[0].plot(bits, hqq_llama2_7b_nsga_ppl, label='NSGA 2/3/4-bits 128gs', color='b')
+# axes[0].scatter([3, 4], [7.99, 5.74], s=7, label='HQQ 128gs', color='r')
+# axes[0].scatter([3], [7.16], s=7, label='LLM-MQ', color='teal')
+# axes[0].scatter([3], [6.14], s=7, label='CMPQ', color='gray')
+# axes[0].set_title('Llama-2-7b')
+# axes[0].set_xlabel('Bits')
+# axes[0].set_ylabel('PPL')
+# axes[0].legend(loc='upper right')
+
+# axes[1].plot(bits, hqq_llama2_13b_nsga_ppl, label='NSGA 2/3/4-bits 128gs', color='b')
+# axes[1].scatter([3, 4], [5.86, 4.99743509292602], s=7, label='HQQ 128gs', color='r')
+# axes[1].scatter([3], [5.89], s=7, label='LLM-MQ', color='teal')
+# axes[1].scatter([3], [5.34], s=7, label='CMPQ', color='gray')
+# axes[1].set_title('Llama-2-13b')
+# axes[1].set_xlabel('Bits')
 # axes[1].set_ylabel('PPL')
 # axes[1].legend(loc='upper right')
-# axes[1].set_xlim([2.95, 3.05])
-# axes[1].set_ylim([2, 3.5])
 
 plt.show()
 plt.savefig(ppl_arch_figure, dpi=300)

@@ -4,7 +4,15 @@ from tqdm import tqdm
 import math
 
 class LlamaSearchSpace:
-    def __init__(self, n_block, pass_linear_list=[], quant_model_bits=[], config=None, sec_obj='bits', sec_obj_range=[], layer_prune_range=[]):
+    def __init__(self, 
+                n_block,
+                pass_linear_list=[],
+                pass_layer_list=[],
+                quant_model_bits=[],
+                config=None,
+                sec_obj='bits',
+                sec_obj_range=[],
+                layer_prune_range=[]):
         self.n_block = n_block  # number of blocks
 
         self.quant_model_bits = quant_model_bits
@@ -18,6 +26,7 @@ class LlamaSearchSpace:
 
         self.layer_option = [0, 1]
         self.pass_linear_list = pass_linear_list
+        self.pass_layer_list = pass_layer_list
         self.config = config
         self.linear_group = config['linear']
         self.n_linear = len(self.linear_group)
@@ -85,22 +94,42 @@ class LlamaSearchSpace:
                 for pass_linear in self.pass_linear_list:
                     blk, linear = pass_linear.split('.')[0], pass_linear.split('.')[-1]
                     blk = int(blk)
+
                     if linear == 'q_proj':
                         q_list[blk] = max(self.q_proj_option)
+                        attn_layer_list[blk] = 1
                     elif linear == 'k_proj':
                         k_list[blk] = max(self.k_proj_option)
+                        attn_layer_list[blk] = 1
                     elif linear == 'v_proj':
                         v_list[blk] = max(self.v_proj_option)
+                        attn_layer_list[blk] = 1
                     elif linear == 'o_proj':
                         o_list[blk] = max(self.o_proj_option)
+                        attn_layer_list[blk] = 1
+
                     elif linear == 'gate_proj':
                         gate_list[blk] = max(self.gate_proj_option)
+                        mlp_layer_list[blk] = 1
                     elif linear == 'up_proj':
                         up_list[blk] = max(self.up_proj_option)
+                        mlp_layer_list[blk] = 1
                     elif linear == 'down_proj':
                         down_list[blk] = max(self.down_proj_option)
-                    attn_layer_list[blk] = 1
-                    mlp_layer_list[blk] = 1
+                        mlp_layer_list[blk] = 1
+                    else:
+                        raise NotImplementedError(f"linear : {linear}")
+
+                for pass_layer in self.pass_layer_list:
+                    blk, layer = pass_layer.split('.')
+                    blk = int(blk)
+
+                    if layer == 'self_attn':
+                        attn_layer_list[blk] = 1
+                    elif layer == 'mlp':
+                        mlp_layer_list[blk] = 1
+                    else:
+                        raise NotImplementedError(f"layer : {layer}")
                     
                 new_arch = {'linear': {'self_attn.q_proj': q_list, 'self_attn.k_proj': k_list, 'self_attn.v_proj': v_list, 'self_attn.o_proj': o_list, 'mlp.gate_proj': gate_list, 'mlp.up_proj': up_list, 'mlp.down_proj': down_list}, 'layer': {'self_attn': attn_layer_list, 'mlp': mlp_layer_list}}
                 complexity = get_net_info(new_arch, self.config)
@@ -166,7 +195,15 @@ class LlamaSearchSpace:
 
 
 class LlamaLinearGroupSearchSpace:
-    def __init__(self, n_block, pass_linear_list=[], quant_model_bits=[], config=None, sec_obj='bits', sec_obj_range=[], layer_prune_range=[]):
+    def __init__(self,
+                n_block,
+                pass_linear_list=[],
+                pass_layer_list=[],
+                quant_model_bits=[],
+                config=None,
+                sec_obj='bits',
+                sec_obj_range=[],
+                layer_prune_range=[]):
         self.n_block = n_block  # number of blocks
 
         self.quant_model_bits = quant_model_bits
@@ -177,6 +214,7 @@ class LlamaLinearGroupSearchSpace:
 
         self.layer_option = [0, 1]
         self.pass_linear_list = pass_linear_list
+        self.pass_layer_list = pass_layer_list
         self.config = config
         self.linear_group = ['self_attn.q_proj,self_attn.k_proj,self_attn.v_proj', 'self_attn.o_proj', 'mlp.gate_proj,mlp.up_proj', 'mlp.down_proj']
         self.n_linear = len(self.linear_group)
@@ -237,13 +275,27 @@ class LlamaLinearGroupSearchSpace:
                         attn_layer_list[blk] = 1
                     elif linear == 'o_proj':
                         o_list[blk] = max(self.o_proj_option)
-                        attn_layer_list[blk] = 1                        
+                        attn_layer_list[blk] = 1
+                        
                     elif linear == 'gate_proj' or linear == 'up_proj':
                         gateup_list[blk] = max(self.gate_proj_option)
                         mlp_layer_list[blk] = 1
                     elif linear == 'down_proj':
                         down_list[blk] = max(self.down_proj_option)
                         mlp_layer_list[blk] = 1
+                    else:
+                        raise NotImplementedError(f"linear : {linear}")
+
+                for pass_layer in self.pass_layer_list:
+                    blk, layer = pass_layer.split('.')
+                    blk = int(blk)
+
+                    if layer == 'self_attn':
+                        attn_layer_list[blk] = 1
+                    elif layer == 'mlp':
+                        mlp_layer_list[blk] = 1
+                    else:
+                        raise NotImplementedError(f"layer : {layer}")
                     
                 new_arch = {'linear': {'self_attn.q_proj': qkv_list, 'self_attn.k_proj': qkv_list, 'self_attn.v_proj': qkv_list, 'self_attn.o_proj': o_list, 'mlp.gate_proj': gateup_list, 'mlp.up_proj': gateup_list, 'mlp.down_proj': down_list}, 'layer': {'self_attn': attn_layer_list, 'mlp': mlp_layer_list}}
                 complexity = get_net_info(new_arch, self.config)

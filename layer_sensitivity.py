@@ -2,7 +2,6 @@ import argparse
 import time
 from tqdm import tqdm
 import csv
-import os
 
 import numpy as np
 import torch
@@ -13,10 +12,9 @@ import time
 from accelerate import Accelerator
 
 from evaluator import LlamaEvaluator
-from utils.func import init_accelerator
 
 
-def linear_sensitivity(args):
+def layer_sensitivity(args):
     accelerator = Accelerator()
     accelerator.print(args)
 
@@ -29,7 +27,7 @@ def linear_sensitivity(args):
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
-        model_id=f'{args.model_path}/{args.model_name}',
+        model_name=args.model_name,
         method=args.method,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
@@ -44,11 +42,11 @@ def linear_sensitivity(args):
     ppl = 0
     loss_list = dict()
     ppl_list = dict()
-    arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    arch = {'layer': {l: [1] * n_block for l in config['layer']}}
     
-    for linear_group in config['linear']:
+    for layer in config['layer']:
         for block_idx in range(n_block):
-            ppl_list[f'{block_idx}.{linear_group}'] = 0
+            ppl_list[layer] = 0
     accelerator.print(f'arch : {arch}')
 
     # ppl, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='ppl')
@@ -65,13 +63,12 @@ def linear_sensitivity(args):
     start_point = time.time()
     
     for block_idx in range(n_block):
-        for linear_group in config['linear']:
+        for layer in config['layer']:
             iter_start = time.time()
             
-            for linear in linear_group.split(','):
-                arch['linear'][linear][block_idx] = min(args.quant_model_bits)
+            arch['layer'][layer][block_idx] = 0
 
-            key = f'{block_idx}.{linear_group}'
+            key = f'{block_idx}.{layer}'
             loss, _ = evaluator.eval(accelerator=accelerator, arch=arch, metric='loss', loss_func=args.loss_func)
             loss_list[key] = loss[args.dataset]
             if args.eval_ppl:
@@ -80,8 +77,7 @@ def linear_sensitivity(args):
             iter_time = time.time() - iter_start
             accelerator.print(f"[{key} replaced] Loss={loss_list[key]:.4f}, PPL: {ppl_list[key]:.2f}, time: {iter_time:.2f}")
             
-            for linear in linear_group.split(','):
-                arch['linear'][linear][block_idx] = max(args.quant_model_bits)
+            arch['layer'][layer][block_idx] = 1
 
     with accelerator.main_process_first():
         if args.loss_csv_file:
@@ -103,8 +99,6 @@ def linear_sensitivity(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_path', type=str, default='',
-                        help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
@@ -131,5 +125,5 @@ if __name__ == '__main__':
     parser.add_argument('--loss_func', type=str, default='cross_entropy', help='')
 
     cfgs = parser.parse_args()
-    linear_sensitivity(cfgs)
+    layer_sensitivity(cfgs)
 

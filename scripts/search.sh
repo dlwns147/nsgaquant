@@ -2,8 +2,9 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-MODEL_PATH=meta-llama
+MODEL_PATH=/SSD/huggingface/meta-llama
 MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 # METHOD="hqq"
@@ -16,14 +17,12 @@ CONFIG=config/llama.json
 # QSCALE=false
 # QZERO=false
 # PASS_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
+# # PASS_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj"
 
 # QMODEL_PATHS=()
-# # echo ${QMODEL_PATHS}
 # for B in ${Q_BITS}
 # do
-#     # echo "/SSD/hqq/Llama-2-7b-hf_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}"
-#     QMODEL_PATHS+=( "/SSD/hqq/Llama-2-7b-hf_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
-#     # echo ${QMODEL_PATHS}
+#     QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
 # done
 
 # METHOD=gptq
@@ -57,43 +56,51 @@ CONFIG=config/llama.json
 # MIN_SEC_OBJ=${SMALL_WBITS}
 # MAX_SEC_OBJ=${LARGE_WBITS}
 
-# METHOD=awq
-# METHOD_TEXT="awq"
-# PASS_LIST="31.mlp.down_proj"
 
 METHOD=awq
 METHOD_TEXT=awq
+
+# METHOD="awq layer_prune"
+# METHOD_TEXT=awq_layer_prune
+
 Q_BITS="2 3 4"
 Q_BITS_TEXT=234
 GROUP_SIZE=128
-SCALE_BITS=4
+SCALE_BITS=2
 
 QMODEL_PATHS=()
-# echo ${QMODEL_PATHS}
 for B in ${Q_BITS}
 do
-    # echo "/SSD/hqq/Llama-2-7b-hf_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}"
-    QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt" )
-    # echo ${QMODEL_PATHS}
+    # QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt" )
+    QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}scale_asym.pt" )
 done
+# PASS_LIST="31.mlp.down_proj"
+# PASS_LIST="0.mlp.down_proj 39.mlp.up_proj 39.mlp.down_proj"
 
-PASS_LIST="31.mlp.down_proj"
+# PASS_LIST="30.mlp.up_proj 31.mlp.gate_proj 31.mlp.up_proj 31.mlp.down_proj 31.mlp.down_proj" # llama2 7b linear
+PASS_LIST="30.mlp.up_proj 31.mlp.up_proj 31.mlp.down_proj" # llama2 7b linear group
+# PASS_LIST="21.mlp.up_proj 38.mlp.gate_proj 38.mlp.up_proj 38.mlp.down_proj 39.mlp.gate_proj 39.mlp.up_proj 39.mlp.down_proj" # llama2 13b linear
+# PASS_LIST="38.mlp.up_proj 39.mlp.up_proj" # llama2 13b linear group
+
 
 SEC_OBJ_RANGE_SMALL=${Q_BITS:0:1} 
 SEC_OBJ_RANGE_LARGE=${Q_BITS:(-1)}
-SEC_OBJ_RANGE="${SEC_OBJ_RANGE_SMALL} ${SEC_OBJ_RANGE_LARGE}"
 
+# LAYER_PRUNE_RANGE_SMALL=0.95
 LAYER_PRUNE_RANGE_SMALL=1.0
 LAYER_PRUNE_RANGE_LARGE=1.0
-LAYER_PRUNE_RANGE="${LAYER_PRUNE_RANGE_SMALL} ${LAYER_PRUNE_RANGE_LARGE}"
+
+# LOSS_FUNC=cross_entropy
+LOSS_FUNC=jsd
 
 PREDICTOR=mlp
 OBJ=bits
-DEBUG=True
 
 N_DOE=250
+# N_DOE=300
 N_ITER=50
 ITER=300
+# ITER=450
 GA_POP_SIZE=200
 METRIC=loss
 
@@ -102,14 +109,16 @@ GA_ALGORITHM='nsga2'
 MAX_VALUE=5
 MUT_PROB=0.05
 
-SAVE=save/search/${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${GA_ALGORITHM}_${Q_BITS_TEXT}_${SCALE_BITS}scale_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${TODAY}
-# SAVE=save/search/${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${GA_ALGORITHM}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${TODAY}
+# SAVE=save/search/${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${GA_ALGORITHM}_${Q_BITS_TEXT}_64_${GROUP_SIZE}gs_${SCALE_BITS}scale_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${TODAY}
+# SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${GA_ALGORITHM}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}
+SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${GA_ALGORITHM}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_linear_group
 
-# RESUME=/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_awq_bits_loss_234_128gs_4scale_2_4_lp_1.0_1.0.json
-N_PROC=2
+N_PROC=1
 
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} search.py \
---model_name ${MODEL_PATH}/${MODEL_NAME} \
+--gpu_id ${DEVICES} \
+--model_path ${MODEL_PATH} \
+--model_name ${MODEL_NAME} \
 --method ${METHOD} \
 --quant_model_paths "${QMODEL_PATHS[@]}" \
 --quant_model_bits ${Q_BITS} \
@@ -123,15 +132,16 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --metric ${METRIC} \
 --ga_pop_size ${GA_POP_SIZE} \
 --config ${CONFIG} \
---debug ${DEBUG} \
---sec_obj_range ${SEC_OBJ_RANGE} \
+--debug \
+--sec_obj_range ${SEC_OBJ_RANGE_SMALL} ${SEC_OBJ_RANGE_LARGE} \
 --ga_algorithm ${GA_ALGORITHM} \
 --max_value ${MAX_VALUE} \
 --mut_prob ${MUT_PROB} \
 --pass_linear_list ${PASS_LIST} \
---layer_prune_range ${LAYER_PRUNE_RANGE}
-# --resume ${RESUME}
-
+--layer_prune_range ${LAYER_PRUNE_RANGE_SMALL} ${LAYER_PRUNE_RANGE_LARGE} \
+--loss_func ${LOSS_FUNC} \
+--use_linear_group
+# --resume ${RESUME} \
 
 # --large_model_path ${LARGE_MODEL_PATH} \
 # --large_model_bits ${LARGE_WBITS} \

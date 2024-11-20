@@ -142,3 +142,7 @@ dmypy.json
 
 save/
 fig/
+*.pth
+*.pt
+
+llm-awq*/awq_cache

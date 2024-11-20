@@ -1,5 +1,6 @@
 DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
+PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=meta-llama
 MODEL_NAME=Llama-2-7b-hf
@@ -101,7 +102,7 @@ done
 # QMODEL_PATHS=( "/SSD/awq/${MODEL_NAME}_w2_g64_fake_4bit_128gs_awq.pt" "/SSD/awq/${MODEL_NAME}_w4_g128_fake_4bit_awq.pt" )
 # QMODEL_PATHS=( "/SSD/awq/${MODEL_NAME}_w2_g128_fake_2bit_awq.pt" "/SSD/awq/${MODEL_NAME}_w4_g128_fake_4bit_awq.pt" )
 
-# PASS_LIST="31.mlp.down_proj"
+PASS_LIST="0.self_attn.q_proj 1.self_attn.q_proj 31.mlp.down_proj"
 
 SEC_OBJ=bits
 SEC_OBJ_RANGE_SMALL=${Q_BITS:0:1} 
@@ -115,9 +116,9 @@ LOSS_FILE=data/${MODEL_NAME}_${METHOD}_${SEC_OBJ}_loss_${Q_BITS_TEXT}_group_${GR
 PPL_FILE=data/${MODEL_NAME}_${METHOD}_${SEC_OBJ}_ppl_${Q_BITS_TEXT}_group_${GROUP_SIZE}gs_${SCALE_BITS}scale_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}.json
 
 MAX_VALUE=10
-N_PROC=1
+N_PROC=2
 
-CUDA_VISIBLE_DEVICES=${DEVICES} python gen_data_linear.py \
+CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} gen_data_linear.py \
 --model_name ${MODEL_PATH}/${MODEL_NAME} \
 --quant_model_paths "${QMODEL_PATHS[@]}" \
 --quant_model_bits ${Q_BITS} \

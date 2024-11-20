@@ -5,6 +5,7 @@ import torch.nn as nn
 from utils import get_correlation
 import math
 import torch
+import gc
 
 # from https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py
 # def positionalencoding1d(dim, length):
@@ -61,15 +62,17 @@ class Net(nn.Module):
 
 class MLP:
     """ Multi Layer Perceptron """
-    def __init__(self, **kwargs):
+    def __init__(self, device='cpu', **kwargs):
         self.model = Net(**kwargs)
+        self.model.to(device)
         self.name = 'mlp'
+        self.device = device
 
     def fit(self, **kwargs):
         self.model = train(self.model, **kwargs)
 
-    def predict(self, test_data, device='cpu'):
-        return predict(self.model, test_data, device=device)
+    def predict(self, test_data):
+        return predict(self.model, test_data, device=self.device)
 
 
 def train(net, x, y, trn_split=0.8, pretrained=None, device='cpu',
@@ -119,6 +122,9 @@ def train(net, x, y, trn_split=0.8, pretrained=None, device='cpu',
                 best_net = copy.deepcopy(net)
 
     validate(best_net, inputs, target, device=device)
+    
+    gc.collect()
+    torch.cuda.empty_cache()
 
     # return best_net.to('cpu')
     return best_net

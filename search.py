@@ -23,15 +23,15 @@ from pymoo.operators.mutation.pm import PolynomialMutation
 
 from search_space.llama import LlamaSearchSpace, LlamaLinearGroupSearchSpace
 from acc_predictor.factory import get_acc_predictor
-from utils.func_utils import prepare_eval_folder, get_net_info
-from utils.ga_utils import MySampling, BinaryCrossover, MyMutation, IntPolynomialMutation, MyTwoPointCrossover, MyUniformCrossover, IntegerFromFloatMutation
-
+from utils.func import prepare_eval_folder, get_net_info, init_accelerator
+from utils.ga import MySampling, BinaryCrossover, MyMutation, IntPolynomialMutation, MyTwoPointCrossover, MyUniformCrossover, IntegerFromFloatMutation
 from accelerate import Accelerator
 
 class Search:
-    def __init__(self, kwargs):
+    def __init__(self, config, accelerator, device_map, kwargs):
         self.args = deepcopy(kwargs)
-        self.accelerator = kwargs['accelerator']
+        self.config = config
+        self.device_map = device_map
 
         self.save_path = kwargs.pop('save', 'save')  # path to save results
         self.result_file = kwargs.pop('result_file', 'results.txt')  # path to save results
@@ -50,32 +50,34 @@ class Search:
         self.method = kwargs.pop('method', '')
         self.quant_model_paths = kwargs.pop('quant_model_paths', [])
         self.quant_model_bits = kwargs.pop('quant_model_bits', [])
-        self.sec_obj_range = kwargs.pop('sec_obj_range', [self.quant_model_bits[0], self.quant_model_bits[-1]])
-        assert len(self.sec_obj_range) == 2 and self.sec_obj_range[0] >= self.quant_model_bits[0] and self.sec_obj_range[-1] <= self.quant_model_bits[-1], "len(sec_obj_range) should be 2, and sec_obj_range should be in (quant_model_bits[0], quant_model_bits[-1])"
-        self.layer_prune_range = kwargs.pop('layer_prune_range', [0.95, 1])
-        
-        model_name = kwargs.pop('model_name', 'meta-llama/Llama-2-7b-hf')
-        self.metric = kwargs.pop('metric', 'ppl')
-        self.predictor_data = kwargs.pop('predictor_data', '')
-        with open(kwargs.pop('config', 'config/llama.json'), 'r') as f:
-            self.config = json.load(f)[model_name]
+        self.sec_obj_range = kwargs.pop('sec_obj_range', [])
+        assert len(self.sec_obj_range) == 2, "len(sec_obj_range) should be 2"
+        self.layer_prune_range = kwargs.pop('layer_prune_range', [1, 1])
+
+        model_name = kwargs.pop('model_name', 'Llama-2-7b-hf')
+        model_path = kwargs.pop('model_path', 'meta-llama')
+        model_id=f'{model_path}/{model_name}'
+        self.metric = kwargs.pop('metric', 'loss')
+
         self.evaluator = LlamaEvaluator(
             self.config,
-            accelerator=self.accelerator,
-            model_name=model_name,
+            accelerator=accelerator,
+            model_id=model_id,
             method=self.method,
             quant_model_paths=self.quant_model_paths,
             quant_model_bits=self.quant_model_bits,
             seqlen=kwargs.pop('seqlen', 2048),
             n_sample=kwargs.pop('n_sample', 128),
             datasets=[kwargs.pop('dataset', 'wikitext2')],
-            loss_func=self.loss_func
+            loss_func=self.loss_func,
+            # device_map=device_map
         )
         search_space = LlamaLinearGroupSearchSpace if kwargs.pop('use_linear_group', False) else LlamaSearchSpace
         self.search_space = search_space(
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
             pass_linear_list=kwargs.pop('pass_linear_list', []),
+            pass_layer_list=kwargs.pop('pass_layer_list', []),
             sec_obj=self.sec_obj,
             sec_obj_range=self.sec_obj_range,
             config=self.config,
@@ -86,8 +88,8 @@ class Search:
         self.debug = kwargs.pop('debug', False)
         self.ga_algorithm = kwargs.pop('ga_algorithm', 'nsga2')
         self.max_value = kwargs.pop('max_value', 50)
-        self.mut_prob = kwargs.pop('mut_prob', 0.1)
-        self.accelerator.wait_for_everyone()
+        self.mut_prob = kwargs.pop('mut_prob', 0.05)
+        accelerator.wait_for_everyone()
         
     def search(self, accelerator):
         total_start = time()
@@ -136,7 +138,7 @@ class Search:
                 # construct accuracy predictor surrogate model from archive
                 # Algo 1 line 9 / Fig. 3(a) in the paper
                 predictor_start = time()
-                metric_predictor, a_metric_pred = self._fit_acc_predictor(archive, device=self.accelerator.device)
+                metric_predictor, a_metric_pred = self._fit_acc_predictor(archive, device=accelerator.device)
                 predictor_time = time() - predictor_start
 
                 # search for the next set of candidates for high-fidelity evaluation (lower level)
@@ -151,7 +153,7 @@ class Search:
 
             # high-fidelity evaluation (lower level)
             # Algo 1 line 13-14 / Fig. 3(e) in the paper
-            c_metric, complexity = self._evaluate(archs=candidates, accelerator=self.accelerator) 
+            c_metric, complexity = self._evaluate(archs=candidates, accelerator=accelerator) 
 
             if accelerator.is_main_process:
                 # check for accuracy predictor's performance
@@ -161,7 +163,6 @@ class Search:
                 # add to archive
                 # Algo 1 line 15 / Fig. 3(e) in the paper
                 for member in zip(candidates, c_metric, complexity):
-                    # if self.sec_obj_range[0] <= member[2] and member[2] <= self.sec_obj_range[1]:
                     archive.append(member)
 
                 # calculate hypervolume
@@ -218,7 +219,6 @@ class Search:
                     f.write(sentence)
 
             accelerator.print(self.args)
-        accelerator.wait_for_everyone()
         return
 
     def _resume_from_dir(self):
@@ -247,7 +247,16 @@ class Search:
 
         metric_predictor = get_acc_predictor(self.predictor, inputs, targets, device=device)
 
-        return metric_predictor, metric_predictor.predict(inputs, device=device)
+        return metric_predictor, metric_predictor.predict(inputs)
+    
+    def _fit_lat_predictor(self, archive, device='cpu'):
+        inputs = np.array([self.search_space.encode(x[0]) for x in archive])
+        targets = np.array([x[2] for x in archive])
+        # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
+
+        metric_predictor = get_acc_predictor(self.predictor, inputs, targets, device=device)
+
+        return metric_predictor, metric_predictor.predict(inputs)
 
     def _next(self, archive, predictor, K):
         """ searching for next K candidate for high-fidelity evaluation (lower level) """
@@ -343,10 +352,18 @@ class AuxiliarySingleLevelProblem(Problem):
             for i, group in enumerate(search_space.linear_group):
                 if linear in group:
                     linear_idx = i
+                    break
             # linear_idx = search_space.linear_group.index(linear)
             self.xl[blk, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
 
             layer_idx = config['layer'].index(config['hierarchy'][linear])
+            self.xl[blk, -n_layer + layer_idx] = 1
+
+        for pass_layer in self.ss.pass_layer_list:
+            blk, layer = pass_layer.split('.', 1)
+            blk = int(blk)
+            
+            layer_idx = config['layer'].index(layer)
             self.xl[blk, -n_layer + layer_idx] = 1
         
         self.xl = self.xl.flatten()
@@ -363,6 +380,7 @@ class AuxiliarySingleLevelProblem(Problem):
             info = get_net_info(arch, self.config)
             f[i, 0] = metric
             f[i, 1] = info[self.ss.sec_obj]
+
             g[i, 0] = 1 - info[self.ss.sec_obj] / self.ss.sec_obj_range[0]
             g[i, 1] = info[self.ss.sec_obj] / self.ss.sec_obj_range[1] - 1
             g[i, 2] = 1 - info['sparsity'] / self.ss.layer_prune_range[0]
@@ -396,12 +414,16 @@ class SubsetProblem(Problem):
 
 
 def main(args):
-    args.accelerator = Accelerator()
-    args.accelerator.print(args)
+    with open(args.config, 'r') as f:
+        config = json.load(f)[args.model_name]
+    accelerator, device_map = init_accelerator(args.gpu_id, config)
+    # exit()
+    # # accelerator = args.accelerator = Accelerator()
+    accelerator.print(args)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    engine = Search(vars(args))
-    engine.search(args.accelerator)
+    engine = Search(config=config, accelerator=accelerator, device_map=device_map, kwargs=vars(args))
+    engine.search(accelerator)
     return
 
 
@@ -421,12 +443,12 @@ if __name__ == '__main__':
                         help='number of architectures to high-fidelity eval (low level) in each iteration')
     parser.add_argument('--predictor', type=str, default='rbf',
                         help='which accuracy predictor model to fit (rbf/gp/cart/mlp/as)')
-    # parser.add_argument('--n_gpus', type=int, default=8,
-    #                     help='total number of available gpus')
-    # parser.add_argument('--gpu', type=int, default=1,
-    #                     help='number of gpus per evaluation job')
-    # parser.add_argument('--n_workers', type=int, default=4,
-    #                     help='number of workers for dataloader per evaluation job')
+    parser.add_argument('--gpu_id', type=str, default='0',
+                        help='id of available gpus')
+    # parser.add_argument('--n_gpu', type=int, default=1,
+    #                     help='number of gpus per process')
+    parser.add_argument('--model_path', type=str, default='',
+                        help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
@@ -446,14 +468,15 @@ if __name__ == '__main__':
                         help='which metric predictor model to fit (ppl/loss)')
     parser.add_argument('--pass_linear_list', type=str, nargs='+', default=[], 
                         help='linear list not to replace')
+    parser.add_argument('--pass_layer_list', type=str, nargs='+', default=[], 
+                        help='linear list not to replace')
     parser.add_argument('--config', type=str, default='config/llama.json',
                         help='config file to read the model meta data')
     parser.add_argument('--ga_pop_size', type=int, default=40,
                         help='population size of the NSGA stage')
     parser.add_argument('--subset_pop_size', type=int, default=100,
                         help='population size of the subset selection stage')
-    parser.add_argument('--debug', type=bool, default=False,
-                        help='visualization of each iteration results')
+    parser.add_argument('--debug', action='store_true', help='visualization of each iteration results')
     parser.add_argument('--sec_obj_range', type=float, nargs='+', default=[2, 4], 
                         help='')
     parser.add_argument('--result_file', type=str, default='results.txt',
@@ -464,14 +487,13 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--max_value', type=float, default=50,
                         help='')
-    parser.add_argument('--mut_prob', type=float, default=0.1,
+    parser.add_argument('--mut_prob', type=float, default=0.05,
                         help='')
     parser.add_argument('--loss_func', type=str, default='cross_entropy',
                         help='')
     parser.add_argument('--layer_prune_range', type=float, nargs='+', default=[1, 1], 
                         help='')
-    parser.add_argument('--use_linear_group', type=bool, default=False,
-                        help='')
+    parser.add_argument('--use_linear_group', action='store_true', help='')
     
     cfgs = parser.parse_args()
     main(cfgs)
