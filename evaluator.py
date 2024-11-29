@@ -18,7 +18,8 @@ from hqq.utils.patching import prepare_for_inference
 # from gptqmodel.utils import get_backend
 
 from utils.owq.utils.modelutils import load_model
-from utils.func import setsubattr, getsubattr, delsubattr, getblock, get_net_info
+# from utils.func import setsubattr, getsubattr, delsubattr, getblock, get_net_info, load_hqq_model, insert_fp16_channel_hqq, remove_fp16_channel_hqq, get_fp16_channel
+from utils.func import *
 from utils.data import get_loader
 from utils.eval import eval_metric, get_logits
 
@@ -33,11 +34,10 @@ class LlamaEvaluator:
                  config,
                  accelerator,
                  method=[],
-                #  model_path='',
-                #  model_name='',
                  model_id='',
                  quant_model_paths=[],
                  quant_model_bits=[],
+                 outlier=None,
                  datasets=['wikitext2'],
                  seed=0,
                  seqlen=2048,
@@ -56,19 +56,32 @@ class LlamaEvaluator:
             self.test_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, train=False, seqlen=seqlen)) for dataset in datasets}
 
         self.loss_func = loss_func
-        if loss_func == 'jsd':
-            model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map='auto')
-            self.dense_logits = {dataset: get_logits(model, loader) for dataset, loader in self.train_loaders.items()}
+        self.outlier = dict()
+        if loss_func == 'jsd' or outlier is not None:
+            model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map)
+
+            if loss_func == 'jsd':
+                self.dense_logits = {dataset: get_logits(model, loader) for dataset, loader in self.train_loaders.items()}
+
+            if outlier is not None:
+                for blk_idx in range(int(config['n_block'])):
+                    for linear_group in config['linear']:
+                        for linear in linear_group.split(','):
+                            key = f'{config["layers"]}.{blk_idx}.{linear}'
+                            if key in outlier:
+                                self.outlier[f'{blk_idx}.{linear}'] = [outlier[key], get_fp16_channel(getsubattr(getblock(model, config)[blk_idx], linear), outlier[key])]
+                            
             del model; gc.collect(); torch.cuda.empty_cache()
-        else:
+
+        if loss_func != 'jsd':
             self.dense_logits = {dataset: None for dataset in self.train_loaders.keys()}
 
         self.quant_models = list()
         if 'hqq' in method:
             with accelerator.main_process_first():
-                self.model = AutoHQQHFModel.from_quantized(quant_model_paths[np.argmax(quant_model_bits)], device_map='auto')
+                self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map)
                 self.remove_linears(self.model, config)
-                self.quant_models = [AutoHQQHFModel.from_quantized(p, device_map='auto') for p in quant_model_paths]
+                self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
 
         elif 'gptq' in method:
@@ -85,11 +98,10 @@ class LlamaEvaluator:
 
         elif 'awq' in method :
             with accelerator.main_process_first():
-                self.model = AutoModelForCausalLM.from_pretrained(quant_model_paths[np.argmax(quant_model_bits)], torch_dtype='auto', device_map='auto')
+                self.model = AutoModelForCausalLM.from_pretrained(quant_model_paths[np.argmax(quant_model_bits)], torch_dtype='auto', device_map=device_map)
                 self.remove_linears(self.model, config)
-                self.quant_models = [AutoModelForCausalLM.from_pretrained(p, torch_dtype='auto', device_map='auto') for p in quant_model_paths]
+                self.quant_models = [AutoModelForCausalLM.from_pretrained(p, torch_dtype='auto', device_map=device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
-            # self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)])
         else:
             self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
 
@@ -116,11 +128,21 @@ class LlamaEvaluator:
                 for blk_idx, bits in enumerate(linear_group_bits):
                     flag = False
                     for q_bits, q_model in zip(self.quant_model_bits, self.quant_models):
-                        if math.isclose(bits, q_bits):
+                        # if math.isclose(bits, q_bits):
+                        if math.isclose(int(bits), q_bits):
                             for linear in linear_group.split(','):
                                 # setsubattr(getblock(self.model, self.config)[blk_idx], linear, deepcopy(getsubattr(getblock(q_model, self.config)[blk_idx], linear)))
                                 setsubattr(getblock(self.model, self.config)[blk_idx], linear, getsubattr(getblock(q_model, self.config)[blk_idx], linear))
                             flag = True
+
+                    if not math.isclose(bits - int(bits), 0):
+                        for linear in linear_group.split(','):
+                            # insert_fp16_channel_hqq(getsubattr(getblock(self.model, self.config)[blk_idx], linear), self.outlier[f'{self.config["layers"]}.{blk_idx}.{linear}'])
+                            insert_fp16_channel_hqq(getsubattr(getblock(self.model, self.config)[blk_idx], linear), self.outlier[f'{blk_idx}.{linear}'])
+                    else:
+                        for linear in linear_group.split(','):
+                            remove_fp16_channel_hqq(getsubattr(getblock(self.model, self.config)[blk_idx], linear))
+
                     if not flag:
                         raise NotImplementedError(f'{linear_group}: {linear_group_bits} is not available')
 

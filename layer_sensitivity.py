@@ -12,42 +12,70 @@ import time
 from accelerate import Accelerator
 
 from evaluator import LlamaEvaluator
+from utils.func import init_accelerator, get_net_info
 
 
 def layer_sensitivity(args):
-    accelerator = Accelerator()
+    with open(args.config, 'r') as f:
+        config = json.load(f)[args.model_name]
+
+    accelerator, device_map = init_accelerator(args.gpu_id, config)
     accelerator.print(args)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    with open(args.config, 'r') as f:
-        config = json.load(f)[args.model_name]
-    
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
-        model_name=args.model_name,
+        model_id=f'{args.model_path}/{args.model_name}',
         method=args.method,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
         loss_func=args.loss_func,
-        datasets=[args.dataset]
+        datasets=[args.dataset],
+        device_map=device_map
     )
     
-    n_block = config['n_block']
+    n_block = int(config['n_block'])
+    n_linear = int(config['n_linear'])
 
     ppl = 0
     loss_list = dict()
     ppl_list = dict()
-    arch = {'layer': {l: [1] * n_block for l in config['layer']}}
+    arch = {'linear': {l: [16] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
     
     for layer in config['layer']:
         for block_idx in range(n_block):
-            ppl_list[layer] = 0
+            ppl_list[f'{block_idx}.{layer}'] = 0
     accelerator.print(f'arch : {arch}')
+
+    # # # greedy_result_path = '/NAS/SJ/sleb/csv/Llama-2-7b-hf_ppl_512_js.csv'
+    # greedy_result_path = '/NAS/SJ/sleb/csv/Llama-2-13b-hf_ppl_512_js.csv'
+    # with open(greedy_result_path, 'r') as f:
+    #     greedy_result = list(csv.reader(f))
+    #     selected_layer_list = greedy_result[0]
+
+    # params_list = []
+    # sparsity_list = []
+    # for i, layer in enumerate(selected_layer_list):
+    #     blk_idx, layer = layer.split('.')
+    #     arch['layer'][layer][int(blk_idx)] = 0
+    #     complexity = get_net_info(arch, config)
+    #     print(f"{i + 1} {blk_idx}.{layer} | params : {complexity['params']:.3f}, sparsity : {complexity['sparsity']:.3f}")
+    #     params_list.append(complexity['params'])
+    #     sparsity_list.append(complexity['sparsity'])
+    # greedy_result.append(params_list)
+    # greedy_result.append(sparsity_list)
+
+    # with open(greedy_result_path, 'w') as f:
+    #     write = csv.writer(f)
+    #     for r in greedy_result:
+    #         write.writerow(r)
+    
+    # exit()
 
     # ppl, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='ppl')
     # print(f"ppl : {ppl}, complexity[bits] : {complexity['bits']}")
@@ -99,6 +127,10 @@ def layer_sensitivity(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--gpu_id', type=str, default='0',
+                        help='id of available gpus')
+    parser.add_argument('--model_path', type=str, default='',
+                        help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 

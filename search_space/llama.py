@@ -9,20 +9,25 @@ class LlamaSearchSpace:
                 pass_linear_list=[],
                 pass_layer_list=[],
                 quant_model_bits=[],
+                outlier_bits=[],
                 config=None,
                 sec_obj='bits',
                 sec_obj_range=[],
-                layer_prune_range=[]):
+                layer_prune_range=[],
+                only_outlier_bits=False):
         self.n_block = n_block  # number of blocks
 
         self.quant_model_bits = quant_model_bits
-        self.q_proj_option = quant_model_bits
-        self.k_proj_option = quant_model_bits
-        self.v_proj_option = quant_model_bits
+        
+        self.q_proj_option = sorted(quant_model_bits + outlier_bits['self_attn.q_proj'])
+        self.k_proj_option = sorted(quant_model_bits + outlier_bits['self_attn.k_proj'])
+        self.v_proj_option = sorted(quant_model_bits + outlier_bits['self_attn.v_proj'])
         self.o_proj_option = quant_model_bits
-        self.gate_proj_option = quant_model_bits
-        self.up_proj_option = quant_model_bits
-        self.down_proj_option = quant_model_bits
+
+        self.gate_proj_option = sorted(quant_model_bits + outlier_bits['mlp.gate_proj'])
+        self.up_proj_option = sorted(quant_model_bits + outlier_bits['mlp.up_proj'])
+        self.down_proj_option = sorted(quant_model_bits + outlier_bits['mlp.down_proj'])
+        
 
         self.layer_option = [0, 1]
         self.pass_linear_list = pass_linear_list
@@ -58,7 +63,8 @@ class LlamaSearchSpace:
         data = []
         for n in tqdm(range(n_samples), desc='Sampling'):
             while True:
-                prob = np.random.rand(3)
+                # prob = np.random.rand(3)
+                prob = np.random.rand(5)
                 # q_prob = np.random.rand(len(q))
                 q_prob = prob[np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in q])]
                 q_list = np.random.choice(q, size=nb, p=q_prob / q_prob.sum(), replace=True).tolist()
@@ -152,10 +158,10 @@ class LlamaSearchSpace:
         # sample one arch with least (lb of hyperparameters) and most complexity (ub of hyperparameters)
         data = []
         if math.isclose(self.sec_obj_range[0], min(self.quant_model_bits)):
-            data.append(self.sample(q=[min(self.quant_model_bits)], k=[min(self.quant_model_bits)], v=[min(self.quant_model_bits)], o=[min(self.quant_model_bits)], down=[min(self.quant_model_bits)], up=[min(self.quant_model_bits)], gate=[min(self.quant_model_bits)], lp=[1, 1])[0])
+            data.append(self.sample(q=[min(self.q_proj_option)], k=[min(self.k_proj_option)], v=[min(self.v_proj_option)], o=[min(self.o_proj_option)], down=[min(self.down_proj_option)], up=[min(self.up_proj_option)], gate=[min(self.gate_proj_option)], lp=[1, 1])[0])
             n_doe -= 1
         if math.isclose(self.sec_obj_range[-1], max(self.quant_model_bits)):
-            data.append(self.sample(q=[max(self.quant_model_bits)], k=[max(self.quant_model_bits)], v=[max(self.quant_model_bits)], o=[max(self.quant_model_bits)], down=[max(self.quant_model_bits)], up=[max(self.quant_model_bits)], gate=[max(self.quant_model_bits)], lp=[1, 1])[0])
+            data.append(self.sample(q=[max(self.q_proj_option)], k=[max(self.k_proj_option)], v=[max(self.v_proj_option)], o=[max(self.o_proj_option)], down=[max(self.down_proj_option)], up=[max(self.up_proj_option)], gate=[max(self.gate_proj_option)], lp=[1, 1])[0])
             n_doe -= 1
         data.extend(self.sample(n_samples=n_doe, pool=pool))
         return data

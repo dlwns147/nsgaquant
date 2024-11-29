@@ -3,7 +3,9 @@
 > scripts/linear_sensitivity.sh
 
 ```
-CUDA_VISIBLE_DEVICES=0 accelerate launch --num_processes=1 --num_machines=1 --main_process_port=12345 linear_sensitivity.py \
+CUDA_VISIBLE_DEVICES=0 accelerate launch --num_processes=1 --num_machines=1 --main_process_port=12345 
+linear_sensitivity.py \
+--gpu_id 0 \ # Use the same string with CUDA_VISIBLE_DEVICES
 --model_path /SSD/huggingface/meta-llama \
 --model_name Llama2-7b-hf \
 --method hqq \
@@ -20,7 +22,7 @@ CUDA_VISIBLE_DEVICES=0 accelerate launch --num_processes=1 --num_machines=1 --ma
 > scripts/search.sh
 ```
 CUDA_VISIBLE_DEVICES=0 accelerate launch --num_processes=1 --num_machines=1 --main_process_port=12345 search.py \
---gpu_id 0,1 \
+--gpu_id 0 \ # Use the same string with CUDA_VISIBLE_DEVICES
 --model_path /SSD/huggingface/meta-llama \
 --model_name Llama2-7b-hf \
 --method hqq \

@@ -2,6 +2,7 @@
 
 import torch
 import accelerate
+import gc
 
 
 def get_module_by_name_suffix(model, module_name: str):
@@ -57,6 +58,8 @@ def simple_dispatch_model(model, device_map):
                     submodule.meta['zero'] = submodule.meta['zero'].to(d)
                     # print(f"d : {d}, meta['scale'] : {submodule.meta['scale'].device}, meta['zero'] : {submodule.meta['zero'].device}")
             add_hook_to_module(m, hook)
+    gc.collect()
+    torch.cuda.empty_cache()
     accelerate.utils.modeling.retie_parameters(model, tied_params)
     model.hf_device_map = device_map
 

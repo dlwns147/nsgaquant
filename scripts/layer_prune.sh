@@ -3,7 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 METHOD=layer_prune
@@ -26,9 +27,14 @@ OBJ=params
 
 Q_BITS=16
 
-N_DOE=64
-N_ITER=32
-ITER=128
+# N_DOE=64
+# N_ITER=32
+# ITER=128
+
+N_DOE=80
+N_ITER=40
+ITER=160
+
 GA_POP_SIZE=200
 METRIC=loss
 
@@ -38,7 +44,8 @@ MUT_PROB=0.1
 
 Q_BITS=16
 
-PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
+# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
+PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
 
 SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_n_iter_${N_ITER}_${GA_ALGORITHM}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}
 

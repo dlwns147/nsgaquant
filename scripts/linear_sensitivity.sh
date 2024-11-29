@@ -15,21 +15,22 @@ MODEL_NAME=Llama-2-13b-hf
 # CONFIG=config/llama.json
 N_SAMPLE=128
 
-# METHOD="hqq"
-# METHOD_TEXT="hqq"
+METHOD="hqq"
+METHOD_TEXT="hqq"
 
-# Q_BITS="2 4"
-# Q_BITS_TEXT="24"
-# AXIS=1
-# GROUP_SIZE=128
+Q_BITS="2 3"
+Q_BITS_TEXT="23"
+AXIS=1
+GROUP_SIZE=128
 
 # QMODEL_PATHS=()
 # for B in ${Q_BITS}
 # do
 #     QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_false_qzero_false" )
 # done
-# LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
-# PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
+QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_false_qzero_false" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_false_qzero_false" )
+LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
+PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
 
 # METHOD=owq
 # SMALL_WBITS=2.1
@@ -59,19 +60,21 @@ N_SAMPLE=128
 # LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_sb_${SMALL_WBITS}_sgs${SMALL_GROUP_SIZE}.csv
 # PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_sb_${SMALL_WBITS}_sgs${SMALL_GROUP_SIZE}.csv
 
-METHOD=awq
-Q_BITS="2 4"
-Q_BITS_TEXT="24"
-SCALE_BITS=2
-GROUP_SIZE=128
+# METHOD=awq
+# Q_BITS="2 4"
+# Q_BITS_TEXT="24"
+# SCALE_BITS=2
+# GROUP_SIZE=128
 
-QMODEL_PATHS=()
+# QMODEL_PATHS=()
 
-for B in ${Q_BITS}
-do
-    # QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt" )
-    QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}scale_asym.pt" )
-done
+# for B in ${Q_BITS}
+# do
+#     # QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt" )
+#     QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}scale_asym.pt" )
+# done
+OUTLIER_BITS="3.1"
+OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r32/outlier.pth
 
 N_PROC=1
 
@@ -83,9 +86,10 @@ LOSS_FUNC=jsd
 LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${GROUP_SIZE}gs_${SCALE_BITS}scale_${LOSS_FUNC}_linear_group.csv
 PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${GROUP_SIZE}gs_${SCALE_BITS}scale_${LOSS_FUNC}_linear_group.csv
 
-CONFIG=config/llama_awq.json
+CONFIG=config/llama.json
 
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} linear_sensitivity.py \
+--gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
 --method ${METHOD} \
@@ -95,7 +99,9 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --loss_csv_file ${LOSS_CSV_FILE} \
 --ppl_csv_file ${PPL_CSV_FILE} \
 --config ${CONFIG} \
---loss_func ${LOSS_FUNC}
+--loss_func ${LOSS_FUNC} \
+--outlier_bits ${OUTLIER_BITS} \
+--outlier_path ${OUTLIER_PATH}
 
 # CUDA_LAUNCH_BLOCKING=1 CUDA_DEVICE_ORDER=PCI_BUS_ID 
 # --eval_ppl \

@@ -17,22 +17,24 @@ from utils.func import init_accelerator
 
 
 def linear_sensitivity(args):
-    accelerator = Accelerator()
+
+    with open(args.config, 'r') as f:
+        config = json.load(f)[args.model_name]
+    accelerator, device_map = init_accelerator(args.gpu_id, config)
     accelerator.print(args)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-
-    with open(args.config, 'r') as f:
-        config = json.load(f)[args.model_name]
     
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
+        device_map=device_map,
         model_id=f'{args.model_path}/{args.model_name}',
         method=args.method,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
+        outlier=torch.load(args.outlier_path) if args.outlier_path else None,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
         loss_func=args.loss_func,
@@ -46,13 +48,22 @@ def linear_sensitivity(args):
     ppl_list = dict()
     arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
     
-    for linear_group in config['linear']:
-        for block_idx in range(n_block):
-            ppl_list[f'{block_idx}.{linear_group}'] = 0
-    accelerator.print(f'arch : {arch}')
+    # # arch = {'linear': {l: [min(args.outlier_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+
+    # arch = {'linear': {l: [3.1] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    # arch['linear']['self_attn.o_proj'] = [3] * n_block
+    # # arch['linear']['mlp.down_proj'] = [3] * n_block
+
+    # # arch = {'linear': {l: [min(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    
+    # for linear_group in config['linear']:
+    #     for block_idx in range(n_block):
+    #         ppl_list[f'{block_idx}.{linear_group}'] = 0
+    # accelerator.print(f'arch : {arch}')
 
     # ppl, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='ppl')
     # print(f"ppl : {ppl}, complexity[bits] : {complexity['bits']}")
+    # exit()
 
     # for linear in config['linear']:
     #     for block_idx in range(n_block):
@@ -103,6 +114,8 @@ def linear_sensitivity(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--gpu_id', type=str, default='0',
+                        help='id of available gpus')
     parser.add_argument('--model_path', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
@@ -129,6 +142,10 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--eval_ppl', action='store_true')
     parser.add_argument('--loss_func', type=str, default='cross_entropy', help='')
+    parser.add_argument('--outlier_bits', type=float, nargs='+', default=[], 
+                        help='')
+    parser.add_argument('--outlier_path', type=str, default='',
+                        help='')
 
     cfgs = parser.parse_args()
     linear_sensitivity(cfgs)

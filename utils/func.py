@@ -10,14 +10,14 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from accelerate import Accelerator
-
+from hqq.models.hf.base import AutoHQQHFModel
+from .dispatch import simple_dispatch_model
 
 DEFAULT_CFG = {
     'gpus': '0', 'config': None, 'init': None, 'trn_batch_size': 128, 'vld_batch_size': 250, 'num_workers': 4,
     'n_epochs': 0, 'save': None, 'resolution': 224, 'valid_size': 10000, 'test': True, 'latency': None,
     'verbose': False, 'classifier_only': False, 'reset_running_statistics': True,
 }
-
 
 def get_correlation(prediction, target):
     import scipy.stats as stats
@@ -197,7 +197,8 @@ def compute_bits(arch, config):
     for linear_group, bits in arch['linear'].items():
         for blk, bit in enumerate(bits):
             for linear in linear_group.split(','):
-                memory_usage += config['linear_numel'][linear] * bit * arch['layer'][config['hierarchy'][linear]][blk]
+                out_dim, in_dim = config['linear_shape'][linear]
+                memory_usage += int(out_dim) * int(in_dim) * bit * arch['layer'][config['hierarchy'][linear]][blk]
     return memory_usage / config['model_numel']
 
 def compute_sparsity(arch):
@@ -302,10 +303,11 @@ def getblock(model, config):
 def init_accelerator(gpu_id, config):
     gpu_id = gpu_id.split(',')
     accelerator = Accelerator()
-    assert len(gpu_id) % accelerator.num_processes == 0, 'Total number of gpus (args.gpu_id) should be divisible by num_processes'
+    n_proc = accelerator.num_processes
+    assert len(gpu_id) % n_proc == 0, 'Total number of gpus (args.gpu_id) should be divisible by num_processes'
 
     gpu_start_idx = accelerator.device.index if accelerator.device.index is not None else 0
-    n_proc = accelerator.num_processes
+    
     gpu_per_proc = len(gpu_id) // n_proc
     n_block = int(config['n_block'])
     assert n_block % gpu_per_proc == 0, f'n_block {n_block} is not divisible by {gpu_per_proc}'
@@ -327,3 +329,23 @@ def init_accelerator(gpu_id, config):
     # print(f'cur_gpu_ids : {cur_gpu_id}, blk_per_gpu : {blk_per_gpu}, device : {accelerator.device}, device_map : {device_map}')
 
     return accelerator, device_map
+
+def load_hqq_model(model_id, device_map):
+    model = AutoHQQHFModel.from_quantized(model_id, device_map='cpu')
+    model = simple_dispatch_model(model, device_map)
+    return model
+
+def insert_fp16_channel_hqq(linear, outlier):
+    # import pdb; pdb.set_trace()
+    linear.meta['outlier'] = outlier
+
+def remove_fp16_channel_hqq(linear):
+    if 'outlier' in linear.meta:
+        del linear.meta['outlier']
+
+def get_fp16_channel(linear, idx):
+    # print(f'linear.weight : {linear.weight.data.device}, idx : {idx}')
+    return linear.weight.data[:, idx]
+
+def get_outlier_bits(config):
+    pass

@@ -3,34 +3,33 @@ from time import time
 import csv
 import torch
 import numpy as np
-
-import gc
 import json
 
 from evaluator import LlamaEvaluator
-from utils.func_utils import get_net_info
+from utils.func import get_net_info, init_accelerator
 
 def greedy_search_linear(args):
 
-    print(args)
+    with open(args.config, 'r') as f:
+        config = json.load(f)[args.model_name]
+    accelerator, device_map = init_accelerator(args.gpu_id, config)
+    accelerator.print(args)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    # device = torch.device("cuda:0")
-    with open(args.config, 'r') as f:
-        config = json.load(f)[args.model_name]
-
     evaluator = LlamaEvaluator(
         config=config,
-        quant_method=args.quant_method,
-        model_name=args.model_name,
-        large_model_path=args.large_model_path,
-        large_model_bits=args.large_model_bits,
-        small_model_path=args.small_model_path,
-        small_model_bits=args.small_model_bits,
+        accelerator=accelerator,
+        device_map=device_map,
+        model_id=f'{args.model_path}/{args.model_name}',
+        method=args.method,
+        quant_model_bits=args.quant_model_bits,
+        quant_model_paths=args.quant_model_paths,
+        # outlier=torch.load(args.outlier_path) if args.outlier_path else None,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
+        loss_func=args.loss_func,
         datasets=[args.dataset]
     )
     
@@ -40,12 +39,12 @@ def greedy_search_linear(args):
     
     loss_list = dict()
     ppl_list = list()
-    arch = {l: [] for l in config['linear']}
+    arch = {'linear': {l: [] for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
     
     for blk_idx in range(n_block):
         for linear in config['linear']:
             key = f'{blk_idx}.{linear}'
-            arch[linear].append(args.large_model_bits if args.descending else args.small_model_bits)
+            arch['linear'][linear].append(max(args.quant_model_bits) if args.descending else min(args.quant_model_bits))
             alive_linear_list.append(key)
 
     min_loss_list = list()
@@ -75,8 +74,8 @@ def greedy_search_linear(args):
                 if key in alive_linear_list:
 
                     linear_start = time()
-                    arch[linear][blk_idx] = args.small_model_bits if args.descending else args.large_model_bits
-                    loss, _ = evaluator.eval(arch, metric='loss')
+                    arch['linear'][linear][blk_idx] = min(args.quant_model_bits) if args.descending else max(args.quant_model_bits)
+                    loss, _ = evaluator.eval(accelerator=accelerator, arch=arch, metric='loss', loss_func=args.loss_func)
                     loss = loss[args.dataset]
                     loss_list[key] = loss
 
@@ -85,14 +84,15 @@ def greedy_search_linear(args):
                         min_loss_blk_idx = blk_idx
                         min_loss_linear = linear
 
-                    arch[linear][blk_idx] = args.large_model_bits if args.descending else args.small_model_bits
+                    arch['linear'][linear][blk_idx] = max(args.quant_model_bits) if args.descending else min(args.quant_model_bits)
 
                     linear_time = time() - linear_start
-                    print(f"Phase {phase}, current bit: {cur_bit:.2f}, [{blk_idx}.{linear} replaced] Loss={loss_list[key]:.3f}, Current Min Loss={min_loss:.3f} / Layer {min_loss_blk_idx}.{min_loss_linear}, time: {linear_time:.2f}s") 
+                    accelerator.print(f"Phase {phase}, current bit: {cur_bit:.2f}, [{blk_idx}.{linear} replaced] Loss={loss_list[key]:.3f}, Current Min Loss={min_loss:.3f} / Layer {min_loss_blk_idx}.{min_loss_linear}, time: {linear_time:.2f}s") 
+                accelerator.wait_for_everyone()
         selected_layer = f'{min_loss_blk_idx}.{min_loss_linear}'
         alive_linear_list.remove(selected_layer)
         # replaced_linear_list.append(selected_layer)
-        arch[min_loss_linear][min_loss_blk_idx] = args.small_model_bits if args.descending else args.large_model_bits
+        arch['linear'][min_loss_linear][min_loss_blk_idx] = min(args.quant_model_bits) if args.descending else max(args.quant_model_bits)
 
         cur_bit = get_net_info(arch, config)['bits']
         bits_list.append(cur_bit)
@@ -102,11 +102,10 @@ def greedy_search_linear(args):
         phase_time_elapsed = time() - phase_start_point
         iter_time_list.append(phase_time_elapsed)
 
-        # remove block causing the least snlls increase 
-        print(f"Phase_time_elapsed (s): {phase_time_elapsed:.2f}s")
-        print(f"[SELECTED linear: {selected_layer}, Loss={min_loss:.3f}, Bits: {cur_bit:.3f}") 
+        accelerator.print(f"Phase_time_elapsed (s): {phase_time_elapsed:.2f}s")
+        accelerator.print(f"[SELECTED linear: {selected_layer}, Loss={min_loss:.3f}, Bits: {cur_bit:.3f}") 
 
-        if args.loss_csv_file:
+        if args.loss_csv_file and accelerator.is_main_process:
             with open(args.loss_csv_file, 'w', newline='') as f:
                 write = csv.writer(f)
                 write.writerow(min_loss_linear_list)
@@ -115,10 +114,11 @@ def greedy_search_linear(args):
                 write.writerow(iter_time_list)
 
         if args.eval_ppl_iter:        
-            ppl, _ = evaluator.eval(arch, metric='ppl')
+            ppl, _ = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl')
             ppl_phase_time_elapsed = time() - phase_start_point
             iter_time_ppl_list.append(ppl_phase_time_elapsed)
-            if args.ppl_csv_file:
+            
+            if args.ppl_csv_file and accelerator.is_main_process:
                 ppl_list.append(ppl[args.dataset])
                 with open(args.ppl_csv_file, 'w', newline='') as f:
                     write = csv.writer(f)
@@ -126,6 +126,7 @@ def greedy_search_linear(args):
                     write.writerow(bits_list)
                     write.writerow(ppl_list)
                     write.writerow(iter_time_ppl_list)
+        accelerator.wait_for_everyone()
 
     finish_point = time()
     time_elapsed = finish_point - start_point
@@ -160,19 +161,19 @@ def greedy_search_linear(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--gpu_id', type=str, default='0',
+                        help='id of available gpus')
+    parser.add_argument('--model_path', type=str, default='',
+                        help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
-    parser.add_argument('--quant_method', type=str, default='',
+    parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
                         help='')
-    parser.add_argument('--large_model_path', type=str, default='',
-                        help='file path to supernet weights')
-    parser.add_argument('--large_model_bits', type=float, default=4,
-                        help='test batch size for inference')
-    parser.add_argument('--small_model_path', type=str, default='',
-                        help='file path to supernet weights')
-    parser.add_argument('--small_model_bits', type=float, default=2,
-                        help='test batch size for inference')
+    parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
+                        help='')
     parser.add_argument('--target_bit', type=float, default=3,
+                        help='')
+    parser.add_argument('--method', type=str, nargs='+', default=[],
                         help='')
     parser.add_argument('--dataset', type=str, default='wikitext2',
                         help='dataset')
@@ -192,6 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_ppl', action='store_true', default=False)
     parser.add_argument('--eval_zeroshot', action='store_true', default=False)
     parser.add_argument('--descending', action='store_true', default=False)
+    parser.add_argument('--loss_func', type=str, default='cross_entropy', help='')
 
     cfgs = parser.parse_args()
     greedy_search_linear(cfgs)

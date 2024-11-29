@@ -58,7 +58,20 @@ class Search:
         model_path = kwargs.pop('model_path', 'meta-llama')
         model_id=f'{model_path}/{model_name}'
         self.metric = kwargs.pop('metric', 'loss')
+        outlier_path = kwargs.pop('outlier_path' , '')
+        base_outlier_bits = sorted(kwargs.pop('base_outlier_bits', []))
+        n_outlier = kwargs.pop('n_outlier' , 0)
 
+        assert (outlier_path and base_outlier_bits and n_outlier > 0) or (not outlier_path and not base_outlier_bits and n_outlier == 0), "must use outlier_path, outlier_bits and n_outlier together when using outlier channel"
+        
+        outlier_bits = {l: [] for l in config['linear']}
+        if outlier_path and base_outlier_bits and n_outlier > 0:
+            for linear in config['linear']:
+                for base_bits in base_outlier_bits:
+                    _, in_dim = config['linear_shape'][linear]
+                    avg_linear_bits = ((in_dim - n_outlier) * base_bits + n_outlier * 16) / (in_dim)
+                    outlier_bits[linear].append(avg_linear_bits)
+        
         self.evaluator = LlamaEvaluator(
             self.config,
             accelerator=accelerator,
@@ -66,11 +79,12 @@ class Search:
             method=self.method,
             quant_model_paths=self.quant_model_paths,
             quant_model_bits=self.quant_model_bits,
+            outlier=torch.load(outlier_path) if outlier_path else None,
             seqlen=kwargs.pop('seqlen', 2048),
             n_sample=kwargs.pop('n_sample', 128),
             datasets=[kwargs.pop('dataset', 'wikitext2')],
             loss_func=self.loss_func,
-            # device_map=device_map
+            device_map=device_map
         )
         search_space = LlamaLinearGroupSearchSpace if kwargs.pop('use_linear_group', False) else LlamaSearchSpace
         self.search_space = search_space(
@@ -81,7 +95,9 @@ class Search:
             sec_obj=self.sec_obj,
             sec_obj_range=self.sec_obj_range,
             config=self.config,
-            layer_prune_range=self.layer_prune_range
+            layer_prune_range=self.layer_prune_range,
+            outlier_bits=outlier_bits,
+            only_outlier_bits=kwargs.pop('only_outlier_bits', False)
         )
         self.ga_pop_size = kwargs.pop('ga_pop_size', 40)
         self.subset_pop_size = kwargs.pop('subset_pop_size', 100)
@@ -130,7 +146,7 @@ class Search:
         accelerator.wait_for_everyone()
 
         # main loop of the search
-        for it in range(start_it, self.iterations):
+        for it in range(start_it, self.iterations + 1):
             if accelerator.is_main_process:
                 accelerator.print(self.args)
                 iter_start = time()
@@ -189,7 +205,6 @@ class Search:
                     plot = Scatter(legend={'loc': 'lower right'})
                     F = np.full((len(archive), 2), np.nan)
                     F[:, 0] = np.array([x[2] for x in archive])  # second obj. (complexity)
-                    # F[:, 1] = 100 - np.array([x[1] for x in archive])  # performance
                     F[:, 1] = np.array([x[1] for x in archive])  # performance
                     plot.add(F, s=5, facecolors='none', edgecolors='b', label='archive')
                     F = np.full((len(candidates), 2), np.nan)
@@ -226,7 +241,7 @@ class Search:
 
         with open(self.resume, 'r') as f:
             resume_file = json.load(f)
-            archive = resume_file['archive']
+            archive = resume_file['archive'] + resume_file['candidates']
             it = resume_file['iteration']
 
         return archive, it + 1
@@ -340,8 +355,12 @@ class AuxiliarySingleLevelProblem(Problem):
         self.xl = np.zeros((n_block, n_linear + n_layer))
         if 'layer_prune' not in method:
             self.xl[:, -n_layer:] = 1
-        self.xu = np.ones((n_block, n_linear + n_layer)) 
-        self.xu[:, :n_linear] = search_space.n_bits - 1
+        self.xu = np.ones((n_block, n_linear + n_layer))
+        
+        for linear_idx, linear in enumerate(config['linear']):
+            self.xu[:, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
+
+        # self.xu[:, :n_linear] = search_space.n_bits - 1
         self.config = config
 
         for pass_linear in self.ss.pass_linear_list:
@@ -417,8 +436,6 @@ def main(args):
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
     accelerator, device_map = init_accelerator(args.gpu_id, config)
-    # exit()
-    # # accelerator = args.accelerator = Accelerator()
     accelerator.print(args)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -494,6 +511,13 @@ if __name__ == '__main__':
     parser.add_argument('--layer_prune_range', type=float, nargs='+', default=[1, 1], 
                         help='')
     parser.add_argument('--use_linear_group', action='store_true', help='')
+    parser.add_argument('--base_outlier_bits', type=int, nargs='+', default=[], 
+                        help='')
+    parser.add_argument('--outlier_path', type=str, default='',
+                        help='')
+    parser.add_argument('--n_outlier', type=int, default=0, 
+                        help='')
+    parser.add_argument('--only_outlier_bits', action='store_true', help='')
     
     cfgs = parser.parse_args()
     main(cfgs)

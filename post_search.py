@@ -1,6 +1,7 @@
 import os
 import json
 import argparse
+import torch
 import numpy as np
 from pymoo.decomposition.asf import ASF
 from pymoo.visualization.scatter import Scatter
@@ -13,6 +14,7 @@ from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
 from accelerate import Accelerator
+from utils.func import init_accelerator
 
 class HighTradeoffPoints(DecisionMaking):
 
@@ -57,7 +59,11 @@ class HighTradeoffPoints(DecisionMaking):
 
 def main(args):
     print(args)
-    accelerator = Accelerator()
+
+    with open(args.config, 'r') as f:
+        config = json.load(f)[args.model_name]
+
+    accelerator, device_map = init_accelerator(args.gpu_id, config)
 
     # preferences
     if args.prefer:
@@ -68,7 +74,7 @@ def main(args):
             preferences[k] = float(v)
         weights = np.fromiter(preferences.values(), dtype=float)
 
-    archive = json.load(open(args.expr))['archive']
+    archive = json.load(open(args.expr))['archive'] + json.load(open(args.expr))['candidates']
     subnets, metric, sec_obj = [v[0] for v in archive], [v[1] for v in archive], [v[2] for v in archive]
     sort_idx = np.argsort(metric)
     F = np.column_stack((metric, sec_obj))[sort_idx, :]
@@ -102,16 +108,15 @@ def main(args):
     for idx in I:
         print(f'Selected arch[{idx}] bits: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, arch: {ps[idx]}')
         
-    with open(args.config, 'r') as f:
-        config = json.load(f)[args.model_name]
-
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
+        device_map=device_map,
         model_id=f'{args.model_path}/{args.model_name}',
         method=args.method,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
+        outlier=torch.load(args.outlier_path) if args.outlier_path else None,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
         datasets=args.datasets
@@ -186,6 +191,8 @@ if __name__ == '__main__':
                         help='file path to supernet weights')
     parser.add_argument('--config', type=str, default='config/llama.json',
                         help='')
+    parser.add_argument('--gpu_id', type=str, default='0',
+                        help='id of available gpus')
     parser.add_argument('--method', type=str, nargs='+', default=[],
                         help='')
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
@@ -219,6 +226,8 @@ if __name__ == '__main__':
     parser.add_argument('--results_arch_file', type=str, default='results_arch.json',
                         help='')
     parser.add_argument('--target_bits_range', type=float, nargs='+', default=[],
+                        help='')
+    parser.add_argument('--outlier_path', type=str, default='',
                         help='')
 
     cfgs = parser.parse_args()

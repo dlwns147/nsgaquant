@@ -2,7 +2,8 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 METHOD=layer_prune
@@ -12,7 +13,11 @@ Q_BITS=16
 OBJ=params
 EXPR_FOLDER=save/search
 
-EXPR_FILE=2411182009_Llama-2-7b-hf_params_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.5_1._jsd_mut_0.1_layer_prune_0.01_1.0/iter_127.stats
+EXPR_FILE=2411251843_Llama-2-13b-hf_params_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.5_1._jsd_mut_0.1_layer_prune_0.01_1.0/iter_159.stats
+# EXPR_FILE=2411182009_Llama-2-7b-hf_params_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.5_1._jsd_mut_0.1_layer_prune_0.01_1.0/iter_95.stats
+# EXPR_FILE=2411182009_Llama-2-7b-hf_params_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.5_1._jsd_mut_0.1_layer_prune_0.01_1.0/iter_63.stats
+# EXPR_FILE=2411182009_Llama-2-7b-hf_params_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.5_1._jsd_mut_0.1_layer_prune_0.01_1.0/iter_127.stats
+# EXPR_FILE=2411182009_Llama-2-7b-hf_params_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.5_1._jsd_mut_0.1_layer_prune_0.01_1.0/iter_127.stats
 # EXPR_FILE=2411181806_Llama-2-7b-hf_params_loss_layer_prune_iter_64_n_iter_32_nsga2_obj_0.001_1._jsd_mut_0.1_layer_prune_0.5_1.0/iter_63.stats
 # EXPR_FILE=2411131842_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_nsga2_obj_0.5_1.0_jsd_mut_0.05_layer_prune_0.5_1.0/iter_127.stats
 # EXPR_FILE=2411131757_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_nsga2_obj_0.5_1.0_jsd_mut_0.1_layer_prune_0.5_1.0/iter_127.stats
