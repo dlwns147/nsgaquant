@@ -20,7 +20,7 @@ from pymoo.operators.crossover.binx import BinomialCrossover
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.operators.mutation.pm import PolynomialMutation
 
-from search_space.llama import LlamaSearchSpace, LlamaLinearGroupSearchSpace
+from search_space.llama import LlamaLayerSearchSpace
 from acc_predictor.factory import get_acc_predictor
 from utils.func import get_net_info, init_accelerator
 from utils.ga import MySampling, BinaryCrossover, MyMutation, IntPolynomialMutation, MyTwoPointCrossover, MyUniformCrossover, IntegerFromFloatMutation
@@ -46,8 +46,6 @@ class Search:
         self.loss_func = kwargs.pop('loss_func', 'cross_entropy')
 
         self.method = kwargs.pop('method', '')
-        self.quant_model_paths = kwargs.pop('quant_model_paths', [])
-        self.quant_model_bits = kwargs.pop('quant_model_bits', [])
         self.sec_obj_range = kwargs.pop('sec_obj_range', [])
         assert len(self.sec_obj_range) == 2, "len(sec_obj_range) should be 2"
         self.layer_prune_range = kwargs.pop('layer_prune_range', [1, 1])
@@ -87,15 +85,11 @@ class Search:
             n_pass_layers = int(len(idx) * kwargs.pop('pass_layer_ratio', 0.2))
             pass_layer_list = [layer_sensitivity[0][i] for i in idx[-n_pass_layers:]]
 
-        
         self.evaluator = LlamaEvaluator(
             self.config,
             accelerator=accelerator,
             model_id=model_id,
             method=self.method,
-            quant_model_paths=self.quant_model_paths,
-            quant_model_bits=self.quant_model_bits,
-            outlier=torch.load(outlier_path) if outlier_path else None,
             seqlen=kwargs.pop('seqlen', 2048),
             n_sample=kwargs.pop('n_sample', 128),
             datasets=[kwargs.pop('dataset', 'wikitext2')],
@@ -103,19 +97,14 @@ class Search:
             device_map=device_map,
             latency_table=self.latency_table
         )
-        # search_space = LlamaLinearGroupSearchSpace if kwargs.pop('use_linear_group', False) else LlamaSearchSpace
-        self.search_space = LlamaSearchSpace(
+
+        self.search_space = LlamaLayerSearchSpace(
             n_block=self.config['n_block'],
-            quant_model_bits=self.quant_model_bits,
-            pass_linear_list=kwargs.pop('pass_linear_list', []),
-            # pass_layer_list=kwargs.pop('pass_layer_list', []),
             pass_layer_list=pass_layer_list,
             sec_obj=self.sec_obj,
             sec_obj_range=self.sec_obj_range,
             config=self.config,
             layer_prune_range=self.layer_prune_range,
-            outlier_bits=outlier_bits,
-            only_outlier_bits=kwargs.pop('only_outlier_bits', False),
             latency_table=self.latency_table
         )
         self.ga_pop_size = kwargs.pop('ga_pop_size', 40)
@@ -360,37 +349,16 @@ class AuxiliarySingleLevelProblem(Problem):
     """ The optimization problem for finding the next N candidate architectures """
 
     def __init__(self, search_space, predictor, config, method, latency_table):
-        n_block, n_linear, n_layer = search_space.n_block, search_space.n_linear, search_space.n_layer
-        super().__init__(n_var=n_block * (n_linear + n_layer), n_obj=2, n_constr=4, type_var=int)
+        n_block, n_layer = search_space.n_block, search_space.n_layer
+        super().__init__(n_var=n_block * n_layer, n_obj=2, n_constr=4, type_var=int)
 
         self.ss = search_space
         self.predictor = predictor
-        self.xl = np.zeros((n_block, n_linear + n_layer))
-        if 'layer_prune' not in method:
-            self.xl[:, -n_layer:] = 1
-        self.xu = np.ones((n_block, n_linear + n_layer))
+        self.xl = np.zeros((n_block, n_layer))
+        self.xu = np.ones((n_block, n_layer))
         
-        for linear_idx, linear in enumerate(config['linear']):
-            self.xu[:, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
-
-        # self.xu[:, :n_linear] = search_space.n_bits - 1
         self.config = config
         self.latency_table = latency_table
-
-        for pass_linear in self.ss.pass_linear_list:
-            blk, linear = pass_linear.split('.', 1)
-            blk = int(blk)
-
-            linear_idx = 0.
-            for i, group in enumerate(search_space.linear_group):
-                if linear in group:
-                    linear_idx = i
-                    break
-            # linear_idx = search_space.linear_group.index(linear)
-            self.xl[blk, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
-
-            layer_idx = config['layer'].index(config['hierarchy'][linear])
-            self.xl[blk, -n_layer + layer_idx] = 1
 
         for pass_layer in self.ss.pass_layer_list:
             blk, layer = pass_layer.split('.', 1)
@@ -482,12 +450,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_path', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
-                        help='file path to supernet weights')
-    parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
-                        help='')
-    parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
-                        help='')
-    
+                        help='file path to supernet weights')    
     parser.add_argument('--dataset', type=str, default='wikitext2',
                         help='dataset name')
     parser.add_argument('--seed', type=int, default=0,
@@ -498,8 +461,6 @@ if __name__ == '__main__':
                         help='sequential length of the calibaration (train) set')
     parser.add_argument('--metric', type=str, default='ppl',
                         help='which metric predictor model to fit (ppl/loss)')
-    parser.add_argument('--pass_linear_list', type=str, nargs='+', default=[], 
-                        help='linear list not to replace')
     parser.add_argument('--pass_layer_list', type=str, nargs='+', default=[], 
                         help='linear list not to replace')
     parser.add_argument('--config', type=str, default='config/llama.json',
@@ -525,14 +486,6 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--layer_prune_range', type=float, nargs='+', default=[1, 1], 
                         help='')
-    parser.add_argument('--use_linear_group', action='store_true', help='')
-    parser.add_argument('--base_outlier_bits', type=int, nargs='+', default=[], 
-                        help='')
-    parser.add_argument('--outlier_path', type=str, default='',
-                        help='')
-    parser.add_argument('--n_outlier', type=int, default=0, 
-                        help='')
-    parser.add_argument('--only_outlier_bits', action='store_true', help='')
     parser.add_argument('--latency_table_file', type=str, default=None,
                         help='')
     parser.add_argument('--layer_sensitivity_file', type=str, default='',

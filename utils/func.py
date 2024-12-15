@@ -65,7 +65,7 @@ def compute_params(arch, config):
 
 def get_net_info(arch, config, latency_table):
     net_info = {}
-    net_info['bits'] = compute_bits(arch, config)
+    net_info['bits'] = compute_bits(arch, config) if 'linear' in arch else 0
     net_info['sparsity'] = compute_sparsity(arch)
     net_info['params'] = compute_params(arch, config)
     net_info['latency'] = compute_latency(arch, config, latency_table) # ms
