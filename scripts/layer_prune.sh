@@ -10,20 +10,30 @@ CONFIG=config/llama.json
 METHOD=layer_prune
 METHOD_TEXT=layer_prune
 
-SEC_OBJ_RANGE_SMALL=0.5
-# SEC_OBJ_RANGE_SMALL=0.001
-SEC_OBJ_RANGE_LARGE=1.
+# SEC_OBJ_RANGE_SMALL=0.4
+SEC_OBJ_RANGE_SMALL=0.001
+SEC_OBJ_RANGE_LARGE=1
 
-LAYER_PRUNE_RANGE_SMALL=0.01
-# LAYER_PRUNE_RANGE_SMALL=0.5
+# SEC_OBJ_RANGE_SMALL=0.001
+# SEC_OBJ_RANGE_LARGE=1e9
+
+LAYER_PRUNE_RANGE_SMALL=0.40
+# LAYER_PRUNE_RANGE_SMALL=0.001
 LAYER_PRUNE_RANGE_LARGE=1.0
 
 # LOSS_FUNC=cross_entropy
 LOSS_FUNC=jsd
 
 PREDICTOR=mlp
-# OBJ=sparsity
-OBJ=params
+# PREDICTOR=gp
+# PREDICTOR=rbf
+
+OBJ=sparsity
+# OBJ=params
+# OBJ=latency
+
+# N_SAMPLE=64
+N_SAMPLE=128
 
 Q_BITS=16
 
@@ -45,11 +55,19 @@ MUT_PROB=0.1
 Q_BITS=16
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
-PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
+# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
+# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 2.mlp 8.mlp 75.mlp 77.mlp 78.mlp 79.mlp"
 
-SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_n_iter_${N_ITER}_${GA_ALGORITHM}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}
+LAYER_SENSITIVITY_FILE=csv/sensitivity/${MODEL_NAME}_layer_prune_loss_jsd.csv
+PASS_LAYER_RATIO=0.1
+# PASS_LAYER_RATIO=0.2
+# PASS_LAYER_RATIO=0.3
 
-N_PROC=1
+LATENCY_TABLE=latency_table/${MODEL_NAME}_rtx6000ada.json
+
+SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_n_iter_${N_ITER}_${GA_ALGORITHM}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_mask_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${N_SAMPLE}sample_pass_ratio_${PASS_LAYER_RATIO}
+
+N_PROC=2
 
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} search.py \
 --gpu_id ${DEVICES} \
@@ -72,7 +90,11 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --ga_algorithm ${GA_ALGORITHM} \
 --max_value ${MAX_VALUE} \
 --mut_prob ${MUT_PROB} \
---pass_layer_list ${PASS_LAYER_LIST} \
 --layer_prune_range ${LAYER_PRUNE_RANGE_SMALL} ${LAYER_PRUNE_RANGE_LARGE} \
---loss_func ${LOSS_FUNC}
+--loss_func ${LOSS_FUNC} \
+--latency_table_file ${LATENCY_TABLE} \
+--n_sample ${N_SAMPLE} \
+--layer_sensitivity_file ${LAYER_SENSITIVITY_FILE} \
+--pass_layer_ratio ${PASS_LAYER_RATIO}
+# --pass_layer_list ${PASS_LAYER_LIST} \
 # --resume ${RESUME}

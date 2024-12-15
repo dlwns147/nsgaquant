@@ -4,15 +4,16 @@ hf_auth    = None #HuggingFace token
 cache_path = ''   #cache directory to store data
 
 #Chose a model
-model_path = "/SSD/huggingface/meta-llama"
+# model_path = "/SSD/huggingface/meta-llama"
+model_path="meta-llama"
 # model_name = "Llama-2-7b-hf"
 model_name = "Llama-2-13b-hf"
 model_id  = f'{model_path}/{model_name}'
 #model_id  = "meta-llama/Llama-2-13b-hf" 
 #model_id  = "meta-llama/Llama-2-70b-hf" 
 
-nbits=2
-group_size=64
+nbits=4
+group_size=128
 axis=1
 
 

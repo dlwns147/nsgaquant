@@ -17,11 +17,12 @@ from hqq.utils.patching import prepare_for_inference
 # from gptqmodel import GPTQModel
 # from gptqmodel.utils import get_backend
 
-from utils.owq.utils.modelutils import load_model
+# from utils.owq.utils.modelutils import load_model
 # from utils.func import setsubattr, getsubattr, delsubattr, getblock, get_net_info, load_hqq_model, insert_fp16_channel_hqq, remove_fp16_channel_hqq, get_fp16_channel
 from utils.func import *
 from utils.data import get_loader
 from utils.eval import eval_metric, get_logits
+from utils.dispatch import simple_dispatch_model
 
 from model.skip_llama import block_replace
 
@@ -44,12 +45,12 @@ class LlamaEvaluator:
                  n_sample=128,
                  device_map='auto',
                  cache_dir=None,
-                 loss_func='cross_entropy'):
+                 loss_func='cross_entropy',
+                 latency_table=None):
         
         # model_id = os.path.join(model_path, model_name)
         self.method = method
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
-        # device = torch.device("cuda:0")
 
         with accelerator.main_process_first():
             self.train_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, n_sample=n_sample, train=True, seed=seed, seqlen=seqlen)) for dataset in datasets}
@@ -80,35 +81,20 @@ class LlamaEvaluator:
         if 'hqq' in method:
             with accelerator.main_process_first():
                 self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map)
+                import pdb; pdb.set_trace()
                 self.remove_linears(self.model, config)
                 self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
 
-        elif 'gptq' in method:
-            self.quant_models = [GPTQModel.from_quantized(path, device_map=device_map, backend=get_backend('AUTO')).model for path in quant_model_paths]
-            self.quant_model_bits = quant_model_bits
-            self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)]).to(accelerator.device)
-            self.remove_linears(self.model, config)
-
-        elif 'owq' in method:
-            self.quant_models = [load_model(model_id, path, device=device_map) for path in quant_model_paths]
-            self.quant_model_bits = quant_model_bits
-            self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)]).to(accelerator.device)
-            self.remove_linears(self.model, config)
-
-        elif 'awq' in method :
-            with accelerator.main_process_first():
-                self.model = AutoModelForCausalLM.from_pretrained(quant_model_paths[np.argmax(quant_model_bits)], torch_dtype='auto', device_map=device_map)
-                self.remove_linears(self.model, config)
-                self.quant_models = [AutoModelForCausalLM.from_pretrained(p, torch_dtype='auto', device_map=device_map) for p in quant_model_paths]
-            self.quant_model_bits = quant_model_bits
         else:
             self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
 
         if 'layer_prune' in method:
             self.model = block_replace(self.model)
+            self.model = simple_dispatch_model(self.model, device_map)
 
         self.config = config
+        self.latency_table = latency_table
         self.seqlen = seqlen
             
         self.model.eval()
@@ -119,7 +105,7 @@ class LlamaEvaluator:
 
         accelerator.wait_for_everyone()
 
-    def sample(self, arch):
+    def sample(self, arch, reuse=True):
         # from time import time
         # sample_start = time()
         # self.validate_arch(arch)
@@ -151,9 +137,9 @@ class LlamaEvaluator:
                 for blk_idx, a in enumerate(layer_arch):
                     if a == 0:
                         if layer == 'self_attn':
-                            getblock(self.model, self.config)[blk_idx].skip_attn(reuse=True)
+                            getblock(self.model, self.config)[blk_idx].skip_attn(reuse=reuse)
                         elif layer == 'mlp':
-                            getblock(self.model, self.config)[blk_idx].skip_mlp(reuse=True)
+                            getblock(self.model, self.config)[blk_idx].skip_mlp(reuse=reuse)
                     elif a == 1:
                         if layer == 'self_attn':
                             getblock(self.model, self.config)[blk_idx].use_attn()
@@ -183,7 +169,7 @@ class LlamaEvaluator:
         metric_list = dict()
         for dataset, loader in loaders.items():
             metric_list[dataset] = eval_metric(model=self.sample(arch), accelerator=accelerator, metric=metric, loader=loader, seqlen=self.seqlen, loss_func=loss_func, dense_logits_list=self.dense_logits[dataset])
-        complexity = get_net_info(arch, self.config)
+        complexity = get_net_info(arch, self.config, self.latency_table)
         torch.cuda.empty_cache()
         return metric_list, complexity
     
@@ -289,3 +275,23 @@ class LlamaEvaluator:
     
 #     cfgs = parser.parse_args()
 #     eval_arch(cfgs)
+
+
+        # elif 'gptq' in method:
+        #     self.quant_models = [GPTQModel.from_quantized(path, device_map=device_map, backend=get_backend('AUTO')).model for path in quant_model_paths]
+        #     self.quant_model_bits = quant_model_bits
+        #     self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)]).to(accelerator.device)
+        #     self.remove_linears(self.model, config)
+
+        # elif 'owq' in method:
+        #     self.quant_models = [load_model(model_id, path, device=device_map) for path in quant_model_paths]
+        #     self.quant_model_bits = quant_model_bits
+        #     self.model = deepcopy(self.quant_models[np.argmax(quant_model_bits)]).to(accelerator.device)
+        #     self.remove_linears(self.model, config)
+
+        # elif 'awq' in method :
+        #     with accelerator.main_process_first():
+        #         self.model = AutoModelForCausalLM.from_pretrained(quant_model_paths[np.argmax(quant_model_bits)], torch_dtype='auto', device_map=device_map)
+        #         self.remove_linears(self.model, config)
+        #         self.quant_models = [AutoModelForCausalLM.from_pretrained(p, torch_dtype='auto', device_map=device_map) for p in quant_model_paths]
+        #     self.quant_model_bits = quant_model_bits

@@ -242,15 +242,10 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
     latency = []
     if (generation) :
         # setting for token generation
-        # generation_length = 128
-        # prompt_length = 64
-        # batch_size = 1
-        # batch_size = 64
         max_length = prompt_length + generation_length
         model.config.max_length = max_length
         model.config.use_cache = True
         model.generation_config.use_cache = True
-        # iteration = 10
 
         # make dummy input
         random_input = torch.randint(0, 31999, (batch_size, prompt_length), dtype=torch.long)
@@ -267,10 +262,11 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
             # ender.record()
             # torch.cuda.synchronize()
             # cur_time = starter.elapsed_time(ender)
+            cur_time = max_time
             try:
                 cur_time = _step_gen(random_input, generation_length)
             except RuntimeError:
-                cur_time = max_time
+                pass
             latency.append(cur_time)
 
     else :
@@ -303,3 +299,46 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
     # mean_latency = curr_time/iteration
 
     return median_latency
+
+import os
+from lm_eval.models.huggingface import HFLM
+from lm_eval import tasks, evaluator, utils
+
+torch.no_grad()
+def eval_zeroshot(model, tokenizer, task_list=['piqa','winogrande','hellaswag','arc_challenge','arc_easy'], 
+        num_fewshot=0):
+    
+    task_manager = tasks.TaskManager(include_path='lm-evaluation-harness/lm_eval/tasks')
+ 
+    task_names = task_manager.match_tasks(task_list)
+    for task in [task for task in task_list if task not in task_names]:
+                if os.path.isfile(task):
+                    config = utils.load_yaml_config(task)
+                    task_names.append(config)
+    task_missing = [
+        task
+        for task in task_list
+        if task not in task_names and "*" not in task
+        ]  # we don't want errors if a wildcard ("*") task name was used
+    
+    # model.tie_weights = lambda: None
+    hflm = HFLM(pretrained=model, tokenizer=tokenizer, batch_size='auto')
+    print(f'converted to hflm')
+    
+    results = evaluator.simple_evaluate(
+        model=hflm,
+        tasks=task_list,
+        num_fewshot=num_fewshot,
+        batch_size='auto',
+        max_batch_size=None,
+        device='cuda:0',
+        use_cache=None,
+        limit=None,
+        check_integrity=False,
+        write_out=False,
+        gen_kwargs=None,
+        task_manager=task_manager,
+        # decontamination_ngrams_path=None,
+    )
+
+    return results['results']

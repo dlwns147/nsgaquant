@@ -48,17 +48,9 @@ def linear_sensitivity(args):
     ppl_list = dict()
     arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
     
-    # # arch = {'linear': {l: [min(args.outlier_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
-
-    # arch = {'linear': {l: [3.1] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
-    # arch['linear']['self_attn.o_proj'] = [3] * n_block
-    # # arch['linear']['mlp.down_proj'] = [3] * n_block
-
-    # # arch = {'linear': {l: [min(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
-    
-    # for linear_group in config['linear']:
-    #     for block_idx in range(n_block):
-    #         ppl_list[f'{block_idx}.{linear_group}'] = 0
+    for linear_group in config['linear']:
+        for block_idx in range(n_block):
+            ppl_list[f'{block_idx}.{linear_group}'] = 0
     # accelerator.print(f'arch : {arch}')
 
     # ppl, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='ppl')

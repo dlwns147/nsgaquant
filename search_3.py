@@ -8,7 +8,6 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 from time import time
 from copy import deepcopy
-import csv
 
 from pymoo.optimize import minimize
 from pymoo.core.problem import Problem
@@ -52,20 +51,19 @@ class Search:
         assert len(self.sec_obj_range) == 2, "len(sec_obj_range) should be 2"
         self.layer_prune_range = kwargs.pop('layer_prune_range', [1, 1])
 
-        model_path = kwargs.pop('model_path', 'meta-llama')
         model_name = kwargs.pop('model_name', 'Llama-2-7b-hf')
+        model_path = kwargs.pop('model_path', 'meta-llama')
         model_id=f'{model_path}/{model_name}'
         self.metric = kwargs.pop('metric', 'loss')
         outlier_path = kwargs.pop('outlier_path' , '')
         base_outlier_bits = sorted(kwargs.pop('base_outlier_bits', []))
         n_outlier = kwargs.pop('n_outlier' , 0)
-        
-        self.latency_table = None
+        # JG add
         latency_table = kwargs.pop('latency_table_file', None)
+        self.latency_table = None
         if latency_table is not None:
             with open(latency_table, 'r') as f:
                 self.latency_table = json.load(f)
-        
         # self.config['mpe_table_json'] = kwargs.pop('mpe_table_json', '/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json')
 
         assert (outlier_path and base_outlier_bits and n_outlier > 0) or (not outlier_path and not base_outlier_bits and n_outlier == 0), "must use outlier_path, outlier_bits and n_outlier together when using outlier channel"
@@ -77,16 +75,6 @@ class Search:
                     _, in_dim = config['linear_shape'][linear]
                     avg_linear_bits = ((in_dim - n_outlier) * base_bits + n_outlier * 16) / (in_dim)
                     outlier_bits[linear].append(avg_linear_bits)
-
-        pass_layer_list = []
-        layer_sensitivity_file = kwargs.pop('layer_sensitivity_file' , '')
-        if layer_sensitivity_file:
-            with open(layer_sensitivity_file, 'r') as f:
-                layer_sensitivity = list(csv.reader(f))
-            idx = np.argsort(list(map(float, layer_sensitivity[1])))
-            n_pass_layers = int(len(idx) * kwargs.pop('pass_layer_ratio', 0.2))
-            pass_layer_list = [layer_sensitivity[0][i] for i in idx[-n_pass_layers:]]
-
         
         self.evaluator = LlamaEvaluator(
             self.config,
@@ -108,8 +96,7 @@ class Search:
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
             pass_linear_list=kwargs.pop('pass_linear_list', []),
-            # pass_layer_list=kwargs.pop('pass_layer_list', []),
-            pass_layer_list=pass_layer_list,
+            pass_layer_list=kwargs.pop('pass_layer_list', []),
             sec_obj=self.sec_obj,
             sec_obj_range=self.sec_obj_range,
             config=self.config,
@@ -151,16 +138,17 @@ class Search:
             accelerator.wait_for_everyone()
 
             # parallel evaluation of arch_doe
-            metric, complexity = self._evaluate(archs=arch_doe, accelerator=accelerator)
+            metric, bits, latency = self._evaluate(archs=arch_doe, accelerator=accelerator)
 
             if accelerator.is_main_process:
                 # store evaluated / trained architectures
-                for member in zip(arch_doe, metric, complexity):
+                for member in zip(arch_doe, metric, bits, latency):
                     archive.append(member)
 
         if accelerator.is_main_process:
             # reference point (nadir point) for calculating hypervolume
-            ref_pt = np.array([np.max([x[1] for x in archive]), np.max([x[2] for x in archive])])
+            bits_ref_pt = np.array([np.max([x[1] for x in archive]), np.max([x[2] for x in archive])])
+            lat_ref_pt = np.array([np.max([x[1] for x in archive]), np.max([x[3] for x in archive])])
             accelerator.print(f'data preparation time : {time() - total_start:.2f}s')
         accelerator.wait_for_everyone()
 
@@ -266,13 +254,15 @@ class Search:
         return archive, it + 1
 
     def _evaluate(self, archs, accelerator):
-        metric_list, complexity_list = [], []
+        # metric_list, complexity_list = [], []
+        metric_list, bits_list, lat_list = [], [], []
         for arch in tqdm(archs, desc='Eval Arch'):
             metric, complexity = self.evaluator.eval(accelerator=accelerator, arch=arch, metric=self.metric, loss_func=self.loss_func)
             metric_list.append(np.nan_to_num(metric[self.dataset], nan=self.max_value))
-            complexity_list.append(complexity[self.sec_obj])
+            bits_list.append(complexity['bits'])
+            lat_list.append(complexity['latency'])
 
-        return metric_list, complexity_list
+        return metric_list, bits_list, lat_list
 
     def _fit_acc_predictor(self, archive, device='cpu'):
         inputs = np.array([self.search_space.encode(x[0]) for x in archive])
@@ -298,7 +288,6 @@ class Search:
         method = NSGA2(pop_size=self.ga_pop_size, sampling=nd_X,  # initialize with current nd archs
             # crossover=TwoPointCrossover(prob=0.9),
             crossover=BinomialCrossover(prob=0.9, n_offsprings=1),
-            # crossover=BinomialCrossover(prob=1.0, n_offsprings=1),
             # crossover=BinomialCrossover(prob=0.9, n_offsprings=2),
             # crossover=MyTwoPointCrossover(prob=0.9, n_offsprings=1),
             # mutation=IntPolynomialMutation(eta=1.0),
@@ -533,11 +522,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_outlier', type=int, default=0, 
                         help='')
     parser.add_argument('--only_outlier_bits', action='store_true', help='')
-    parser.add_argument('--latency_table_file', type=str, default=None,
-                        help='')
-    parser.add_argument('--layer_sensitivity_file', type=str, default='',
-                        help='')
-    parser.add_argument('--pass_layer_ratio', type=float, default=0.2, 
+    parser.add_argument('--latency_table_file', type=str, default='',
                         help='')
     
     cfgs = parser.parse_args()

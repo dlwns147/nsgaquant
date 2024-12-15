@@ -13,8 +13,9 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from accelerate import Accelerator
-from utils.func import init_accelerator
+from utils.func import init_accelerator, get_net_info
+from utils.eval import measure_latency, eval_zeroshot
+from utils.data import get_tokenizer
 
 class HighTradeoffPoints(DecisionMaking):
 
@@ -63,6 +64,11 @@ def main(args):
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
 
+    latency_table = None
+    if args.latency_table_file:
+        with open(args.latency_table_file, 'r') as f:
+            latency_table = json.load(f)
+    
     accelerator, device_map = init_accelerator(args.gpu_id, config)
 
     # preferences
@@ -74,13 +80,19 @@ def main(args):
             preferences[k] = float(v)
         weights = np.fromiter(preferences.values(), dtype=float)
 
-    archive = json.load(open(args.expr))['archive'] + json.load(open(args.expr))['candidates']
-    subnets, metric, sec_obj = [v[0] for v in archive], [v[1] for v in archive], [v[2] for v in archive]
+    with open(args.expr, 'r') as f:
+        result_json = json.load(open(args.expr))
+        archive = result_json['archive'] + result_json['candidates']
+    # subnets, metric, sec_obj = [v[0] for v in archive], [v[1] for v in archive], [v[2] for v in archive]
+    subnets, metric = [v[0] for v in archive], [v[1] for v in archive]
+    sec_obj = [get_net_info(n, config, latency_table)[args.sec_obj] for n in subnets]
+    # sec_objs = [[get_net_info(n, config, latency_table)[o] for n in subnets] for o in args.sec_obj]
     sort_idx = np.argsort(metric)
     F = np.column_stack((metric, sec_obj))[sort_idx, :]
-    if len(args.target_bits_range) == 2:
-        assert args.target_bits_range[0] >= min(args.quant_model_bits) and args.target_bits_range[1] <= max(args.quant_model_bits), f'Target bits range should be in [small model bits, large model bits]'
-        range_idx = np.argwhere(np.logical_and(F[:, 1] > args.target_bits_range[0], F[:, 1] < args.target_bits_range[1])).flatten()
+    # F = np.column_stack((metric, *sec_objs))[sort_idx, :]
+    if len(args.sec_obj_range) % 2 == 0:
+        # assert args.sec_obj_range[0] >= min(args.quant_model_bits) and args.sec_obj_range[1] <= max(args.quant_model_bits), f'Target bits range should be in [small model bits, large model bits]'
+        range_idx = np.argwhere(np.logical_and(F[:, 1] > args.sec_obj_range[0], F[:, 1] < args.sec_obj_range[1])).flatten()
         pf = F[range_idx, :]
         ps = np.array(subnets)[sort_idx][range_idx]
 
@@ -105,36 +117,88 @@ def main(args):
     # always add most accurate architectures
     # I = np.append(I, 0)
 
+    # with open('/NAS/Woo/Automation/autoopt/archs/post_search/7b_owq/results_arch.json', 'r') as f:
+    #     data = json.load(f)
+    #     archs = data['archive']
+
     for idx in I:
-        print(f'Selected arch[{idx}] bits: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, arch: {ps[idx]}')
+        # print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, arch: {ps[idx]}')
+        print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, attns : {int(sum(ps[idx]["layer"]["self_attn"]))}, mlps  : {int(sum(ps[idx]["layer"]["mlp"]))}')
         
+        # archs.append([ps[idx], pf[idx, 1]])
+        
+    # with open('/NAS/Woo/Automation/autoopt/archs/post_search/7b_owq/results_arch.json', 'w') as f:
+    #     json.dump({'archive': archs}, f, ensure_ascii=False, indent=4)
+
+    latency_table = None
+    if args.latency_table_file:
+        with open(args.latency_table_file, 'r') as f:
+            latency_table = json.load(f)
+
+    model_id = f'{args.model_path}/{args.model_name}'
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
         device_map=device_map,
-        model_id=f'{args.model_path}/{args.model_name}',
+        model_id=model_id,
         method=args.method,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
         outlier=torch.load(args.outlier_path) if args.outlier_path else None,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
-        datasets=args.datasets
+        datasets=args.datasets,
+        latency_table=latency_table
     )
 
     # ppl_list = {dataset: [] for dataset in args.datasets}
     arch_list = []
     ppl_list = []
-    complexity_list = []
+    bits_list = []
+    param_list = []
+    sparsity_list = []
     metric_list = []
+    latency_list = []
+    complexity_list = []
     for idx in tqdm(I):
         arch = ps[idx]
+
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
+        model = evaluator.sample(arch)
+        latency = measure_latency(evaluator.sample(arch), generation=True, device=model.device) if args.latency else 0
         arch_list.append(arch)
         metric_list.append(pf[idx, 0])
         ppl_list.append({d: metric[d] for d in args.datasets})
-        complexity_list.append(complexity[args.sec_obj])
-        print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}\n')
+        bits_list.append(complexity['bits'])
+        param_list.append(complexity['params'])
+        sparsity_list.append(complexity['sparsity'])
+        complexity_list.append(complexity[args.sec_obj])  
+        latency_list.append(latency)
+        print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency:.2f}\n')
+        
+        if args.zeroshot:
+            results = eval_zeroshot(evaluator.sample(arch), tokenizer=get_tokenizer(model_id))
+            avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
+            print(f'avg_acc : {avg_acc}, results : {results}')
+
+            # row_list = []
+            # for task_name, task_result in results:
+            #     row = [task_name]
+            #     head_list = ['head']
+            #     for head, metric in task_result:
+            #         row.append(metric)
+            #         head_list.append(head)
+            #     row_list.append(row)
+            # with open(args.zeroshot_csv_file, 'r') as f:
+            #     writer = csv.writer(f)
+            #     writer.writerow(head_list)
+            #     for row in row_list:
+            #         writer.writerow(row)
+
+            
+            
+        print(args)
+    exit()
 
     if args.debug:
         # print(ps[I])
@@ -146,7 +210,7 @@ def main(args):
         # plot.save(os.path.join(args.save, "best_trade_off_line.png"))
         os.makedirs(args.save, exist_ok=True)
         
-        plt.scatter(complexity_list, [p['wikitext2'] for p in ppl_list], color='b', s=5, label='NSGA2')
+        plt.scatter(complexity_list, [p[args.datasets[0]] for p in ppl_list], color='b', s=5, label='NSGA2')
         if args.greedy_search_result_path:
             with open(args.greedy_search_result_path, 'r') as f:
                 gs_data = list(csv.reader(f))
@@ -173,14 +237,17 @@ def main(args):
 
     with open(os.path.join(args.save, args.results_csv_file), 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(['arch', args.sec_obj, 'metric'] + args.datasets)
-        for a, c, m, p in zip(arch_list, complexity_list, metric_list, ppl_list):
-            writer.writerow([a, c, m] + list(p.values()))
+        writer.writerow(['arch', 'bits', 'params', 'sparsity', 'metric', 'latency'] + args.datasets)
+        for a, b, p, s, m, l, ppl in zip(arch_list, bits_list, param_list, sparsity_list, metric_list, latency_list, ppl_list):
+            writer.writerow([a, b, p, s, m, l] + list(ppl.values()))
 
     with open(os.path.join(args.save, args.results_arch_file), 'w') as f:
         json.dump({'archive': [[a, c, p] for a, c, p in zip(arch_list, complexity_list, ppl_list)]}, f, ensure_ascii=False, indent=4)
 
     return
+
+
+
 
 
 if __name__ == '__main__':
@@ -225,9 +292,15 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--results_arch_file', type=str, default='results_arch.json',
                         help='')
-    parser.add_argument('--target_bits_range', type=float, nargs='+', default=[],
+    parser.add_argument('--sec_obj_range', type=float, nargs='+', default=[],
                         help='')
     parser.add_argument('--outlier_path', type=str, default='',
+                        help='')
+    parser.add_argument('--latency_table_file', type=str, default=None,
+                        help='')
+    parser.add_argument('--latency', action='store_true', help='')
+    parser.add_argument('--zeroshot', action='store_true', help='')
+    parser.add_argument('--zeroshot_csv_file', type=str, default=None,
                         help='')
 
     cfgs = parser.parse_args()

@@ -7,25 +7,6 @@ import math
 import torch
 import gc
 
-# from https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py
-# def positionalencoding1d(dim, length):
-#     """
-#     :param dim: dimension of the model
-#     :param length: length of positions
-#     :return: length*dim position matrix
-#     """
-#     if dim % 2 != 0:
-#         raise ValueError("Cannot use sin/cos positional encoding with "
-#                          "odd dim (got dim={:d})".format(dim))
-#     pe = torch.zeros(length, dim)
-#     position = torch.arange(0, length).unsqueeze(1)
-#     div_term = torch.exp((torch.arange(0, dim, 2, dtype=torch.float) *
-#                          -(math.log(10000.0) / dim)))
-#     pe[:, 0::2] = torch.sin(position.float() * div_term)
-#     pe[:, 1::2] = torch.cos(position.float() * div_term)
-
-#     return pe
-
 class Net(nn.Module):
     # N-layer MLP
     def __init__(self, n_feature, n_layers=2, n_hidden=300, n_output=1, drop=0.2):
@@ -44,7 +25,6 @@ class Net(nn.Module):
         self.drop = nn.Dropout(p=drop)
 
     def forward(self, x):
-        # x = self.embedding(x)
         x = self.stem(x)
         x = self.hidden(x)
         x = self.drop(x)
