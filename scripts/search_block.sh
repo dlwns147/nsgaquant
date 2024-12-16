@@ -3,8 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 METHOD=layer_prune
@@ -35,13 +35,20 @@ OBJ=sparsity
 # N_SAMPLE=64
 N_SAMPLE=128
 
-N_DOE=64
-N_ITER=32
-ITER=128
+# N_DOE=32
+# N_ITER=16
+# ITER=64
+# N_DOE=64
+# N_ITER=32
+# ITER=128
 
-# N_DOE=80
-# N_ITER=40
-# ITER=160
+
+# N_DOE=40
+# N_ITER=20
+# ITER=80
+N_DOE=80
+N_ITER=40
+ITER=160
 
 GA_POP_SIZE=200
 METRIC=loss
@@ -52,8 +59,8 @@ MUT_PROB=0.1
 
 Q_BITS=16
 
-PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
-# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
+# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
+PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 2.mlp 8.mlp 75.mlp 77.mlp 78.mlp 79.mlp"
 
 LAYER_SENSITIVITY_FILE=csv/sensitivity/${MODEL_NAME}_layer_prune_loss_jsd.csv
@@ -63,11 +70,11 @@ PASS_LAYER_RATIO=0.1
 
 LATENCY_TABLE=latency_table/${MODEL_NAME}_rtx6000ada.json
 
-SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_n_iter_${N_ITER}_${GA_ALGORITHM}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_mask_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${N_SAMPLE}sample_pass_ratio_${PASS_LAYER_RATIO}
+SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_n_iter_${N_ITER}_${GA_ALGORITHM}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_mask_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${N_SAMPLE}sample_pass_ratio_${PASS_LAYER_RATIO}_block
 
-N_PROC=2
+N_PROC=1
 
-CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} search_layer.py \
+CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} search_block.py \
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \

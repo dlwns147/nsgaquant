@@ -316,6 +316,98 @@ class LlamaLayerSearchSpace:
                     }
                 }
 
+class LlamaBlockSearchSpace:
+    def __init__(self, 
+                n_block,
+                pass_layer_list=[],
+                config=None,
+                sec_obj='sparsity',
+                sec_obj_range=[],
+                layer_prune_range=[],
+                latency_table=None):
+        self.n_block = n_block  # number of blocks
+
+        self.layer_option = [0, 1]
+        self.pass_layer_list = pass_layer_list
+        self.config = config
+        self.latency_table = latency_table
+        
+        self.sec_obj = sec_obj
+        self.sec_obj_range = sec_obj_range
+        assert len(sec_obj_range) == 2, f"sec_obj_range is invalid: {sec_obj_range}"
+        assert math.isclose(sec_obj_range[0], sec_obj_range[1]) or sec_obj_range[0] < sec_obj_range[1], f"sec_obj_range is invalid: {sec_obj_range}"
+        
+        self.layer_prune_range = layer_prune_range
+        assert len(layer_prune_range) == 2, f"layer_prune_range is invalid: {sec_obj_range}"
+        assert math.isclose(layer_prune_range[0], layer_prune_range[1]) or layer_prune_range[0] < layer_prune_range[1], f"layer_prune_range is invalid: {layer_prune_range}"
+
+    def sample(self, n_samples=1, nb=None, lp=None, pool=[]):
+        """ randomly sample a architecture"""
+        nb = self.n_block if nb is None else nb
+        lp = self.layer_prune_range if lp is None else lp
+        
+        data = []
+        for n in tqdm(range(n_samples), desc='Sampling'):
+            while True:
+
+                remain_prob = np.random.uniform(lp[0], lp[1])
+                block_list = np.random.binomial(1, remain_prob, self.n_block).tolist()
+
+                for pass_layer in self.pass_layer_list:
+                    blk, layer = pass_layer.split('.')
+                    blk = int(blk)
+
+                    if layer == 'self_attn':
+                        block_list[blk] = 1
+                    elif layer == 'mlp':
+                        block_list[blk] = 1
+                    else:
+                        raise NotImplementedError(f"layer : {layer}")
+                    
+                new_arch = {'layer': {'self_attn': block_list, 'mlp': block_list}}
+                complexity = get_net_info(new_arch, self.config, self.latency_table)
+                # print(f'new_arch : {new_arch}')
+                # print(f'complexity : {complexity}')
+                if (new_arch not in data) and \
+                    (new_arch not in pool) and \
+                    (math.isclose(complexity[self.sec_obj], self.sec_obj_range[0]) or complexity[self.sec_obj] > self.sec_obj_range[0]) and \
+                    (math.isclose(complexity[self.sec_obj], self.sec_obj_range[1]) or complexity[self.sec_obj] < self.sec_obj_range[1]) and \
+                    (math.isclose(complexity['sparsity'], self.layer_prune_range[0]) or complexity['sparsity'] > self.layer_prune_range[0]) and \
+                    (math.isclose(complexity['sparsity'], self.layer_prune_range[1]) or complexity['sparsity'] < self.layer_prune_range[1]) :
+                    # print(f'selected arch : {complexity}')
+                    # print('=' * 20)
+                    break
+                
+            data.append(new_arch)
+        return data
+
+    def initialize(self, n_doe, pool=[]):
+        # sample one arch with least (lb of hyperparameters) and most complexity (ub of hyperparameters)
+        data = []
+        # if math.isclose(self.sec_obj_range[0], min(self.quant_model_bits)):
+        data.append(self.sample(lp=[self.layer_prune_range[1], self.layer_prune_range[1]])[0])
+        n_doe -= 1
+        # if math.isclose(self.sec_obj_range[-1], max(self.quant_model_bits)):
+        data.append(self.sample(lp=[self.layer_prune_range[0], self.layer_prune_range[0]])[0])
+        n_doe -= 1
+        data.extend(self.sample(n_samples=n_doe, pool=pool))
+        return data
+
+    def encode(self, arch):
+        # encode arch ({'q': [0, 2, 4], 'k: , etc}) to integer bit-string [1, 0, 2, 1, ...]
+        return np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['self_attn']])
+    
+    def decode(self, x):
+        # decode integer bit-string [1, 0, 2, 1, ...] to arch ({'q': [0, 2, 4], 'k: , etc})
+        return {
+                    'layer': {
+                        'self_attn': np.array(self.layer_option)[x].tolist(),
+                        'mlp': np.array(self.layer_option)[x].tolist()
+                    }
+                }
+
+
+
 # class LlamaLinearGroupSearchSpace:
 #     def __init__(self,
 #                 n_block,

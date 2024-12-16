@@ -2,8 +2,9 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
+
 CONFIG=config/llama.json
 
 METHOD=layer_prune
@@ -15,7 +16,7 @@ OBJ=params
 EXPR_FOLDER=save/search
 
 
-TARGET_SEC_OBJ=0.6
+TARGET_SEC_OBJ=0.5
 SEC_OBJ_THRESHOLD=0.005
 
 MIN_SEC_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ - $SEC_OBJ_THRESHOLD" | bc)
@@ -29,7 +30,10 @@ MAX_SEC_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ + $SEC_OBJ_THRESHOLD" | bc)
 
 PREFER="metric#0 ${OBJ}#${TARGET_SEC_OBJ}"
 
-EXPR_FILE=2412152121_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
+EXPR_FILE=2412160850_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
+# EXPR_FILE=2412161012_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_160.stats
+# EXPR_FILE=2412152121_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
+
 
 # EXPR_FILE=2412151247_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.45_1.0_128sample_pass_ratio_0.1/iter_128.stats
 # EXPR_FILE=2412151140_Llama-2-7b-hf_params_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.4_1.0_128sample_pass_ratio_0.1/iter_64.stats
@@ -62,6 +66,7 @@ DATASETS="wikitext2 c4"
 # DATASETS=c4
 
 CUDA_VISIBLE_DEVICES=${DEVICES} python post_search.py \
+--gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
 --config ${CONFIG} \
