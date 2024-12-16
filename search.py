@@ -78,7 +78,7 @@ class Search:
                     avg_linear_bits = ((in_dim - n_outlier) * base_bits + n_outlier * 16) / (in_dim)
                     outlier_bits[linear].append(avg_linear_bits)
 
-        pass_layer_list = []
+        pass_layer_list = kwargs.pop('pass_layer_list', [])
         layer_sensitivity_file = kwargs.pop('layer_sensitivity_file' , '')
         if layer_sensitivity_file:
             with open(layer_sensitivity_file, 'r') as f:

@@ -15,7 +15,7 @@ OBJ=params
 EXPR_FOLDER=save/search
 
 
-TARGET_SEC_OBJ=0.8
+TARGET_SEC_OBJ=0.6
 SEC_OBJ_THRESHOLD=0.005
 
 MIN_SEC_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ - $SEC_OBJ_THRESHOLD" | bc)
@@ -29,7 +29,9 @@ MAX_SEC_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ + $SEC_OBJ_THRESHOLD" | bc)
 
 PREFER="metric#0 ${OBJ}#${TARGET_SEC_OBJ}"
 
-EXPR_FILE=2412151247_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.45_1.0_128sample_pass_ratio_0.1/iter_128.stats
+EXPR_FILE=2412152121_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
+
+# EXPR_FILE=2412151247_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.45_1.0_128sample_pass_ratio_0.1/iter_128.stats
 # EXPR_FILE=2412151140_Llama-2-7b-hf_params_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.4_1.0_128sample_pass_ratio_0.1/iter_64.stats
 # EXPR_FILE=2412151129_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1._jsd_mut_0.1_mask_0.4_1.0_128sample_pass_ratio_0.1/iter_128.stats
 # EXPR_FILE=2412131152_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1._jsd_mut_0.1_mask_0.4_1.0_64sample/iter_128.stats

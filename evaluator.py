@@ -1,7 +1,4 @@
-import os
-import json
 import torch
-import argparse
 import numpy as np
 
 import math
@@ -11,21 +8,12 @@ from tqdm import tqdm
 from time import time
 
 from transformers import AutoModelForCausalLM
-from hqq.models.hf.base import AutoHQQHFModel
-from hqq.utils.patching import prepare_for_inference
-
-# from gptqmodel import GPTQModel
-# from gptqmodel.utils import get_backend
-
-# from utils.owq.utils.modelutils import load_model
-# from utils.func import setsubattr, getsubattr, delsubattr, getblock, get_net_info, load_hqq_model, insert_fp16_channel_hqq, remove_fp16_channel_hqq, get_fp16_channel
 from utils.func import *
 from utils.data import get_loader
 from utils.eval import eval_metric, get_logits
 from utils.dispatch import simple_dispatch_model
 
 from model.skip_llama import block_replace
-
 
 import warnings
 warnings.simplefilter("ignore")

@@ -3,8 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 METHOD=layer_prune
@@ -35,13 +35,13 @@ OBJ=sparsity
 # N_SAMPLE=64
 N_SAMPLE=128
 
-N_DOE=64
-N_ITER=32
-ITER=128
+# N_DOE=64
+# N_ITER=32
+# ITER=128
 
-# N_DOE=80
-# N_ITER=40
-# ITER=160
+N_DOE=80
+N_ITER=40
+ITER=160
 
 GA_POP_SIZE=200
 METRIC=loss
@@ -53,7 +53,7 @@ MUT_PROB=0.1
 Q_BITS=16
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
-# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
+PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 2.mlp 8.mlp 75.mlp 77.mlp 78.mlp 79.mlp"
 
 LAYER_SENSITIVITY_FILE=csv/sensitivity/${MODEL_NAME}_layer_prune_loss_jsd.csv
@@ -91,7 +91,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --loss_func ${LOSS_FUNC} \
 --latency_table_file ${LATENCY_TABLE} \
 --n_sample ${N_SAMPLE} \
---layer_sensitivity_file ${LAYER_SENSITIVITY_FILE} \
---pass_layer_ratio ${PASS_LAYER_RATIO}
-# --pass_layer_list ${PASS_LAYER_LIST} \
+--pass_layer_list ${PASS_LAYER_LIST}
+# --layer_sensitivity_file ${LAYER_SENSITIVITY_FILE} \
+# --pass_layer_ratio ${PASS_LAYER_RATIO}
 # --resume ${RESUME}
