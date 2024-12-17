@@ -163,18 +163,18 @@ def main(args):
     for idx in tqdm(I):
         arch = ps[idx]
 
-        metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
-        model = evaluator.sample(arch)
-        latency = measure_latency(evaluator.sample(arch), generation=True, device=model.device) if args.latency else 0
-        arch_list.append(arch)
-        metric_list.append(pf[idx, 0])
-        ppl_list.append({d: metric[d] for d in args.datasets})
-        bits_list.append(complexity['bits'])
-        param_list.append(complexity['params'])
-        sparsity_list.append(complexity['sparsity'])
-        complexity_list.append(complexity[args.sec_obj])  
-        latency_list.append(latency)
-        print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency:.2f}\n')
+        # metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
+        # model = evaluator.sample(arch)
+        # latency = measure_latency(evaluator.sample(arch), generation=True, device=model.device) if args.latency else 0
+        # arch_list.append(arch)
+        # metric_list.append(pf[idx, 0])
+        # ppl_list.append({d: metric[d] for d in args.datasets})
+        # bits_list.append(complexity['bits'])
+        # param_list.append(complexity['params'])
+        # sparsity_list.append(complexity['sparsity'])
+        # complexity_list.append(complexity[args.sec_obj])  
+        # latency_list.append(latency)
+        # print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency:.2f}\n')
         
         if args.zeroshot:
             results = eval_zeroshot(evaluator.sample(arch), tokenizer=get_tokenizer(model_id))

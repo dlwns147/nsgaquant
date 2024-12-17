@@ -47,7 +47,7 @@ class LlamaEvaluator:
         self.loss_func = loss_func
         self.outlier = dict()
         if loss_func == 'jsd' or outlier is not None:
-            model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map)
+            model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
 
             if loss_func == 'jsd':
                 self.dense_logits = {dataset: get_logits(model, loader) for dataset, loader in self.train_loaders.items()}

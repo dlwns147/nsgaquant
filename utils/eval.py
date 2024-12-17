@@ -300,15 +300,17 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
 
     return median_latency
 
-import os
-from lm_eval.models.huggingface import HFLM
-from lm_eval import tasks, evaluator, utils
-
 torch.no_grad()
 def eval_zeroshot(model, tokenizer, task_list=['piqa','winogrande','hellaswag','arc_challenge','arc_easy'], 
         num_fewshot=0):
     
+    import os
+    from lm_eval.models.huggingface import HFLM
+    from lm_eval import tasks, evaluator, utils
+
     task_manager = tasks.TaskManager(include_path='lm-evaluation-harness/lm_eval/tasks')
+    # task_manager = tasks.TaskManager(include_path='/NAS/SJ/lm-evaluation-harness/lm_eval/tasks')
+    # task_manager = tasks.TaskManager(include_path='/NAS/SJ/sleb/lm-evaluation-harness/lm_eval/tasks')
  
     task_names = task_manager.match_tasks(task_list)
     for task in [task for task in task_list if task not in task_names]:
@@ -322,14 +324,14 @@ def eval_zeroshot(model, tokenizer, task_list=['piqa','winogrande','hellaswag','
         ]  # we don't want errors if a wildcard ("*") task name was used
     
     # model.tie_weights = lambda: None
-    hflm = HFLM(pretrained=model, tokenizer=tokenizer, batch_size='auto')
-    print(f'converted to hflm')
+    hflm = HFLM(pretrained=model, tokenizer=tokenizer, batch_size=64)# , batch_size='auto')
     
     results = evaluator.simple_evaluate(
         model=hflm,
         tasks=task_list,
         num_fewshot=num_fewshot,
-        batch_size='auto',
+        # batch_size='auto',
+        batch_size=64,
         max_batch_size=None,
         device='cuda:0',
         use_cache=None,
