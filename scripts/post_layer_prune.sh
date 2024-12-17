@@ -3,7 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 
 MODEL_PATH=/SSD/huggingface/meta-llama
 # MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-70b-hf
 
 CONFIG=config/llama.json
 
@@ -30,7 +31,8 @@ MAX_SEC_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ + $SEC_OBJ_THRESHOLD" | bc)
 
 PREFER="metric#0 ${OBJ}#${TARGET_SEC_OBJ}"
 
-EXPR_FILE=2412160850_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
+EXPR_FILE=2412162219_Llama-2-70b-hf_sparsity_loss_layer_prune_iter_320_n_iter_80_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample/iter_320.stats
+# EXPR_FILE=2412160850_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
 # EXPR_FILE=2412161012_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_160.stats
 # EXPR_FILE=2412152121_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
 
@@ -78,9 +80,9 @@ CUDA_VISIBLE_DEVICES=${DEVICES} python post_search.py \
 --expr ${EXPR_FOLDER}/${EXPR_FILE} \
 --datasets ${DATASETS} \
 --method ${METHOD} \
---latency_table_file ${LATENCY_TABLE} \
 --prefer ${PREFER} \
 --sec_obj_range ${MIN_SEC_OBJ} ${MAX_SEC_OBJ} \
 --zeroshot
+# --latency_table_file ${LATENCY_TABLE} \
 # --latency \
 # --only_front \\
