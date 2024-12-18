@@ -27,15 +27,15 @@ def compute_latency(arch, config, latency_table):
             for bit in arch['linear'][name]:
                 latency += latency_table[str(int(bit))][name]
         return latency
-    elif 'block' in latency_table:
+    elif 'etc' in latency_table:
         for blk_idx in range(int(config['n_block'])):
-            if all([layer_arch[blk_idx] == 1 for layer_arch in arch['layer'].values()]):
-                latency += latency_table['block']
-            else:
-                for layer, layer_arch in arch['layer'].items():
-                    if layer_arch[blk_idx] == 1:
-                        latency += latency_table[layer]
-                        break
+            # if all([layer_arch[blk_idx] == 1 for layer_arch in arch['layer'].values()]):
+            #     latency += latency_table['block']
+            # else:
+            for layer, layer_arch in arch['layer'].items():
+                if layer_arch[blk_idx] == 1:
+                    latency += latency_table[layer]
+                    break
 
         latency += latency_table["etc"]
         return latency

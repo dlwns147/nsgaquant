@@ -76,7 +76,7 @@ class Search:
                     avg_linear_bits = ((in_dim - n_outlier) * base_bits + n_outlier * 16) / (in_dim)
                     outlier_bits[linear].append(avg_linear_bits)
 
-        pass_layer_list = []
+        pass_layer_list = kwargs.pop('pass_layer_list', [])
         layer_sensitivity_file = kwargs.pop('layer_sensitivity_file' , '')
         if layer_sensitivity_file:
             with open(layer_sensitivity_file, 'r') as f:
@@ -84,6 +84,7 @@ class Search:
             idx = np.argsort(list(map(float, layer_sensitivity[1])))
             n_pass_layers = int(len(idx) * kwargs.pop('pass_layer_ratio', 0.2))
             pass_layer_list = [layer_sensitivity[0][i] for i in idx[-n_pass_layers:]]
+        accelerator.print(f'pass_layer_list : {pass_layer_list}')
 
         self.evaluator = LlamaEvaluator(
             self.config,
@@ -361,11 +362,9 @@ class AuxiliarySingleLevelProblem(Problem):
         self.latency_table = latency_table
 
         for pass_layer in self.ss.pass_layer_list:
-            blk, layer = pass_layer.split('.', 1)
-            blk = int(blk)
-            
-            layer_idx = config['layer'].index(layer)
-            self.xl[blk, layer_idx] = 1
+            blk, _ = pass_layer.split('.', 1)
+            blk = int(blk)            
+            self.xl[blk] = 1
         
         self.xl = self.xl.flatten()
         self.xu = self.xu.flatten()

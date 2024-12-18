@@ -17,21 +17,23 @@ OBJ=params
 EXPR_FOLDER=save/search
 
 
-TARGET_SEC_OBJ=0.5
+# TARGET_SEC_OBJ=0.6
+TARGET_SEC_OBJ=0.8
 SEC_OBJ_THRESHOLD=0.005
 
 MIN_SEC_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ - $SEC_OBJ_THRESHOLD" | bc)
 MAX_SEC_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ + $SEC_OBJ_THRESHOLD" | bc)
 
-# REMAINED_LAYER=55
-# NUM_LAYER=64
-# THRESHOLD=0.001
-# MIN_SEC_OBJ=$(echo "scale=3; $REMAINED_LAYER / $NUM_LAYER - $THRESHOLD" | bc)
-# MAX_SEC_OBJ=$(echo "scale=3; $REMAINED_LAYER / $NUM_LAYER + $THRESHOLD" | bc)
-
 PREFER="metric#0 ${OBJ}#${TARGET_SEC_OBJ}"
 
-EXPR_FILE=2412162219_Llama-2-70b-hf_sparsity_loss_layer_prune_iter_320_n_iter_80_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample/iter_320.stats
+EXPR_FILE=2412170609_Llama-2-70b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_block/iter_160.stats
+# EXPR_FILE=2412162059_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1_block/iter_80.stats
+# EXPR_FILE=2412162059_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_80_n_iter_20_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1_block/iter_80.stats
+# EXPR_FILE=2412162058_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1_block/iter_64.stats
+# EXPR_FILE=2412162058_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1_block/iter_128.stats
+
+# EXPR_FILE=2412162057_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_64_n_iter_16_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1_block/iter_64.stats
+# EXPR_FILE=2412162219_Llama-2-70b-hf_sparsity_loss_layer_prune_iter_320_n_iter_80_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample/iter_320.stats
 # EXPR_FILE=2412160850_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
 # EXPR_FILE=2412161012_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_160.stats
 # EXPR_FILE=2412152121_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_128sample_pass_ratio_0.1/iter_128.stats
