@@ -3,8 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 Q_BITS="2 3 4"
@@ -50,7 +50,7 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 # done
 
 OBJ=bits
-TARGET_BITS=2.25
+TARGET_BITS=3.5
 
 THRESHOLD=0.005
 PREFER="metric#0.0 bits#${TARGET_BITS}"
@@ -59,8 +59,13 @@ EXPR_FOLDER=save/search
 MIN_BITS=$(echo "scale=3; $TARGET_BITS - $THRESHOLD" | bc)
 MAX_BITS=$(echo "scale=3; $TARGET_BITS + $THRESHOLD" | bc)
 
-EXPR_FILE=2412111240_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_450.stats
+EXPR_FILE=2411211754_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+
+# EXPR_FILE=2412111240_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_450.stats
 # EXPR_FILE=2412111241_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_300.stats
+# EXPR_FILE=2411211811_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_449.stats
+# EXPR_FILE=2411211754_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
+
 
 # EXPR_FILE=2412032013_Llama-2-7b-hf_latency_loss_hqq_iter_300_nsga2_24_obj_1_1e3_jsd_mut_0.1_layer_prune_1.0_1.0/iter_300.stats
 # EXPR_FILE=2411270821_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_449.stats
@@ -99,7 +104,7 @@ EXPR_FILE=2412111240_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${METHOD_TEXT}_${MIN_BITS}_${MAX_BITS}
 N=5
-DATASETS=wikitext2
+DATASETS="wikitext2 c4"
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
 
 N_PROC=1
@@ -118,7 +123,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --prefer ${PREFER} \
 --datasets ${DATASETS} \
 --sec_obj_range ${MIN_BITS} ${MAX_BITS} \
---method ${METHOD}
+--method ${METHOD} \
+--zeroshot
 # --latency_table_file ${LATENCY_TABLE}
 # --outlier_path ${OUTLIER_PATH} \
 # --only_front \

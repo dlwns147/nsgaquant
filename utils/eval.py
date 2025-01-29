@@ -2,6 +2,7 @@ import time
 from functools import partial
 from statistics import median
 from tqdm import tqdm
+import gc
 
 import torch
 import torch.nn as nn
@@ -297,49 +298,53 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
     # curr_time = starter.elapsed_time(ender)
     median_latency = median(latency)
     # mean_latency = curr_time/iteration
+    gc.collect()
+    torch.cuda.empty_cache()
 
     return median_latency
 
 torch.no_grad()
 def eval_zeroshot(model, tokenizer, task_list=['piqa','winogrande','hellaswag','arc_challenge','arc_easy'], 
-        num_fewshot=0):
+        num_fewshot=0, batch_size=64):
     
     import os
     from lm_eval.models.huggingface import HFLM
     from lm_eval import tasks, evaluator, utils
 
-    task_manager = tasks.TaskManager(include_path='lm-evaluation-harness/lm_eval/tasks')
+    # task_manager = tasks.TaskManager()
+    # task_manager = tasks.TaskManager(include_path='')
+    # task_manager = tasks.TaskManager(include_path='lm-evaluation-harness/lm_eval/tasks')
     # task_manager = tasks.TaskManager(include_path='/NAS/SJ/lm-evaluation-harness/lm_eval/tasks')
     # task_manager = tasks.TaskManager(include_path='/NAS/SJ/sleb/lm-evaluation-harness/lm_eval/tasks')
  
-    task_names = task_manager.match_tasks(task_list)
-    for task in [task for task in task_list if task not in task_names]:
-                if os.path.isfile(task):
-                    config = utils.load_yaml_config(task)
-                    task_names.append(config)
-    task_missing = [
-        task
-        for task in task_list
-        if task not in task_names and "*" not in task
-        ]  # we don't want errors if a wildcard ("*") task name was used
+    # task_names = task_manager.match_tasks(task_list)
+    # for task in [task for task in task_list if task not in task_names]:
+    #             if os.path.isfile(task):
+    #                 config = utils.load_yaml_config(task)
+    #                 task_names.append(config)
+    # task_missing = [
+    #     task
+    #     for task in task_list
+    #     if task not in task_names and "*" not in task
+    #     ]  # we don't want errors if a wildcard ("*") task name was used
     
     # model.tie_weights = lambda: None
-    hflm = HFLM(pretrained=model, tokenizer=tokenizer, batch_size=64)# , batch_size='auto')
+    hflm = HFLM(pretrained=model, tokenizer=tokenizer, batch_size=batch_size)# , batch_size='auto')
     
     results = evaluator.simple_evaluate(
         model=hflm,
         tasks=task_list,
         num_fewshot=num_fewshot,
         # batch_size='auto',
-        batch_size=64,
-        max_batch_size=None,
-        device='cuda:0',
-        use_cache=None,
-        limit=None,
-        check_integrity=False,
-        write_out=False,
-        gen_kwargs=None,
-        task_manager=task_manager,
+        batch_size=batch_size,
+        # max_batch_size=None,
+        # device='cuda:0',
+        # use_cache=None,
+        # limit=None,
+        # check_integrity=False,
+        # write_out=False,
+        # gen_kwargs=None,
+        # task_manager=task_manager,
         # decontamination_ngrams_path=None,
     )
 

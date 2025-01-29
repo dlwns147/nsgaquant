@@ -14,6 +14,7 @@ from accelerate import Accelerator
 
 from evaluator import LlamaEvaluator
 from utils.func import init_accelerator
+from utils.eval import load_and_eval_ppl, eval_zeroshot
 
 
 def linear_sensitivity(args):
@@ -65,6 +66,67 @@ def linear_sensitivity(args):
     # print(f"ppl : {ppl}, complexity[bits] : {complexity['bits']}")
 
     # exit()
+
+    # greedy_result_path = '/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-7b-hf_hqq_24bits_loss_desc_1axis_64_128gs_jsd.csv'
+    # # last_linear = '18.self_attn.o_proj' # 7b 3.5
+    # last_linear = '22.self_attn.v_proj' # 7b 3.0
+    # # last_linear = '17.mlp.up_proj' # 7b 2.5
+    
+    # # greedy_result_path = '/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-13b-hf_hqq_loss_desc_1axis_64_128gs_jsd.csv'
+    # # # last_linear = '' # 13b 3.5
+    # # last_linear = '30.mlp.down_proj' # 13b 3.0
+    # # # last_linear = '' # 13b 2.5
+    
+    # print(f'last_linear : {last_linear}, greedy_result_path : {greedy_result_path}')
+    # with open(greedy_result_path, 'r') as f:
+    #     selected_linears = list(csv.reader(f))[0]
+    #     selected_linears = selected_linears[:selected_linears.index(last_linear) + 1]
+    # for linear in selected_linears:
+    #     blk_idx, layer, linear = linear.split('.')
+    #     blk_idx = int(blk_idx)
+
+    #     arch['linear'][f'{layer}.{linear}'][blk_idx] = 2
+
+    # evaluator = LlamaEvaluator(
+    #     config=config,
+    #     accelerator=accelerator,
+    #     device_map=device_map,
+    #     model_id=f'{args.model_path}/{args.model_name}',
+    #     method=args.method,
+    #     quant_model_bits=args.quant_model_bits,
+    #     quant_model_paths=args.quant_model_paths,
+    #     outlier=torch.load(args.outlier_path) if args.outlier_path else None,
+    #     seqlen=args.seqlen,
+    #     n_sample=args.n_sample,
+    #     loss_func=args.loss_func,
+    #     datasets=['wikitext2', 'c4']
+    # )
+
+    ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl', loss_func=args.loss_func)
+    print(f'ppl :{ppl}, bits : {complexity["bits"]}')
+
+    model = evaluator.sample(arch)
+    del evaluator
+    gc.collect()
+    torch.cuda.empty_cache()
+    print(f'memory : {torch.cuda.memory_allocated()}')
+    
+    from transformers import AutoTokenizer
+    model_id = f'{args.model_path}/{args.model_name}'
+    tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
+
+    results = eval_zeroshot(model, tokenizer,batch_size=64)
+    avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
+    print(f'avg_acc : {avg_acc}, results : {results}')
+    for task, task_result in results.items():
+        if 'acc_norm,none' in task_result:
+            print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
+        else:
+            print(f'{task} acc : {task_result["acc,none"]}')
+    exit()
+
+    
+
     start_point = time.time()
     
     for block_idx in range(n_block):

@@ -55,7 +55,7 @@ def get_wikitext2_trainenc(seed, n_sample, tokenizer, batch_size=1, seqlen=2048,
     n_sample = trainenc.numel() // seqlen
     trainenc = trainenc[:, :n_sample * seqlen].reshape(n_sample, seqlen)
 
-    return DataLoader(trainenc, batch_size=batch_size, drop_last=True)
+    return DataLoader(trainenc, batch_size=batch_size)
 
 def get_c4_trainenc(seed, n_sample, tokenizer, batch_size=1, seqlen=2048, cache_dir=None):
     traindata = load_dataset(

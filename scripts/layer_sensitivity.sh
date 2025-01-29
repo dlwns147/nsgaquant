@@ -2,10 +2,10 @@ DEVICES=${1}
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
-MODEL_NAME=Meta-Llama-3-8B
+# MODEL_NAME=Meta-Llama-3-8B
 
 # MODEL=facebook/opt-6.7b
 # MODEL=facebook/opt-13b
@@ -28,12 +28,12 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --model_name ${MODEL_NAME} \
 --method ${METHOD} \
 --n_sample ${N_SAMPLE} \
---loss_csv_file ${LOSS_CSV_FILE} \
 --ppl_csv_file ${PPL_CSV_FILE} \
 --config ${CONFIG} \
---loss_func ${LOSS_FUNC}
+--loss_func ${LOSS_FUNC} \
+--eval_ppl
+# --loss_csv_file ${LOSS_CSV_FILE} \
 
 # CUDA_LAUNCH_BLOCKING=1 CUDA_DEVICE_ORDER=PCI_BUS_ID 
-# --eval_ppl \
 # --eval_zeroshot \
 # CUDA_DEVICE_ORDER=PCI_BUS_ID 

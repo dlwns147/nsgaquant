@@ -100,8 +100,9 @@ class LlamaDecoderSkipLayer(nn.Module):
         else:
             if past_key_value is not None:
                 q_len = hidden_states.size(1)
-                key_states = torch.empty(1, 1, q_len, 1, dtype=torch.bool)
-                value_states = torch.empty(1, 1, q_len, 1, dtype=torch.bool)
+                # key_states = torch.empty(1, 1, q_len, 1, dtype=torch.bool)
+                # value_states = torch.empty(1, 1, q_len, 1, dtype=torch.bool)
+                key_states = value_states = torch.empty(1, 1, q_len, 1, dtype=torch.bool)
                 cache_kwargs = {"cache_position": cache_position}
                 key_states, value_states = past_key_value.update(key_states, value_states, self.self_attn.layer_idx if hasattr(self, 'self_attn') else self.layer_idx, cache_kwargs)
 

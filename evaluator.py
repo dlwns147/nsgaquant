@@ -15,6 +15,9 @@ from utils.dispatch import simple_dispatch_model
 
 from model.skip_llama import block_replace
 
+# from monkeypatch.ftllama_modeling import convert_model_to_ft
+# from monkeypatch.ftllama_generate import replace_generate_functions
+
 import warnings
 warnings.simplefilter("ignore")
 
@@ -34,7 +37,8 @@ class LlamaEvaluator:
                  device_map='auto',
                  cache_dir=None,
                  loss_func='cross_entropy',
-                 latency_table=None):
+                 latency_table=None,
+                 inference=False):
         
         # model_id = os.path.join(model_path, model_name)
         self.method = method
@@ -47,7 +51,8 @@ class LlamaEvaluator:
         self.loss_func = loss_func
         self.outlier = dict()
         if loss_func == 'jsd' or outlier is not None:
-            model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
+            # model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
+            model = get_hfmodel(model_id, dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
 
             if loss_func == 'jsd':
                 self.dense_logits = {dataset: get_logits(model, loader) for dataset, loader in self.train_loaders.items()}
@@ -68,14 +73,14 @@ class LlamaEvaluator:
         self.quant_models = list()
         if 'hqq' in method:
             with accelerator.main_process_first():
-                self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map)
-                import pdb; pdb.set_trace()
+                self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map, inference)
                 self.remove_linears(self.model, config)
                 self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
 
         else:
-            self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
+            # self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
+            model = get_hfmodel(model_id, dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
 
         if 'layer_prune' in method:
             self.model = block_replace(self.model)
@@ -93,7 +98,7 @@ class LlamaEvaluator:
 
         accelerator.wait_for_everyone()
 
-    def sample(self, arch, reuse=True):
+    def sample(self, arch, reuse=True, inference=False):
         # from time import time
         # sample_start = time()
         # self.validate_arch(arch)
@@ -119,6 +124,10 @@ class LlamaEvaluator:
 
                     if not flag:
                         raise NotImplementedError(f'{linear_group}: {linear_group_bits} is not available')
+                    
+                    # if inference:
+                    #     convert_model_to_ft(self.model)
+                    #     replace_generate_functions()
 
         if 'layer_prune' in self.method:
             for layer, layer_arch in arch['layer'].items():
@@ -133,6 +142,8 @@ class LlamaEvaluator:
                             getblock(self.model, self.config)[blk_idx].use_attn()
                         elif layer == 'mlp':
                             getblock(self.model, self.config)[blk_idx].use_mlp()
+                    else:
+                        raise NotImplementedError
         # print(f'sample time : {(time() - sample_start):.2f}, device : {accelerator.device}')
         # accelerator.wait_for_everyone()
         

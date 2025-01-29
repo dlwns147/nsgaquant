@@ -21,7 +21,7 @@ from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.operators.mutation.pm import PolynomialMutation
 
 from search_space.llama import LlamaLayerSearchSpace
-from acc_predictor.factory import get_acc_predictor
+from predictor.factory import get_predictor
 from utils.func import get_net_info, init_accelerator
 from utils.ga import MySampling, BinaryCrossover, MyMutation, IntPolynomialMutation, MyTwoPointCrossover, MyUniformCrossover, IntegerFromFloatMutation
 
@@ -84,6 +84,7 @@ class Search:
             idx = np.argsort(list(map(float, layer_sensitivity[1])))
             n_pass_layers = int(len(idx) * kwargs.pop('pass_layer_ratio', 0.2))
             pass_layer_list = [layer_sensitivity[0][i] for i in idx[-n_pass_layers:]]
+        self.args['pass_layer_list'] = pass_layer_list
         accelerator.print(f'pass_layer_list : {pass_layer_list}')
 
         self.evaluator = LlamaEvaluator(
@@ -114,6 +115,7 @@ class Search:
         self.ga_algorithm = kwargs.pop('ga_algorithm', 'nsga2')
         self.max_value = kwargs.pop('max_value', 50)
         self.mut_prob = kwargs.pop('mut_prob', 0.05)
+        self.crossover_prob = kwargs.pop('crossover_prob', 0.9)
         accelerator.wait_for_everyone()
         
     def search(self, accelerator):
@@ -163,13 +165,13 @@ class Search:
                 # construct accuracy predictor surrogate model from archive
                 # Algo 1 line 9 / Fig. 3(a) in the paper
                 predictor_start = time()
-                metric_predictor, a_metric_pred = self._fit_acc_predictor(archive, device=accelerator.device)
+                predictor, a_metric_pred = self._fit_predictor(archive, device=accelerator.device)
                 predictor_time = time() - predictor_start
 
                 # search for the next set of candidates for high-fidelity evaluation (lower level)
                 # Algo 1 line 10-11 / Fig. 3(b)-(d) in the paper
                 next_start = time()
-                candidates, c_metric_pred = self._next(archive, metric_predictor, self.n_iter)
+                candidates, c_metric_pred = self._next(archive, predictor, self.n_iter)
                 next_time = time() - next_start
             else:
                 candidates = list()
@@ -205,8 +207,8 @@ class Search:
                 with open(os.path.join(self.save_path, "iter_{}.stats".format(it)), "w") as handle:
                     json.dump({'archive': archive, 'candidates': archive[-self.n_iter:], 'hv': hv,
                             'surrogate': {
-                                'model': self.predictor, 'name': metric_predictor.name,
-                                'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
+                                'model': self.predictor, 'name': predictor.name,
+                                'winner': predictor.winner if self.predictor == 'as' else predictor.name,
                                 'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
                 if self.debug:
                     from pymoo.visualization.scatter import Scatter
@@ -259,20 +261,20 @@ class Search:
         metric_list, complexity_list = [], []
         for arch in tqdm(archs, desc='Eval Arch'):
             metric, complexity = self.evaluator.eval(accelerator=accelerator, arch=arch, metric=self.metric, loss_func=self.loss_func)
-            metric_list.append(np.nan_to_num(metric[self.dataset], nan=self.max_value))
+            metric_list.append(min(self.max_value, np.nan_to_num(metric[self.dataset], nan=self.max_value)))
             complexity_list.append(complexity[self.sec_obj])
 
         return metric_list, complexity_list
 
-    def _fit_acc_predictor(self, archive, device='cpu'):
+    def _fit_predictor(self, archive, device='cpu'):
         inputs = np.array([self.search_space.encode(x[0]) for x in archive])
         # inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
         targets = np.array([x[1] for x in archive])
         # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
 
-        metric_predictor = get_acc_predictor(self.predictor, inputs, targets, device=device)
+        predictor = get_predictor(self.predictor, inputs, targets, device=device)
 
-        return metric_predictor, metric_predictor.predict(inputs)
+        return predictor, predictor.predict(inputs)
     
     def _next(self, archive, predictor, K):
         """ searching for next K candidate for high-fidelity evaluation (lower level) """
@@ -287,13 +289,11 @@ class Search:
         # initiate a multi-objective solver to optimize the problem
         method = NSGA2(pop_size=self.ga_pop_size, sampling=nd_X,  # initialize with current nd archs
             # crossover=TwoPointCrossover(prob=0.9),
-            crossover=BinomialCrossover(prob=0.9, n_offsprings=1),
-            # crossover=BinomialCrossover(prob=1.0, n_offsprings=1),
+            crossover=BinomialCrossover(prob=self.crossover_prob, n_offsprings=1),
             # crossover=BinomialCrossover(prob=0.9, n_offsprings=2),
             # crossover=MyTwoPointCrossover(prob=0.9, n_offsprings=1),
             # mutation=IntPolynomialMutation(eta=1.0),
             mutation=IntegerFromFloatMutation(clazz=PolynomialMutation, eta=1.0, prob=self.mut_prob),
-            # mutation=PolynomialMutation(prob=self.mut_prob, eta=1.0),
             # mutation=IntPolynomialMutation(prob=self.mut_prob, eta=1.0),
             eliminate_duplicates=True)
         
@@ -309,8 +309,10 @@ class Search:
 
         # the following lines corresponding to Algo 1 line 11 / Fig. 3(c)-(d) in the paper
         # form a subset selection problem to short list K from pop_size
-        indices = self._subset_selection(res.pop[not_duplicate], F[front, 1], K, self.subset_pop_size)
-        pop = res.pop[not_duplicate][indices]
+        # indices = self._subset_selection(res.pop[not_duplicate], F[front, 1], K, self.subset_pop_size)
+        # pop = res.pop[not_duplicate][indices]
+        pop = res.pop[not_duplicate]
+        print(f'not_duplicate : {len(not_duplicate)}')
 
         candidates = []
         for x in pop.get("X"):
@@ -322,9 +324,9 @@ class Search:
 
     # @staticmethod
     def _subset_selection(self, pop, nd_F, K, pop_size):
-        candidates = np.array([get_net_info(self.search_space.decode(x), self.config, self.latency_table)[self.sec_obj] for x in pop.get("X")])
-        problem = SubsetProblem(candidates, nd_F, K)
-        # problem = SubsetProblem(pop.get("F")[:, 1], nd_F, K)
+        # candidates = np.array([get_net_info(self.search_space.decode(x), self.config, self.latency_table)[self.sec_obj] for x in pop.get("X")])
+        # problem = SubsetProblem(candidates, nd_F, K)
+        problem = SubsetProblem(pop.get("F")[:, 1], nd_F, K)
         algorithm = GA(
             pop_size=pop_size, sampling=MySampling(), crossover=BinaryCrossover(),
             mutation=MyMutation(), eliminate_duplicates=True)
@@ -482,6 +484,8 @@ if __name__ == '__main__':
     parser.add_argument('--max_value', type=float, default=50,
                         help='')
     parser.add_argument('--mut_prob', type=float, default=0.05,
+                        help='')
+    parser.add_argument('--crossover_prob', type=float, default=0.9,
                         help='')
     parser.add_argument('--loss_func', type=str, default='cross_entropy',
                         help='')

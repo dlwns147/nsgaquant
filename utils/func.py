@@ -3,7 +3,9 @@ from accelerate import Accelerator
 from hqq.models.hf.base import AutoHQQHFModel
 from .dispatch import simple_dispatch_model
 import scipy.stats as stats
-import json
+import torch
+from transformers import AutoModelForCausalLM
+# from hqq.utils.patching_woo import prepare_for_inference
 
 def get_correlation(prediction, target):
 
@@ -27,19 +29,15 @@ def compute_latency(arch, config, latency_table):
             for bit in arch['linear'][name]:
                 latency += latency_table[str(int(bit))][name]
         return latency
+    
     elif 'etc' in latency_table:
-        for blk_idx in range(int(config['n_block'])):
-            # if all([layer_arch[blk_idx] == 1 for layer_arch in arch['layer'].values()]):
-            #     latency += latency_table['block']
-            # else:
-            for layer, layer_arch in arch['layer'].items():
-                if layer_arch[blk_idx] == 1:
-                    latency += latency_table[layer]
-                    break
+        for layer, layer_arch in arch['layer'].items():
+            # if layer_arch[blk_idx] == 1:
+            latency += latency_table[layer] * sum(layer_arch)
 
         latency += latency_table["etc"]
-        return latency
-        # return latency / latency_table["full"]
+        # return latency
+        return latency / latency_table["full"]
 
 def compute_bits(arch, config):
     memory_usage = 0
@@ -47,7 +45,7 @@ def compute_bits(arch, config):
         for blk, bit in enumerate(bits):
             for linear in linear_group.split(','):
                 out_dim, in_dim = config['linear_shape'][linear]
-                memory_usage += int(out_dim) * int(in_dim) * bit * arch['layer'][config['hierarchy'][linear]][blk]
+                memory_usage += int(out_dim) * int(in_dim) * bit * (arch['layer'][config['hierarchy'][linear]][blk] if 'layer' in arch else 1)
     return memory_usage / config['model_numel']
 
 def compute_sparsity(arch):
@@ -63,12 +61,12 @@ def compute_params(arch, config):
             
     return params / total_params
 
-def get_net_info(arch, config, latency_table):
+def get_net_info(arch, config, latency_table=None):
     net_info = {}
     net_info['bits'] = compute_bits(arch, config) if 'linear' in arch else 0
-    net_info['sparsity'] = compute_sparsity(arch)
-    net_info['params'] = compute_params(arch, config)
-    net_info['latency'] = compute_latency(arch, config, latency_table) # ms
+    net_info['sparsity'] = compute_sparsity(arch) if 'layer' in arch else 0
+    net_info['params'] = compute_params(arch, config) if 'layer' in arch else 0
+    net_info['latency'] = compute_latency(arch, config, latency_table)
     
     return net_info
 
@@ -134,9 +132,11 @@ def init_accelerator(gpu_id, config):
 
     return accelerator, device_map
 
-def load_hqq_model(model_id, device_map):
+def load_hqq_model(model_id, device_map, inference=False):
     model = AutoHQQHFModel.from_quantized(model_id, device_map='cpu')
     model = simple_dispatch_model(model, device_map)
+    # if inference:
+    #     prepare_for_inference(model, backend='gptq')
     return model
 
 def insert_fp16_channel_hqq(linear, outlier):
@@ -153,3 +153,49 @@ def get_fp16_channel(linear, idx):
 
 def get_outlier_bits(config):
     pass
+
+
+def get_hfmodel(model_name_or_path: str,
+                dtype='auto',
+                device_map='auto',
+                trust_remote_code=False,
+                **kwargs
+                ):
+
+    # assert kwargs.get('attn_implementation') in ['hf', 'ft']        ## hf : huggingface, ft : faster transformer
+    
+    # for fast model loading
+    org_kaiming_uniform = torch.nn.init.kaiming_uniform_
+    org_uniform = torch.nn.init.uniform_
+    org_normal = torch.nn.init.normal_
+
+    def skip(*args, **kwargs):
+        pass
+
+    torch.nn.init.kaiming_uniform_ = skip
+    torch.nn.init.uniform_ = skip
+    torch.nn.init.normal_ = skip
+    
+    # ft = False
+    # if kwargs.get('attn_implementation') == 'ft':
+    #     assert 'llama' in model_name_or_path.lower() or 'vicuna' in model_name_or_path.lower()
+    #     ft = True
+    
+    # print('attention implementaion is :', kwargs.pop('attn_implementation'))
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name_or_path, 
+        torch_dtype=dtype,
+        device_map=device_map, 
+        trust_remote_code=trust_remote_code,
+        **kwargs
+    )
+    
+    # if ft:
+    #     convert_model_to_ft(model)
+    #     replace_generate_functions()
+
+    torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
+    torch.nn.init.uniform_ = org_uniform
+    torch.nn.init.normal_ = org_normal
+    
+    return model

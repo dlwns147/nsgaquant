@@ -1,9 +1,11 @@
-DEVICES=5
+DEVICES=0
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-MODEL_PATH=/SSD/huggingface/meta-llama
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# MODEL_PATH=/SSD/.cache/
 # MODEL_NAME=Llama-2-7b-hf
+MODEL_PATH=meta-llama
 MODEL_NAME=Llama-2-7b-hf
 CONFIG=config/llama.json
 
@@ -24,7 +26,8 @@ QZERO=false
 # do
 #     QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
 # done
-QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}")
+# QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}")
+QMODEL_PATHS=( "/SSD/Woo/hqq/${MODEL_NAME}_2bit_${GROUP_SIZE}gs_${AXIS}axis" "/SSD/Woo/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis" "/SSD/Woo/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis")
 
 N_OUTLIER=32
 OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
@@ -50,7 +53,7 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 # done
 
 OBJ=bits
-TARGET_BITS=3
+TARGET_BITS=2.1
 
 THRESHOLD=0.005
 PREFER="metric#0.0 bits#${TARGET_BITS}"
@@ -59,48 +62,18 @@ EXPR_FOLDER=save/search
 MIN_BITS=$(echo "scale=3; $TARGET_BITS - $THRESHOLD" | bc)
 MAX_BITS=$(echo "scale=3; $TARGET_BITS + $THRESHOLD" | bc)
 
-# EXPR_FILE=2412111241_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_150.stats
-EXPR_FILE=2411211754_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_150.stats
-# EXPR_FILE=2412111240_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_50.stats
-# EXPR_FILE=2411211811_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_50.stats
+## 7B 234
+EXPR_FILE=quant/2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats
 
-# EXPR_FILE=2412111240_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_450.stats
-# EXPR_FILE=2412111241_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_300.stats
+## 7B outlier
+# EXPR_FILE=quant/2501231756_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_300.stats
 
-# EXPR_FILE=2412032013_Llama-2-7b-hf_latency_loss_hqq_iter_300_nsga2_24_obj_1_1e3_jsd_mut_0.1_layer_prune_1.0_1.0/iter_300.stats
-# EXPR_FILE=2411270821_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_449.stats
+## 13B 234
+# EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
 
-# EXPR_FILE=2412031303_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_0.95_1.0/iter_297.stats
-# EXPR_FILE=2412031123_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_0.95_1.0/iter_57.stats
-# EXPR_FILE=2412021222_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_300.stats
+## 13B outlier
+# EXPR_FILE=quant/2501231758_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_400.stats
 
-# EXPR_FILE=2411270821_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_449.stats
-# EXPR_FILE=2411270816_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_299.stats
-
-# EXPR_FILE=2411211811_Llama-2-13b-hf_bits_loss_hqq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.1_layer_prune_1.0_1.0/iter_449.stats
-# EXPR_FILE=2411211754_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-
-# EXPR_FILE=2411191158_Llama-2-13b-hf_bits_loss_awq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_449.stats
-# EXPR_FILE=2411191444_Llama-2-13b-hf_bits_loss_awq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_449.stats
-# EXPR_FILE=2411191756_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
-# EXPR_FILE=2411191240_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-# EXPR_FILE=2411181902_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
-# EXPR_FILE=2411172147_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
-# EXPR_FILE=2411172038_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_linear_group/iter_299.stats
-# EXPR_FILE=2411161720_Llama-2-13b-hf_bits_loss_awq_iter_450_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_449.stats
-# EXPR_FILE=2411152010_Llama-2-13b-hf_bits_loss_awq_iter_375_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_374.stats
-# EXPR_FILE=2411151949_Llama-2-13b-hf_bits_loss_hqq_iter_375_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_374.stats
-# EXPR_FILE=2411141716_Llama-2-13b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-# EXPR_FILE=2411141831_Llama-2-13b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-# EXPR_FILE=2411131600_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-# EXPR_FILE=2411131629_Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-# EXPR_FILE=2411131600_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-# EXPR_FILE=2411121845_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0_2411121523/iter_291.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_64_128gs_4scale_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411120948/iter_299.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_3scale_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411071632/iter_299.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_awq_iter_300_nsga2_234_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411061920/iter_299.stats
-# EXPR_FILE=Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_mut_0.05_layer_prune_1.0_1.0_2411021226/iter_299.stats
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${METHOD_TEXT}_${MIN_BITS}_${MAX_BITS}
 N=1
@@ -108,7 +81,7 @@ DATASETS=wikitext2
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
 
 N_PROC=1
-CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} post_search.py \
+CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} post_search_woo.py \
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
@@ -123,7 +96,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --prefer ${PREFER} \
 --datasets ${DATASETS} \
 --sec_obj_range ${MIN_BITS} ${MAX_BITS} \
---method ${METHOD}
+--method ${METHOD} \
+--zeroshot
 # --latency_table_file ${LATENCY_TABLE}
 # --outlier_path ${OUTLIER_PATH} \
 # --only_front \
