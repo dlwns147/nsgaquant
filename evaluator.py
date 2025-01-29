@@ -80,7 +80,7 @@ class LlamaEvaluator:
 
         else:
             # self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
-            model = get_hfmodel(model_id, dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
+            self.model = get_hfmodel(model_id, dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
 
         if 'layer_prune' in method:
             self.model = block_replace(self.model)
