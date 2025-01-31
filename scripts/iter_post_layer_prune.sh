@@ -1,8 +1,8 @@
 DEVICES=${1}
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
 
 CONFIG=config/llama.json
@@ -22,9 +22,20 @@ COMP_OBJ="params"
 # COMP_OBJ="params latency"
 # TRADEOFF_OBJ="latency"
 
+EXPR_FILE=2501301838_Llama-2-13b-hf_mo_params_latency_loss_iter_240_n_iter_40_obj_0.45_0.45_1_1_jsd_co_0.9_mut_0.1_mask_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
+# EXPR_FILE=2501301838_Llama-2-13b-hf_mo_params_latency_loss_iter_240_n_iter_40_obj_0.45_0.45_1_1_cross_entropy_co_0.9_mut_0.1_mask_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
+# EXPR_FILE=2501301733_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_240_n_iter_40_obj_0.45_1_cross_entropy_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
+# EXPR_FILE=2501301733_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_240_n_iter_40_obj_0.45_1_jsd_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
 
+# EXPR_FILE=2501301833_Llama-2-7b-hf_mo_params_latency_loss_iter_192_n_iter_32_obj_0.45_0.45_1_1_jsd_co_0.9_mut_0.1_mask_32sample_pop_200_wikitext2_rtx6000ada/iter_192.stats
+# EXPR_FILE=2501301836_Llama-2-7b-hf_mo_params_latency_loss_iter_192_n_iter_32_obj_0.45_0.45_1_1_cross_entropy_co_0.9_mut_0.1_mask_32sample_pop_200_wikitext2_rtx6000ada/iter_192.stats
+# EXPR_FILE=2501301734_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_192_n_iter_32_obj_0.45_1_jsd_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_192.stats
+# EXPR_FILE=2501301734_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_192_n_iter_32_obj_0.45_1_cross_entropy_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_192.stats
+
+# EXPR_FILE=2501282048_Llama-2-13b-hf_mo_params_latency_loss_iter_160_n_iter_40_obj_0.45_0.45_1_1_jsd_co_0.9_mut_0.1_mask_128sample_pop_40_wikitext2_rtx6000ada/iter_160.stats
+# EXPR_FILE=2501282047_Llama-2-13b-hf_mo_params_latency_loss_iter_160_n_iter_40_obj_0.45_0.45_1_1_cross_entropy_co_0.9_mut_0.1_mask_128sample_pop_40_wikitext2_rtx6000ada/iter_160.stats
 # EXPR_FILE=2501282045_Llama-2-7b-hf_mo_params_latency_loss_iter_128_n_iter_32_obj_0.45_0.45_1_1_jsd_co_0.9_mut_0.1_mask_128sample_pop_32_wikitext2_rtx6000ada/iter_128.stats
-EXPR_FILE=2501282046_Llama-2-7b-hf_mo_params_latency_loss_iter_128_n_iter_32_obj_0.45_0.45_1_1_cross_entropy_co_0.9_mut_0.1_mask_128sample_pop_32_wikitext2_rtx6000ada/iter_128.stats
+# EXPR_FILE=2501282046_Llama-2-7b-hf_mo_params_latency_loss_iter_128_n_iter_32_obj_0.45_0.45_1_1_cross_entropy_co_0.9_mut_0.1_mask_128sample_pop_32_wikitext2_rtx6000ada/iter_128.stats
 
 # EXPR_FILE=2501251838_Llama-2-7b-hf_mo_params_latency_loss_iter_128_n_iter_32_obj_0.45_0.45_1_1_jsd_co_0.9_mut_0.1_mask_128sample_pop_200_wikitext2_rtx6000ada/iter_128.stats
 # EXPR_FILE=2501241959_Llama-2-13b-hf_mo_params_latency_loss_iter_160_n_iter_40_obj_0.45_0.45_1_1_cross_entropy_co_0.9_mut_0.1_mask_128sample_pop_200_wikitext2_rtx6000ada/iter_160.stats
@@ -44,16 +55,16 @@ TARGET_COMP_OBJ_LIST=(0.5 0.6 0.7 0.8 0.9)
 # TARGET_COMP_OBJ_LIST=(0.5)
 COMP_OBJ_THRESHOLD=0.005
 
-for TARGET_SEC_OBJ in ${TARGET_COMP_OBJ_LIST[*]}
+for TARGET_COMP_OBJ in ${TARGET_COMP_OBJ_LIST[*]}
 do
-    # MIN_COMP_OBJ=($(echo "scale=3; $TARGET_SEC_OBJ - $COMP_OBJ_THRESHOLD" | bc) 0)
-    # MAX_COMP_OBJ=($(echo "scale=3; $TARGET_SEC_OBJ + $COMP_OBJ_THRESHOLD" | bc) 1)
-    MIN_COMP_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ - $COMP_OBJ_THRESHOLD" | bc)
-    MAX_COMP_OBJ=$(echo "scale=3; $TARGET_SEC_OBJ + $COMP_OBJ_THRESHOLD" | bc)
+    # MIN_COMP_OBJ=($(echo "scale=3; $TARGET_COMP_OBJ - $COMP_OBJ_THRESHOLD" | bc) 0)
+    # MAX_COMP_OBJ=($(echo "scale=3; $TARGET_COMP_OBJ + $COMP_OBJ_THRESHOLD" | bc) 1)
+    MIN_COMP_OBJ=$(echo "scale=3; $TARGET_COMP_OBJ - $COMP_OBJ_THRESHOLD" | bc)
+    MAX_COMP_OBJ=$(echo "scale=3; $TARGET_COMP_OBJ + $COMP_OBJ_THRESHOLD" | bc)
     TODAY=`date +%y%m%d%H%M`
     SAVE=save/result/${TODAY}_${MODEL_NAME}_${MIN_COMP_OBJ}_${MAX_COMP_OBJ}_${METHOD}
 
-    PREFER="metric#0 ${COMP_OBJ}#${TARGET_SEC_OBJ}"
+    PREFER="metric#0 ${COMP_OBJ}#${TARGET_COMP_OBJ}"
 
     CUDA_VISIBLE_DEVICES=${DEVICES} python post_search.py \
     --gpu_id ${DEVICES} \

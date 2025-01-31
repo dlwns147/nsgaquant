@@ -133,10 +133,13 @@ def init_accelerator(gpu_id, config):
     return accelerator, device_map
 
 def load_hqq_model(model_id, device_map, inference=False):
-    model = AutoHQQHFModel.from_quantized(model_id, device_map='cpu')
-    model = simple_dispatch_model(model, device_map)
-    # if inference:
-    #     prepare_for_inference(model, backend='gptq')
+    if model_id is not None:
+        model = AutoHQQHFModel.from_quantized(model_id, device_map='cpu')
+        model = simple_dispatch_model(model, device_map)
+        # if inference:
+        #     prepare_for_inference(model, backend='gptq')
+    else :
+        model = None
     return model
 
 def insert_fp16_channel_hqq(linear, outlier):
@@ -156,8 +159,8 @@ def get_outlier_bits(config):
 
 
 def get_hfmodel(model_name_or_path: str,
-                dtype='auto',
                 device_map='auto',
+                dtype='auto',
                 trust_remote_code=False,
                 **kwargs
                 ):

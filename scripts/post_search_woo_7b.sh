@@ -1,4 +1,4 @@
-DEVICES=0
+DEVICES=2
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
@@ -6,7 +6,8 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # MODEL_PATH=/SSD/.cache/
 # MODEL_NAME=Llama-2-7b-hf
 MODEL_PATH=meta-llama
-MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 Q_BITS="2 3 4"
@@ -14,7 +15,7 @@ Q_BITS_TEXT="234"
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
-METHOD=hqq
+METHOD=awq
 METHOD_TEXT=hqq
 GROUP_SIZE=128
 AXIS=1
@@ -63,13 +64,13 @@ MIN_BITS=$(echo "scale=3; $TARGET_BITS - $THRESHOLD" | bc)
 MAX_BITS=$(echo "scale=3; $TARGET_BITS + $THRESHOLD" | bc)
 
 ## 7B 234
-EXPR_FILE=quant/2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats
+# EXPR_FILE=quant/2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats
 
 ## 7B outlier
 # EXPR_FILE=quant/2501231756_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_300.stats
 
 ## 13B 234
-# EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
+EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
 
 ## 13B outlier
 # EXPR_FILE=quant/2501231758_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_400.stats
@@ -77,8 +78,40 @@ EXPR_FILE=quant/2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${METHOD_TEXT}_${MIN_BITS}_${MAX_BITS}
 N=1
-DATASETS=wikitext2
+DATASETS=( "wikitext2" "c4" )
+# DATASETS=wikitext2
+# DATASETS=c4
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
+
+OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}.csv
+
+
+# evaluation부터 zeroshot task 실험 코드 세팅은 아래와 같음
+
+# DEVICES=0
+# MODEL_NAME=Llama-2-7b-hf
+# OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+# EXPR_FILE=quant/2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats
+# OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}.csv
+
+# DEVICES=1
+# MODEL_NAME=Llama-2-7b-hf
+# OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+# EXPR_FILE=quant/2501231756_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_300.stats
+# OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}_owq.csv
+
+DEVICES=2
+MODEL_NAME=Llama-2-13b-hf
+OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
+OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}.csv
+
+# DEVICES=3
+# MODEL_NAME=Llama-2-13b-hf
+# OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+# EXPR_FILE=quant/2501231758_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_400.stats
+# OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}_owq.csv
+
 
 N_PROC=1
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} post_search_woo.py \
@@ -94,12 +127,13 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --debug \
 --expr ${EXPR_FOLDER}/${EXPR_FILE} \
 --prefer ${PREFER} \
---datasets ${DATASETS} \
+--datasets ${DATASETS[@]} \
 --sec_obj_range ${MIN_BITS} ${MAX_BITS} \
 --method ${METHOD} \
---zeroshot
-# --latency_table_file ${LATENCY_TABLE}
+--zeroshot \
+--output_path ${OUTPUT_PATH} \
 # --outlier_path ${OUTLIER_PATH} \
+# --latency_table_file ${LATENCY_TABLE}
 # --only_front \
 
 

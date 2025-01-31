@@ -35,6 +35,7 @@ class LlamaEvaluator:
                  seqlen=2048,
                  n_sample=128,
                  device_map='auto',
+                 dtype='auto',
                  cache_dir=None,
                  loss_func='cross_entropy',
                  latency_table=None,
@@ -52,7 +53,7 @@ class LlamaEvaluator:
         self.outlier = dict()
         if loss_func == 'jsd' or outlier is not None:
             # model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
-            model = get_hfmodel(model_id, dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
+            model = get_hfmodel(model_id, dtype=dtype, device_map=device_map, low_cpu_mem_usage=True)
 
             if loss_func == 'jsd':
                 self.dense_logits = {dataset: get_logits(model, loader) for dataset, loader in self.train_loaders.items()}
@@ -80,7 +81,7 @@ class LlamaEvaluator:
 
         else:
             # self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
-            self.model = get_hfmodel(model_id, dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
+            self.model = get_hfmodel(model_id, dtype=dtype, device_map=device_map, low_cpu_mem_usage=True)
 
         if 'layer_prune' in method:
             self.model = block_replace(self.model)
@@ -93,8 +94,9 @@ class LlamaEvaluator:
         self.model.eval()
         self.model.use_cache = False
         for q_model in self.quant_models:
-            q_model.eval()
-            q_model.use_cache = False
+            if q_model is not None:
+                q_model.eval()
+                q_model.use_cache = False
 
         accelerator.wait_for_everyone()
 
@@ -108,7 +110,7 @@ class LlamaEvaluator:
                     flag = False
                     for q_bits, q_model in zip(self.quant_model_bits, self.quant_models):
                         # if math.isclose(bits, q_bits):
-                        if math.isclose(int(bits), q_bits):
+                        if math.isclose(int(bits), q_bits) and q_bits > 0:
                             for linear in linear_group.split(','):
                                 # setsubattr(getblock(self.model, self.config)[blk_idx], linear, deepcopy(getsubattr(getblock(q_model, self.config)[blk_idx], linear)))
                                 setsubattr(getblock(self.model, self.config)[blk_idx], linear, getsubattr(getblock(q_model, self.config)[blk_idx], linear))
@@ -179,6 +181,22 @@ class LlamaEvaluator:
                     delsubattr(blk, linear)
         gc.collect()
         torch.cuda.empty_cache()
+
+    def eval_woo(self, accelerator, arch, model, metric, loss_func='cross_entropy'):
+        # if metric == 'latency':
+        #     measure_latency(model=self.sample(arch))
+        if metric == 'ppl':
+            loaders = self.test_loaders
+        elif metric == 'loss':
+            loaders = self.train_loaders
+        else:
+            raise NotImplementedError(f"metric should be 'ppl' or 'loss', not {metric}")
+        metric_list = dict()
+        for dataset, loader in loaders.items():
+            metric_list[dataset] = eval_metric(model=model, accelerator=accelerator, metric=metric, loader=loader, seqlen=self.seqlen, loss_func=loss_func, dense_logits_list=self.dense_logits[dataset])
+        complexity = get_net_info(arch, self.config, self.latency_table)
+        torch.cuda.empty_cache()
+        return metric_list, complexity
 
 # def measure_latency(args):
 #     print(args)

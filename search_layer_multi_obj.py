@@ -320,10 +320,9 @@ class Search:
 
         # the following lines corresponding to Algo 1 line 11 / Fig. 3(c)-(d) in the paper
         # form a subset selection problem to short list K from pop_size
-        # indices = self._subset_selection(res.pop[not_duplicate], F[front, 1:], K, self.subset_pop_size)
-        # pop = res.pop[not_duplicate][indices]
-        pop = res.pop[not_duplicate]
-
+        indices = self._subset_selection(res.pop[not_duplicate], F[front, 1:], K, self.subset_pop_size)
+        pop = res.pop[not_duplicate][indices]
+        # pop = res.pop[not_duplicate]
 
         candidates = []
         for x in pop.get("X"):
@@ -337,7 +336,6 @@ class Search:
     def _subset_selection(self, pop, nd_F, K, pop_size):
         # candidates = np.array([get_net_info(self.search_space.decode(x), self.config, self.latency_table)[self.sec_obj] for x in pop.get("X")])
         # problem = SubsetProblem(candidates, nd_F, K)
-        # import pdb; pdb.set_trace()
         problem = SubsetProblem(pop.get("F")[:, 1:], nd_F, K)
         algorithm = GA(
             pop_size=pop_size, sampling=MySampling(), crossover=BinaryCrossover(),

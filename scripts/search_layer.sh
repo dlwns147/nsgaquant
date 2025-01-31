@@ -3,8 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 METHOD=layer_prune
@@ -37,19 +37,23 @@ DATASET=wikitext2
 # DATASET=c4
 
 # N_SAMPLE=16
-# N_SAMPLE=32
+N_SAMPLE=32
 # N_SAMPLE=64
-N_SAMPLE=128
+# N_SAMPLE=128
 
-# N_DOE=64
-# N_ITER=32
+N_DOE=64
+N_ITER=32
 # ITER=128
+ITER=192
+
 # GA_POP_SIZE=32
 
-N_DOE=80
-N_ITER=40
-ITER=160
-GA_POP_SIZE=40
+# N_DOE=80
+# N_ITER=40
+# # ITER=160
+# ITER=240
+
+# GA_POP_SIZE=40
 
 # N_DOE=160
 # N_ITER=80
@@ -57,7 +61,7 @@ GA_POP_SIZE=40
 
 # GA_POP_SIZE=64
 # GA_POP_SIZE=96
-# GA_POP_SIZE=200
+GA_POP_SIZE=200
 METRIC=loss
 
 MAX_VALUE=10
@@ -69,8 +73,8 @@ CROSSOVER_PROB=0.9
 
 Q_BITS=16
 
-# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
-PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
+PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
+# PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 2.mlp 8.mlp 75.mlp 77.mlp 78.mlp 79.mlp"
 
 # LAYER_SENSITIVITY_FILE=csv/sensitivity/${MODEL_NAME}_layer_prune_loss_jsd.csv

@@ -49,9 +49,13 @@ class Search:
         self.method = kwargs.pop('method', '')
         self.quant_model_paths = kwargs.pop('quant_model_paths', [])
         self.quant_model_bits = kwargs.pop('quant_model_bits', [])
+
+        self.quant_model_paths.insert(0, None)
+        self.quant_model_bits.insert(0, 0)
         self.sec_obj_range = kwargs.pop('sec_obj_range', [])
+
         assert len(self.sec_obj_range) == 2, "len(sec_obj_range) should be 2"
-        # self.layer_prune_range = kwargs.pop('layer_prune_range', [1, 1])
+        self.layer_prune_range = kwargs.pop('layer_prune_range', [0.9, 1])
 
         model_path = kwargs.pop('model_path', 'meta-llama')
         model_name = kwargs.pop('model_name', 'Llama-2-7b-hf')
@@ -105,16 +109,15 @@ class Search:
             latency_table=self.latency_table
         )
         # search_space = LlamaLinearGroupSearchSpace if kwargs.pop('use_linear_group', False) else LlamaSearchSpace
-        self.search_space = LlamaQuantSearchSpace(
+        self.search_space = LlamaSearchSpace(
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
             pass_linear_list=kwargs.pop('pass_linear_list', []),
-            # pass_layer_list=kwargs.pop('pass_layer_list', []),
-            # pass_layer_list=pass_layer_list,
+            pass_layer_list=pass_layer_list,
             sec_obj=self.sec_obj,
             sec_obj_range=self.sec_obj_range,
             config=self.config,
-            # layer_prune_range=self.layer_prune_range,
+            layer_prune_range=self.layer_prune_range,
             outlier_bits=outlier_bits,
             only_outlier_bits=kwargs.pop('only_outlier_bits', False),
             latency_table=self.latency_table
@@ -123,13 +126,13 @@ class Search:
         self.subset_pop_size = kwargs.pop('subset_pop_size', 100)
         self.debug = kwargs.pop('debug', False)
         self.ga_algorithm = kwargs.pop('ga_algorithm', 'nsga2')
-        self.max_value = kwargs.pop('max_value', 50)
-        self.mut_prob = kwargs.pop('mut_prob', 0.05)
+        self.max_value = kwargs.pop('max_value', 10)
+        self.mut_prob = kwargs.pop('mut_prob', 0.1)
         self.crossover_prob = kwargs.pop('crossover_prob', 0.9)
         accelerator.wait_for_everyone()
         
     def search(self, accelerator):
-        total_time_elapsed = 0
+        total_start = time()
         start_it = 1
         
         if self.resume:
@@ -193,9 +196,6 @@ class Search:
             c_metric, complexity = self._evaluate(archs=candidates, accelerator=accelerator) 
 
             if accelerator.is_main_process:
-                iter_time = time() - iter_start
-                total_time_elapsed += iter_time
-
                 # check for accuracy predictor's performance
                 rmse, rho, tau = get_correlation(
                     np.vstack((a_metric_pred, c_metric_pred)), np.array([x[1] for x in archive] + c_metric))
@@ -209,9 +209,11 @@ class Search:
                 hv = self._calc_hv(
                     ref_pt, np.column_stack(([x[1] for x in archive], [x[2] for x in archive])))
 
+                iter_time = time() - iter_start
                 # print iteration-wise statistics
-                accelerator.print(f"Iter {it}: hv = {hv:.2f}, iter time : {iter_time:.2f}s, predictor_time : {predictor_time:.2f}, next_time : {next_time:.2f}")
+                accelerator.print(f"Iter {it}: hv = {hv:.2f}, iter time : {(time() - iter_start):.2f}s, predictor_time : {predictor_time:.2f}, next_time : {next_time:.2f}")
                 accelerator.print(f"fitting {self.predictor}: RMSE = {rmse:.4f}, Spearman's Rho = {rho:.4f}, Kendall’s Tau = {tau:.4f}")
+                accelerator.print(f'iteration time : {iter_time:.2f}s')
 
                 # dump the statistics
                 os.makedirs(self.save_path, exist_ok=True)
@@ -220,7 +222,7 @@ class Search:
                             'surrogate': {
                                 'model': self.predictor, 'name': metric_predictor.name,
                                 'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
-                                'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': total_time_elapsed}, 'iteration' : it}, handle)
+                                'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
                 if self.debug:
                     from pymoo.visualization.scatter import Scatter
                     # plot
@@ -242,6 +244,7 @@ class Search:
             accelerator.wait_for_everyone()
 
         if accelerator.is_main_process:
+            total_time_elapsed = time() - total_start
             accelerator.print(f'total time elapsed : {total_time_elapsed:.2f}s')
 
             sentences = []
@@ -278,8 +281,8 @@ class Search:
         return metric_list, complexity_list
 
     def _fit_predictor(self, archive, device='cpu'):
-        inputs = np.array([self.search_space.encode(x[0]) for x in archive])
-        # inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
+        # inputs = np.array([self.search_space.encode(x[0]) for x in archive])
+        inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
         targets = np.array([x[1] for x in archive])
         # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
 
@@ -299,16 +302,8 @@ class Search:
 
         # initiate a multi-objective solver to optimize the problem
         method = NSGA2(pop_size=self.ga_pop_size, sampling=nd_X,  # initialize with current nd archs
-            # crossover=TwoPointCrossover(prob=0.9),
             crossover=BinomialCrossover(prob=self.crossover_prob, n_offsprings=1),
-            # crossover=BinomialCrossover(prob=0.9, n_offsprings=1),
-            # crossover=BinomialCrossover(prob=1.0, n_offsprings=1),
-            # crossover=BinomialCrossover(prob=0.9, n_offsprings=2),
-            # crossover=MyTwoPointCrossover(prob=0.9, n_offsprings=1),
-            # mutation=IntPolynomialMutation(eta=1.0),
             mutation=IntegerFromFloatMutation(clazz=PolynomialMutation, eta=1.0, prob=self.mut_prob),
-            # mutation=PolynomialMutation(prob=self.mut_prob, eta=1.0),
-            # mutation=IntPolynomialMutation(prob=self.mut_prob, eta=1.0),
             eliminate_duplicates=True)
         
         # initialize the candidate finding optimization problem
@@ -326,7 +321,6 @@ class Search:
         indices = self._subset_selection(res.pop[not_duplicate], F[front, 1], K, self.subset_pop_size)
         pop = res.pop[not_duplicate][indices]
         # pop = res.pop[not_duplicate]
-        print(f'not_duplicate : {len(not_duplicate)}')
         
 
         candidates = []
@@ -334,8 +328,9 @@ class Search:
             candidates.append(self.search_space.decode(x))
 
         # decode integer bit-string to config and also return predicted top1_err
+        return candidates, predictor.predict(self.search_space.decode_encode_predictor(pop.get("X")))
         # return candidates, predictor.predict(np.stack([self.search_space.encode_predictor(self.search_space.decode(x)) for x in pop.get("X")]))
-        return candidates, predictor.predict(pop.get("X"))
+        # return candidates, predictor.predict(pop.get("X"))
 
     # @staticmethod
     def _subset_selection(self, pop, nd_F, K, pop_size):
@@ -367,18 +362,19 @@ class AuxiliarySingleLevelProblem(Problem):
     """ The optimization problem for finding the next N candidate architectures """
 
     def __init__(self, search_space, predictor, config, method, latency_table):
-        n_block, n_linear = search_space.n_block, search_space.n_linear
-        super().__init__(n_var=n_block * (n_linear), n_obj=2, n_constr=2, type_var=int)
+        n_block, n_linear, n_layer = search_space.n_block, search_space.n_linear, search_space.n_layer
+        super().__init__(n_var=n_block * (n_linear + n_layer), n_obj=2, n_constr=4, type_var=int)
 
         self.ss = search_space
         self.predictor = predictor
-        self.xl = np.zeros((n_block, n_linear))
-        self.xu = np.ones((n_block, n_linear))
+        self.xl = np.zeros((n_block, n_linear + n_layer))
+        self.xl[:, :n_linear] = 1
+        self.xu = np.ones((n_block, n_linear + n_layer))
         
-        for linear_idx, linear in enumerate(config['linear']):
-            self.xu[:, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
+        # for linear_idx, linear in enumerate(config['linear']):
+        #     self.xu[:, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
 
-        # self.xu[:, :n_linear] = search_space.n_bits - 1
+        self.xu[:, :n_linear] = search_space.n_bits - 1
         self.config = config
         self.latency_table = latency_table
 
@@ -394,6 +390,14 @@ class AuxiliarySingleLevelProblem(Problem):
             # linear_idx = search_space.linear_group.index(linear)
             self.xl[blk, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
 
+        if 'layer_prune' in method:
+            for pass_layer in self.ss.pass_layer_list:
+                blk, layer = pass_layer.split('.', 1)
+                blk = int(blk)
+                
+                layer_idx = config['layer'].index(layer)
+                self.xl[blk, -n_layer + layer_idx] = 1
+
         self.xl = self.xl.flatten()
         self.xu = self.xu.flatten()
 
@@ -401,8 +405,9 @@ class AuxiliarySingleLevelProblem(Problem):
         f = np.full((x.shape[0], self.n_obj), np.nan)
         g = np.full((x.shape[0], self.n_constr), np.nan)
 
+        metrics = self.predictor.predict(self.ss.decode_encode_predictor(x))[:, 0]
         # metrics = self.predictor.predict(np.stack([self.ss.encode_predictor(self.ss.decode(_x)) for _x in x]))[:, 0]
-        metrics = self.predictor.predict(x)[:, 0]
+        # metrics = self.predictor.predict(x)[:, 0]
 
         for i, (_x, metric) in enumerate(zip(x, metrics)):
             arch = self.ss.decode(_x)
@@ -412,6 +417,8 @@ class AuxiliarySingleLevelProblem(Problem):
 
             g[i, 0] = 1 - info[self.ss.sec_obj] / self.ss.sec_obj_range[0]
             g[i, 1] = info[self.ss.sec_obj] / self.ss.sec_obj_range[1] - 1
+            g[i, 2] = 1 - info['sparsity'] / self.ss.layer_prune_range[0]
+            g[i, 3] = info['sparsity'] / self.ss.layer_prune_range[1] - 1
             
         out["F"] = f
         out["G"] = g

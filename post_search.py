@@ -195,7 +195,7 @@ def main(args):
     # ppl_list = {dataset: [] for dataset in args.datasets}
     arch_list = []
     ppl_list = []
-    bits_list = []
+    # bits_list = []
     param_list = []
     sparsity_list = []
     metric_list = []
@@ -208,17 +208,21 @@ def main(args):
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
         model = evaluator.sample(arch)
         latency = measure_latency(evaluator.sample(arch), generation=True, device=model.device) if args.latency else 0
-        arch_list.append(arch)
-        metric_list.append(pf[idx, 0])
-        ppl_list.append({d: metric[d] for d in args.datasets})
-        bits_list.append(complexity['bits'])
-        param_list.append(complexity['params'])
-        sparsity_list.append(complexity['sparsity'])
-        complexity_list.append(complexity[args.sec_obj])  
-        latency_list.append(latency)
-        print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}\n')
+        # arch_list.append(arch)
+        # metric_list.append(pf[idx, 0])
+        # ppl_list.append({d: metric[d] for d in args.datasets})
+        # bits_list.append(complexity['bits'])
+        # param_list.append(complexity['params'])
+        # sparsity_list.append(complexity['sparsity'])
+        # complexity_list.append(complexity[args.sec_obj])  
+        # latency_list.append(latency)
+        print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}\n')
         
         if args.zeroshot:
+            import gc
+            torch.cuda.empty_cache()
+            gc.collect()
+            
             results = eval_zeroshot(evaluator.sample(arch), tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size)
             avg_acc_norm = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
             avg_acc = np.mean([task_result['acc,none'] for task_result in results.values()])
@@ -229,46 +233,32 @@ def main(args):
                 else:
                     print(f'{task} acc : {task_result["acc,none"]}')
 
-            # row_list = []
-            # for task_name, task_result in results:
-            #     row = [task_name]
-            #     head_list = ['head']
-            #     for head, metric in task_result:
-            #         row.append(metric)
-            #         head_list.append(head)
-            #     row_list.append(row)
-            # with open(args.zeroshot_csv_file, 'r') as f:
-            #     writer = csv.writer(f)
-            #     writer.writerow(head_list)
-            #     for row in row_list:
-            #         writer.writerow(row)
-
     print(args)
     exit()
 
-    if args.debug:
-        # print(ps[I])
-        # plot = Scatter()
-        # plot.add(pf, alpha=0.2)
-        # plot.add(pf[I, :], color="blue", s=10)
-        # plot.add(gs_data, color="red", s=10)
-        # plot.show()
-        # plot.save(os.path.join(args.save, "best_trade_off_line.png"))
-        os.makedirs(args.save, exist_ok=True)
+    # if args.debug:
+    #     # print(ps[I])
+    #     # plot = Scatter()
+    #     # plot.add(pf, alpha=0.2)
+    #     # plot.add(pf[I, :], color="blue", s=10)
+    #     # plot.add(gs_data, color="red", s=10)
+    #     # plot.show()
+    #     # plot.save(os.path.join(args.save, "best_trade_off_line.png"))
+    #     os.makedirs(args.save, exist_ok=True)
         
-        plt.scatter(complexity_list, [p[args.datasets[0]] for p in ppl_list], color='b', s=5, label='NSGA2')
-        if args.greedy_search_result_path:
-            with open(args.greedy_search_result_path, 'r') as f:
-                gs_data = list(csv.reader(f))
-                gs_bits = list(map(float, gs_data[1]))[:-3]
-                gs_metric = list(map(float, gs_data[2]))[:-3]
-                plt.scatter(gs_bits, gs_metric, color='r', s=5, label='Greedy Search')
+    #     plt.scatter(complexity_list, [p[args.datasets[0]] for p in ppl_list], color='b', s=5, label='NSGA2')
+    #     if args.greedy_search_result_path:
+    #         with open(args.greedy_search_result_path, 'r') as f:
+    #             gs_data = list(csv.reader(f))
+    #             gs_bits = list(map(float, gs_data[1]))[:-3]
+    #             gs_metric = list(map(float, gs_data[2]))[:-3]
+    #             plt.scatter(gs_bits, gs_metric, color='r', s=5, label='Greedy Search')
         
-        plt.xlabel(f'{args.sec_obj}')
-        plt.ylabel('PPL')
-        plt.legend()
-        plt.show()
-        plt.savefig(os.path.join(args.save, "best_trade_off_line.png"), dpi=300)
+    #     plt.xlabel(f'{args.sec_obj}')
+    #     plt.ylabel('PPL')
+    #     plt.legend()
+    #     plt.show()
+    #     plt.savefig(os.path.join(args.save, "best_trade_off_line.png"), dpi=300)
 
     sentences = []
     for k, v in vars(args).items():
@@ -306,6 +296,10 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--comp_obj', type=str, nargs='+', default=['bits'], 
                         help='second objective to optimize simultaneously')
+    parser.add_argument('--comp_obj_min', type=float, nargs='+', default=[],
+                        help='')
+    parser.add_argument('--comp_obj_max', type=float, nargs='+', default=[],
+                        help='')
     parser.add_argument('--gpu_id', type=str, default='0',
                         help='id of available gpus')
     parser.add_argument('--method', type=str, nargs='+', default=[],
@@ -330,8 +324,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_sample', type=int, default=128,
                         help='')
     parser.add_argument('--debug', action='store_true', help='')
-    parser.add_argument('--sec_obj', type=str, default='bits',
-                        help='second objective to optimize simultaneously')
+    # parser.add_argument('--sec_obj', type=str, default='bits',
+    #                     help='second objective to optimize simultaneously')
     parser.add_argument('--datasets', type=str, nargs='+', default=[], 
                         help='')
     parser.add_argument('--greedy_search_result_path', type=str, default='',
@@ -345,12 +339,8 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--results_arch_file', type=str, default='results_arch.json',
                         help='')
-    parser.add_argument('--sec_obj_range', type=float, nargs='+', default=[],
-                        help='')
-    parser.add_argument('--comp_obj_min', type=float, nargs='+', default=[],
-                        help='')
-    parser.add_argument('--comp_obj_max', type=float, nargs='+', default=[],
-                        help='')
+    # parser.add_argument('--sec_obj_range', type=float, nargs='+', default=[],
+    #                     help='')
     parser.add_argument('--outlier_path', type=str, default='',
                         help='')
     parser.add_argument('--latency_table_file', type=str, default=None,
