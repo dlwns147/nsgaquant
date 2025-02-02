@@ -382,13 +382,17 @@ class AuxiliarySingleLevelProblem(Problem):
             blk, linear = pass_linear.split('.', 1)
             blk = int(blk)
 
-            linear_idx = 0.
-            for i, group in enumerate(search_space.linear_group):
-                if linear in group:
-                    linear_idx = i
-                    break
+            # linear_idx = 0.
+            # for i, group in enumerate(search_space.linear_group):
+            #     if linear in group:
+            #         linear_idx = i
+            #         break
             # linear_idx = search_space.linear_group.index(linear)
+            linear_idx = config['linear'].index(linear)
             self.xl[blk, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
+            if 'layer_prune' in method:
+                layer_idx = config['layer'].index(config['hierarchy'][linear])
+                self.xl[blk, -n_layer + layer_idx] = 1
 
         if 'layer_prune' in method:
             for pass_layer in self.ss.pass_layer_list:
@@ -463,6 +467,15 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model_path', type=str, default='',
+                        help='file path to supernet weights')
+    parser.add_argument('--model_name', type=str, default='',
+                        help='file path to supernet weights')
+    parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
+                        help='')
+    parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
+                        help='')
+    
     parser.add_argument('--save', type=str, default='save',
                         help='location of dir to save')
     parser.add_argument('--resume', type=str, default=None,
@@ -481,14 +494,6 @@ if __name__ == '__main__':
                         help='id of available gpus')
     # parser.add_argument('--n_gpu', type=int, default=1,
     #                     help='number of gpus per process')
-    parser.add_argument('--model_path', type=str, default='',
-                        help='file path to supernet weights')
-    parser.add_argument('--model_name', type=str, default='',
-                        help='file path to supernet weights')
-    parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
-                        help='')
-    parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
-                        help='')
     
     parser.add_argument('--dataset', type=str, default='wikitext2',
                         help='dataset name')

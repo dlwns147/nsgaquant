@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoquant" # 패키지 이름 설정
+version = "0.0.0"
+dependencies = [
+    # dependencies
+]
+
+[project.optional-dependencies]
+test = [
+    # test dependencies
+]

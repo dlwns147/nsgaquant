@@ -26,17 +26,14 @@ PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
 
 # PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 3.self_attn 3.mlp 39.mlp"
-
-QMODEL_PATHS=()
+QMODEL_PATHS_LIST=()
 for B in ${Q_BITS}
 do
-    QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
+    # QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
+    QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_float16" )
 done
 # QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}")
-
-OUTLIER_BITS="2 3"
-N_OUTLIER=32
-OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 
 # LOSS_FUNC=cross_entropy
 LOSS_FUNC=jsd
@@ -53,7 +50,9 @@ N_SAMPLE=32
 # N_SAMPLE=128
 
 OBJ=bits
-SEC_OBJ_RANGE_SMALL=1.9
+SEC_OBJ_RANGE_SMALL=1.95
+# SEC_OBJ_RANGE_SMALL=1.99
+# SEC_OBJ_RANGE_SMALL=1.9
 # SEC_OBJ_RANGE_SMALL=${Q_BITS:0:1}
 SEC_OBJ_RANGE_LARGE=${Q_BITS:(-1)}
 
@@ -61,7 +60,8 @@ SEC_OBJ_RANGE_LARGE=${Q_BITS:(-1)}
 # SEC_OBJ_RANGE_SMALL=1
 # SEC_OBJ_RANGE_LARGE=1e3
 
-LAYER_PRUNE_RANGE_SMALL=0.7
+LAYER_PRUNE_RANGE_SMALL=0.001
+# LAYER_PRUNE_RANGE_SMALL=0.7
 # LAYER_PRUNE_RANGE_SMALL=0.9
 # # LAYER_PRUNE_RANGE_SMALL=0.96
 # # LAYER_PRUNE_RANGE_SMALL=1.0
@@ -97,7 +97,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
 --method ${METHOD} \
---quant_model_paths "${QMODEL_PATHS[@]}" \
+--quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
 --sec_obj ${OBJ} \
 --predictor ${PREDICTOR} \
@@ -136,6 +136,10 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 
 # --use_linear_group
 # --resume ${RESUME} \
+
+# OUTLIER_BITS="2 3"
+# N_OUTLIER=32
+# OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
 
 
 # METHOD=gptq

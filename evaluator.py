@@ -53,7 +53,7 @@ class LlamaEvaluator:
         self.outlier = dict()
         if loss_func == 'jsd' or outlier is not None:
             # model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
-            model = get_hfmodel(model_id, dtype=dtype, device_map=device_map, low_cpu_mem_usage=True)
+            model = get_hfmodel(model_id, dtype=dtype, device_map=device_map)
 
             if loss_func == 'jsd':
                 self.dense_logits = {dataset: get_logits(model, loader) for dataset, loader in self.train_loaders.items()}
@@ -81,7 +81,7 @@ class LlamaEvaluator:
 
         else:
             # self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
-            self.model = get_hfmodel(model_id, dtype=dtype, device_map=device_map, low_cpu_mem_usage=True)
+            self.model = get_hfmodel(model_id, dtype=dtype, device_map=device_map)
 
         if 'layer_prune' in method:
             self.model = block_replace(self.model)
@@ -131,7 +131,8 @@ class LlamaEvaluator:
                     #     convert_model_to_ft(self.model)
                     #     replace_generate_functions()
 
-        if 'layer_prune' in self.method:
+        # if 'layer_prune' in self.method:
+        if 'layer' in arch:
             for layer, layer_arch in arch['layer'].items():
                 for blk_idx, a in enumerate(layer_arch):
                     if a == 0:

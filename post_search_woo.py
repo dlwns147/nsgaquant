@@ -158,10 +158,10 @@ def main(args):
     )
 
     ## customizing
-    from autoquant.main import get_quantized_model
+    from autoquant.autoquant.main import get_quantized_model
     del evaluator.model
     tokenizer = get_tokenizer(model_id)
-    field = ['bits', 'wikitext2', 'c4', 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
+    global field
 
     # ppl_list = {dataset: [] for dataset in args.datasets}
     arch_list = []
@@ -188,8 +188,11 @@ def main(args):
 
         arch = ps[idx]
 
+        # arch['layer']['self_attn'][0] = 0
+        # arch['layer']['mlp'][0] = 0
+
         result = {}
-        method = get_quantized_model(args.method[0], arch['linear'], model_id, 'cuda:0', owq_path = torch.load(args.outlier_path) if args.outlier_path else None)
+        method = get_quantized_model(args.method[0], arch, model_id, 'cuda:0', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None)
         model = method.model
         model = model.to('cuda:0')
 
@@ -211,6 +214,8 @@ def main(args):
         print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}\n')
 
         result['bits'] = complexity['bits']
+        result['params'] = complexity['params']
+        result['sparsity'] = complexity['sparsity']
         result['wikitext2'] = metric['wikitext2']
         result['c4'] = metric['c4']
         
@@ -232,9 +237,8 @@ def main(args):
 
             result['avg'] = avg_acc
 
-        with open(args.output_path, 'a') as f: 
+        with open(args.output_path, 'a') as f:
             writer = csv.DictWriter(f, fieldnames=field)
-            writer.writeheader()
             writer.writerow(result)
 
             # row_list = []
@@ -366,11 +370,21 @@ if __name__ == '__main__':
     
     parser.add_argument('--output_path', type=str, default='',
                         help='')
+    parser.add_argument('--do_prune', action='store_true', help='Whether to use pruning')
+    parser.add_argument('--do_owq', action='store_true', help='Whether to use owq')
 
     cfgs = parser.parse_args()
 
-        ## customizing
-    target_bit = [2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9]
+    ## customizing
+    global field
+    field = ['bits', 'params', 'sparsity', 'wikitext2', 'c4', 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
+
+    with open(cfgs.output_path, 'a') as f:
+        writer = csv.DictWriter(f, fieldnames=field)
+        writer.writeheader()
+
+
+    target_bit = [2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9]
     THRESHOLD = 0.005
     for i in target_bit:
         cfgs.sec_obj_range[0] = i - THRESHOLD

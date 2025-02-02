@@ -190,6 +190,7 @@ def get_hfmodel(model_name_or_path: str,
         torch_dtype=dtype,
         device_map=device_map, 
         trust_remote_code=trust_remote_code,
+        low_cpu_mem_usage=True,
         **kwargs
     )
     
