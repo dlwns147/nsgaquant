@@ -94,11 +94,13 @@ def main(args):
     sort_idx = np.argsort(metric)
     F = np.column_stack((metric, sec_obj))[sort_idx, :]
     # F = np.column_stack((metric, *sec_objs))[sort_idx, :]
+
     if len(args.sec_obj_range) % 2 == 0:
         # assert args.sec_obj_range[0] >= min(args.quant_model_bits) and args.sec_obj_range[1] <= max(args.quant_model_bits), f'Target bits range should be in [small model bits, large model bits]'
         range_idx = np.argwhere(np.logical_and(F[:, 1] > args.sec_obj_range[0], F[:, 1] < args.sec_obj_range[1])).flatten()
         pf = F[range_idx, :]
         ps = np.array(subnets)[sort_idx][range_idx]
+        # import code; code.interact("check", local = dict(globals(), **locals()))
 
     elif args.only_front:
         front = NonDominatedSorting().do(F, only_non_dominated_front=True)
@@ -155,6 +157,12 @@ def main(args):
         latency_table=latency_table
     )
 
+    ## customizing
+    from autoquant.autoquant.main import get_quantized_model
+    del evaluator.model
+    tokenizer = get_tokenizer(model_id)
+    global field
+
     # ppl_list = {dataset: [] for dataset in args.datasets}
     arch_list = []
     ppl_list = []
@@ -180,9 +188,21 @@ def main(args):
 
         arch = ps[idx]
 
-        metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
-        model = evaluator.sample(arch)
-        latency = measure_latency(evaluator.sample(arch), generation=True, device=model.device) if args.latency else 0
+        # arch['layer']['self_attn'][0] = 0
+        # arch['layer']['mlp'][0] = 0
+
+        result = {}
+        method = get_quantized_model(args.method[0], arch, model_id, 'cuda:0', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None)
+        model = method.model
+        model = model.to('cuda:0')
+
+        metric, complexity = evaluator.eval_woo(arch=arch, model = model, metric='ppl', accelerator=accelerator)
+
+        # metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
+        # model = evaluator.sample(arch)
+        # latency = measure_latency(evaluator.sample(arch), generation=True, device=model.device) if args.latency else 0
+        latency = 0
+
         arch_list.append(arch)
         metric_list.append(pf[idx, 0])
         ppl_list.append({d: metric[d] for d in args.datasets})
@@ -192,16 +212,34 @@ def main(args):
         complexity_list.append(complexity[args.sec_obj])  
         latency_list.append(latency)
         print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}\n')
+
+        result['bits'] = complexity['bits']
+        result['params'] = complexity['params']
+        result['sparsity'] = complexity['sparsity']
+        result['wikitext2'] = metric['wikitext2']
+        result['c4'] = metric['c4']
         
         if args.zeroshot:
-            results = eval_zeroshot(evaluator.sample(arch), tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size)
+            # results = eval_zeroshot(evaluator.sample(arch), tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size)
+            # results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), batch_size='auto')
+            results = eval_zeroshot(model, tokenizer=tokenizer, batch_size='auto')
             avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
             print(f'avg_acc : {avg_acc}, results : {results}')
             for task, task_result in results.items():
                 if 'acc_norm,none' in task_result:
                     print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
+
+                    result[task] = task_result['acc_norm,none']
                 else:
                     print(f'{task} acc : {task_result["acc,none"]}')
+
+                    result[task] = task_result['acc,none']
+
+            result['avg'] = avg_acc
+
+        with open(args.output_path, 'a') as f:
+            writer = csv.DictWriter(f, fieldnames=field)
+            writer.writerow(result)
 
             # row_list = []
             # for task_name, task_result in results:
@@ -218,8 +256,10 @@ def main(args):
             #         writer.writerow(row)
 
         print(args)
-        exit()
-    exit()
+        # exit()
+        return
+    # exit()
+    return
 
     if args.debug:
         # print(ps[I])
@@ -327,6 +367,27 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--zeroshot_batch_size', type=int, default=64,
                         help='')
+    
+    parser.add_argument('--output_path', type=str, default='',
+                        help='')
+    parser.add_argument('--do_prune', action='store_true', help='Whether to use pruning')
+    parser.add_argument('--do_owq', action='store_true', help='Whether to use owq')
 
     cfgs = parser.parse_args()
-    main(cfgs)
+
+    ## customizing
+    global field
+    field = ['bits', 'params', 'sparsity', 'wikitext2', 'c4', 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
+
+    with open(cfgs.output_path, 'a') as f:
+        writer = csv.DictWriter(f, fieldnames=field)
+        writer.writeheader()
+
+
+    target_bit = [2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9]
+    THRESHOLD = 0.005
+    for i in target_bit:
+        cfgs.sec_obj_range[0] = i - THRESHOLD
+        cfgs.sec_obj_range[1] = i + THRESHOLD
+
+        main(cfgs)

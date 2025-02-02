@@ -129,7 +129,7 @@ class Search:
         accelerator.wait_for_everyone()
         
     def search(self, accelerator):
-        total_start = time()
+        total_time_elapsed = 0
         start_it = 1
         
         if self.resume:
@@ -193,6 +193,9 @@ class Search:
             c_metric, complexity = self._evaluate(archs=candidates, accelerator=accelerator) 
 
             if accelerator.is_main_process:
+                iter_time = time() - iter_start
+                total_time_elapsed += iter_time
+
                 # check for accuracy predictor's performance
                 rmse, rho, tau = get_correlation(
                     np.vstack((a_metric_pred, c_metric_pred)), np.array([x[1] for x in archive] + c_metric))
@@ -206,11 +209,9 @@ class Search:
                 hv = self._calc_hv(
                     ref_pt, np.column_stack(([x[1] for x in archive], [x[2] for x in archive])))
 
-                iter_time = time() - iter_start
                 # print iteration-wise statistics
-                accelerator.print(f"Iter {it}: hv = {hv:.2f}, iter time : {(time() - iter_start):.2f}s, predictor_time : {predictor_time:.2f}, next_time : {next_time:.2f}")
+                accelerator.print(f"Iter {it}: hv = {hv:.2f}, iter time : {iter_time:.2f}s, predictor_time : {predictor_time:.2f}, next_time : {next_time:.2f}")
                 accelerator.print(f"fitting {self.predictor}: RMSE = {rmse:.4f}, Spearman's Rho = {rho:.4f}, Kendall’s Tau = {tau:.4f}")
-                accelerator.print(f'iteration time : {iter_time:.2f}s')
 
                 # dump the statistics
                 os.makedirs(self.save_path, exist_ok=True)
@@ -219,7 +220,7 @@ class Search:
                             'surrogate': {
                                 'model': self.predictor, 'name': metric_predictor.name,
                                 'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
-                                'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
+                                'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': total_time_elapsed}, 'iteration' : it}, handle)
                 if self.debug:
                     from pymoo.visualization.scatter import Scatter
                     # plot
@@ -241,7 +242,6 @@ class Search:
             accelerator.wait_for_everyone()
 
         if accelerator.is_main_process:
-            total_time_elapsed = time() - total_start
             accelerator.print(f'total time elapsed : {total_time_elapsed:.2f}s')
 
             sentences = []

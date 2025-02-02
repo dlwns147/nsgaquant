@@ -309,9 +309,9 @@ class Search:
 
         # the following lines corresponding to Algo 1 line 11 / Fig. 3(c)-(d) in the paper
         # form a subset selection problem to short list K from pop_size
-        # indices = self._subset_selection(res.pop[not_duplicate], F[front, 1], K, self.subset_pop_size)
-        # pop = res.pop[not_duplicate][indices]
-        pop = res.pop[not_duplicate]
+        indices = self._subset_selection(res.pop[not_duplicate], F[front, 1], K, self.subset_pop_size)
+        pop = res.pop[not_duplicate][indices]
+        # pop = res.pop[not_duplicate]
         print(f'not_duplicate : {len(not_duplicate)}')
 
         candidates = []

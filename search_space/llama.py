@@ -21,7 +21,7 @@ class LlamaSearchSpace:
 
         self.quant_model_bits = quant_model_bits
 
-        [bits for bits in quant_model_bits if list(map(int, outlier_bits['self_attn.q_proj']))]
+        # [bits for bits in quant_model_bits if list(map(int, outlier_bits['self_attn.q_proj']))]
         
         self.q_proj_option = sorted(([b for b in quant_model_bits if b not in list(map(int, outlier_bits['self_attn.q_proj']))] if only_outlier_bits else quant_model_bits) + outlier_bits['self_attn.q_proj'])
         self.k_proj_option = sorted(([b for b in quant_model_bits if b not in list(map(int, outlier_bits['self_attn.k_proj']))] if only_outlier_bits else quant_model_bits) + outlier_bits['self_attn.k_proj'])
@@ -32,6 +32,14 @@ class LlamaSearchSpace:
         self.gate_proj_option = sorted(([b for b in quant_model_bits if b not in list(map(int, outlier_bits['mlp.gate_proj']))] if only_outlier_bits else quant_model_bits) + outlier_bits['mlp.gate_proj'])
         self.up_proj_option = sorted(([b for b in quant_model_bits if b not in list(map(int, outlier_bits['mlp.up_proj']))] if only_outlier_bits else quant_model_bits) + outlier_bits['mlp.up_proj'])
         self.down_proj_option = sorted(([b for b in quant_model_bits if b not in list(map(int, outlier_bits['mlp.down_proj']))] if only_outlier_bits else quant_model_bits) + outlier_bits['mlp.down_proj'])
+
+        self.q_proj_option_nonzero = [b for b in self.q_proj_option if b != 0]
+        self.k_proj_option_nonzero = [b for b in self.k_proj_option if b != 0]
+        self.v_proj_option_nonzero = [b for b in self.v_proj_option if b != 0]
+        self.o_proj_option_nonzero = [b for b in self.o_proj_option if b != 0]
+        self.gate_proj_option_nonzero = [b for b in self.gate_proj_option if b != 0]
+        self.up_proj_option_nonzero = [b for b in self.up_proj_option if b != 0]
+        self.down_proj_option_nonzero = [b for b in self.down_proj_option if b != 0]
 
         self.layer_option = [0, 1]
         self.pass_linear_list = pass_linear_list
@@ -163,12 +171,13 @@ class LlamaSearchSpace:
         # sample one arch with least (lb of hyperparameters) and most complexity (ub of hyperparameters)
         data = []
         # if math.isclose(self.sec_obj_range[0], min(self.quant_model_bits)):
-        data.append(self.sample(q=[min(self.q_proj_option)], k=[min(self.k_proj_option)], v=[min(self.v_proj_option)], o=[min(self.o_proj_option)], down=[min(self.down_proj_option)], up=[min(self.up_proj_option)], gate=[min(self.gate_proj_option)], lp=[self.layer_prune_range[1], self.layer_prune_range[1]])[0])
+        # data.append(self.sample(q=[min(self.q_proj_option)], k=[min(self.k_proj_option)], v=[min(self.v_proj_option)], o=[min(self.o_proj_option)], down=[min(self.down_proj_option)], up=[min(self.up_proj_option)], gate=[min(self.gate_proj_option)], lp=[self.layer_prune_range[1], self.layer_prune_range[1]])[0])
+        data.append(self.sample(q=[min(self.q_proj_option_nonzero)], k=[min(self.k_proj_option_nonzero)], v=[min(self.v_proj_option_nonzero)], o=[min(self.o_proj_option_nonzero)], down=[min(self.down_proj_option_nonzero)], up=[min(self.up_proj_option_nonzero)], gate=[min(self.gate_proj_option_nonzero)], lp=[self.layer_prune_range[1], self.layer_prune_range[1]])[0])
         n_doe -= 1
         # if math.isclose(self.sec_obj_range[-1], max(self.quant_model_bits)):
-        data.append(self.sample(q=[max(self.q_proj_option)], k=[max(self.k_proj_option)], v=[max(self.v_proj_option)], o=[max(self.o_proj_option)], down=[max(self.down_proj_option)], up=[max(self.up_proj_option)], gate=[max(self.gate_proj_option)], lp=[self.layer_prune_range[0], self.layer_prune_range[0]])[0])
+        data.append(self.sample(q=[max(self.q_proj_option)], k=[max(self.k_proj_option)], v=[max(self.v_proj_option)], o=[max(self.o_proj_option)], down=[max(self.down_proj_option)], up=[max(self.up_proj_option)], gate=[max(self.gate_proj_option)], lp=[self.layer_prune_range[1], self.layer_prune_range[1]])[0])
         n_doe -= 1
-        data.extend(self.sample(n_samples=n_doe, pool=pool))
+        data.extend(self.sample(q=self.q_proj_option_nonzero, k=self.k_proj_option_nonzero, v=self.v_proj_option_nonzero, o=self.o_proj_option_nonzero, gate=self.gate_proj_option_nonzero, up=self.up_proj_option_nonzero, down=self.down_proj_option_nonzero, n_samples=n_doe, pool=pool))
         return data
 
     def encode(self, arch):
@@ -185,20 +194,30 @@ class LlamaSearchSpace:
 
         return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode, attn_encode, mlp_encode), axis=-1).flatten()
     
-    # def encode_predictor(self, arch):
+    def encode_predictor(self, arch):
         
-    #     attn_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['self_attn']]).reshape(-1, 1)
-    #     mlp_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['mlp']]).reshape(-1, 1)
+        attn_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['self_attn']]).reshape(-1, 1)
+        mlp_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['mlp']]).reshape(-1, 1)
         
-    #     q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']]).reshape(-1, 1) * attn_encode
-    #     k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']]).reshape(-1, 1) * attn_encode
-    #     v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']]).reshape(-1, 1) * attn_encode
-    #     o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']]).reshape(-1, 1) * attn_encode
-    #     gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']]).reshape(-1, 1) * mlp_encode
-    #     up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']]).reshape(-1, 1) * mlp_encode
-    #     down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']]).reshape(-1, 1) * mlp_encode
+        q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']]).reshape(-1, 1) * attn_encode
+        k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']]).reshape(-1, 1) * attn_encode
+        v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']]).reshape(-1, 1) * attn_encode
+        o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']]).reshape(-1, 1) * attn_encode
+        gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']]).reshape(-1, 1) * mlp_encode
+        up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']]).reshape(-1, 1) * mlp_encode
+        down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']]).reshape(-1, 1) * mlp_encode
 
-    #     return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
+        return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
+    
+    def decode_encode_predictor(self, x):
+        batch = x.shape[0]
+        x = x.reshape(batch, self.n_block, self.n_linear + self.n_layer)
+        x, x_layer = x[:, :, :self.n_linear], x[:, :, self.n_linear:]
+        # x[:, :, :4] *= np.exapdn_dims(x_layer[:, :, 0], -1)
+        # x[:, :, 4:] *= np.exapdn_dims(x_layer[:, :, 1], -1)
+        x[:, :, :4] *= x_layer[:, :, 0][..., None]
+        x[:, :, 4:] *= x_layer[:, :, 1][..., None]
+        return x.reshape(batch, -1)
 
     def decode(self, x):
         # decode integer bit-string [1, 0, 2, 1, ...] to arch ({'q': [0, 2, 4], 'k: , etc})

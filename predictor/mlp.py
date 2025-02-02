@@ -10,10 +10,11 @@ import gc
 
 class Net(nn.Module):
     # N-layer MLP
-    def __init__(self, n_feature, n_layers=2, n_hidden=300, n_output=1, drop=0.2):
+    def __init__(self, n_feature, n_layers=2, n_hidden=300, n_output=1, drop=0.2, n_select=2):
         super(Net, self).__init__()
 
-        # self.embedding = nn.Embedding(n_feature, n_hidden)
+        # self.embedding = nn.Parameter(torch.tensor(n_feature, n_select, n_hidden))
+        # self.stem = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.ReLU())
         self.stem = nn.Sequential(nn.Linear(n_feature, n_hidden), nn.ReLU())
 
         hidden_layers = []
