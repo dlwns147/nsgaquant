@@ -102,28 +102,28 @@ def linear_sensitivity(args):
     #     datasets=['wikitext2', 'c4']
     # )
 
-    ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl', loss_func=args.loss_func)
-    print(f'ppl :{ppl}, bits : {complexity["bits"]}')
+    # ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl', loss_func=args.loss_func)
+    # print(f'ppl :{ppl}, bits : {complexity["bits"]}')
 
-    model = evaluator.sample(arch)
-    del evaluator
-    gc.collect()
-    torch.cuda.empty_cache()
-    print(f'memory : {torch.cuda.memory_allocated()}')
+    # model = evaluator.sample(arch)
+    # del evaluator
+    # gc.collect()
+    # torch.cuda.empty_cache()
+    # print(f'memory : {torch.cuda.memory_allocated()}')
     
-    from transformers import AutoTokenizer
-    model_id = f'{args.model_path}/{args.model_name}'
-    tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
+    # from transformers import AutoTokenizer
+    # model_id = f'{args.model_path}/{args.model_name}'
+    # tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
 
-    results = eval_zeroshot(model, tokenizer,batch_size=64)
-    avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
-    print(f'avg_acc : {avg_acc}, results : {results}')
-    for task, task_result in results.items():
-        if 'acc_norm,none' in task_result:
-            print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
-        else:
-            print(f'{task} acc : {task_result["acc,none"]}')
-    exit()
+    # results = eval_zeroshot(model, tokenizer,batch_size=64)
+    # avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
+    # print(f'avg_acc : {avg_acc}, results : {results}')
+    # for task, task_result in results.items():
+    #     if 'acc_norm,none' in task_result:
+    #         print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
+    #     else:
+    #         print(f'{task} acc : {task_result["acc,none"]}')
+    # exit()
 
     
 
