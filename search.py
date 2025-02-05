@@ -126,6 +126,7 @@ class Search:
         self.max_value = kwargs.pop('max_value', 50)
         self.mut_prob = kwargs.pop('mut_prob', 0.05)
         self.crossover_prob = kwargs.pop('crossover_prob', 0.9)
+        self.save_iter = kwargs.pop('save_iter', 1)
         accelerator.wait_for_everyone()
         
     def search(self, accelerator):
@@ -213,32 +214,33 @@ class Search:
                 accelerator.print(f'iteration time : {iter_time:.2f}s')
 
                 # dump the statistics
-                os.makedirs(self.save_path, exist_ok=True)
-                with open(os.path.join(self.save_path, "iter_{}.stats".format(it)), "w") as handle:
-                    json.dump({'archive': archive, 'candidates': archive[-self.n_iter:], 'hv': hv,
-                            'surrogate': {
-                                'model': self.predictor, 'name': metric_predictor.name,
-                                'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
-                                'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
-                if self.debug:
-                    from pymoo.visualization.scatter import Scatter
-                    # plot
-                    plot = Scatter(legend={'loc': 'lower right'})
-                    F = np.full((len(archive), 2), np.nan)
-                    F[:, 0] = np.array([x[2] for x in archive])  # second obj. (complexity)
-                    F[:, 1] = np.array([x[1] for x in archive])  # performance
-                    plot.add(F, s=5, facecolors='none', edgecolors='b', label='archive')
-                    F = np.full((len(candidates), 2), np.nan)
-                    F[:, 0] = np.array(complexity)
-                    # F[:, 1] = 100 - np.array(c_metric)
-                    F[:, 1] = np.array(c_metric)
-                    plot.add(F, s=10, color='r', label='candidates evaluated')
-                    F = np.full((len(candidates), 2), np.nan)
-                    F[:, 0] = np.array(complexity)
-                    F[:, 1] = c_metric_pred[:, 0]
-                    plot.add(F, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
-                    plot.save(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
-            accelerator.wait_for_everyone()
+                if it % self.save_iter == 0:
+                    os.makedirs(self.save_path, exist_ok=True)
+                    with open(os.path.join(self.save_path, "iter_{}.stats".format(it)), "w") as handle:
+                        json.dump({'archive': archive, 'candidates': archive[-self.n_iter:], 'hv': hv,
+                                'surrogate': {
+                                    'model': self.predictor, 'name': metric_predictor.name,
+                                    'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
+                                    'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
+                    if self.debug:
+                        from pymoo.visualization.scatter import Scatter
+                        # plot
+                        plot = Scatter(legend={'loc': 'lower right'})
+                        F = np.full((len(archive), 2), np.nan)
+                        F[:, 0] = np.array([x[2] for x in archive])  # second obj. (complexity)
+                        F[:, 1] = np.array([x[1] for x in archive])  # performance
+                        plot.add(F, s=5, facecolors='none', edgecolors='b', label='archive')
+                        F = np.full((len(candidates), 2), np.nan)
+                        F[:, 0] = np.array(complexity)
+                        # F[:, 1] = 100 - np.array(c_metric)
+                        F[:, 1] = np.array(c_metric)
+                        plot.add(F, s=10, color='r', label='candidates evaluated')
+                        F = np.full((len(candidates), 2), np.nan)
+                        F[:, 0] = np.array(complexity)
+                        F[:, 1] = c_metric_pred[:, 0]
+                        plot.add(F, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
+                        plot.save(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
+                accelerator.wait_for_everyone()
 
         if accelerator.is_main_process:
             total_time_elapsed = time() - total_start
@@ -535,6 +537,8 @@ if __name__ == '__main__':
     parser.add_argument('--layer_sensitivity_file', type=str, default='',
                         help='')
     parser.add_argument('--pass_layer_ratio', type=float, default=0.2, 
+                        help='')
+    parser.add_argument('--save_iter', type=int, default=1, 
                         help='')
     
     cfgs = parser.parse_args()

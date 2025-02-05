@@ -111,6 +111,7 @@ class Search:
         self.max_value = kwargs.pop('max_value', 5)
         self.crossover_prob = kwargs.pop('crossover_prob', 0.9)
         self.mut_prob = kwargs.pop('mut_prob', 0.1)
+        self.save_iter = kwargs.pop('save_iter', 1)
         accelerator.wait_for_everyone()
         
     def search(self, accelerator):
@@ -206,33 +207,34 @@ class Search:
                 accelerator.print(f'iteration time : {iter_time:.2f}s')
 
                 # dump the statistics
-                os.makedirs(self.save_path, exist_ok=True)
-                with open(os.path.join(self.save_path, "iter_{}.stats".format(it)), "w") as handle:
-                    json.dump({'archive': archive, 'candidates': archive[-self.n_iter:], 'hv': hv_list,
-                            'surrogate': {
-                                'model': self.predictor, 'name': metric_predictor.name,
-                                'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
-                                'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
-                if self.debug:
-                    import matplotlib.pyplot as plt
-                    n_obj = len(self.comp_obj)
-                    fig, axes = plt.subplots(nrows=1, ncols=n_obj, figsize=(5 * n_obj, 5))
-                    for i in range(n_obj):
-                        comp = np.array([x[2+i] for x in archive])  # second obj. (complexity)
-                        perf = np.array([x[1] for x in archive])  # performance
-                        axes[i].scatter(comp, perf, s=5, facecolors='none', edgecolors='b', label='archive')
-                        comp = np.array(complexity)[:, i]
-                        perf = np.array(c_metric)
-                        axes[i].scatter(comp, perf, s=10, color='r', label='candidates evaluated')
-                        comp = np.array(complexity)[:, i]
-                        perf = c_metric_pred[:, 0]
-                        axes[i].scatter(comp, perf, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
-                        axes[i].legend(loc="upper right")
-                        axes[i].set_xlabel(f'f{2+i}')
-                        axes[i].grid(c='0.8') 
-                    axes[0].set_ylabel('f1')
-                    fig.tight_layout() 
-                    plt.savefig(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
+                if it % self.save_iter == 0:
+                    os.makedirs(self.save_path, exist_ok=True)
+                    with open(os.path.join(self.save_path, "iter_{}.stats".format(it)), "w") as handle:
+                        json.dump({'archive': archive, 'candidates': archive[-self.n_iter:], 'hv': hv_list,
+                                'surrogate': {
+                                    'model': self.predictor, 'name': metric_predictor.name,
+                                    'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
+                                    'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
+                    if self.debug:
+                        import matplotlib.pyplot as plt
+                        n_obj = len(self.comp_obj)
+                        fig, axes = plt.subplots(nrows=1, ncols=n_obj, figsize=(5 * n_obj, 5))
+                        for i in range(n_obj):
+                            comp = np.array([x[2+i] for x in archive])  # second obj. (complexity)
+                            perf = np.array([x[1] for x in archive])  # performance
+                            axes[i].scatter(comp, perf, s=5, facecolors='none', edgecolors='b', label='archive')
+                            comp = np.array(complexity)[:, i]
+                            perf = np.array(c_metric)
+                            axes[i].scatter(comp, perf, s=10, color='r', label='candidates evaluated')
+                            comp = np.array(complexity)[:, i]
+                            perf = c_metric_pred[:, 0]
+                            axes[i].scatter(comp, perf, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
+                            axes[i].legend(loc="upper right")
+                            axes[i].set_xlabel(f'f{2+i}')
+                            axes[i].grid(c='0.8') 
+                        axes[0].set_ylabel('f1')
+                        fig.tight_layout() 
+                        plt.savefig(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
             accelerator.wait_for_everyone()
 
         if accelerator.is_main_process:
@@ -532,6 +534,8 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--only_outlier_bits', action='store_true', help='')
     parser.add_argument('--latency_table_file', type=str, default='',
+                        help='')
+    parser.add_argument('--save_iter', type=int, default=1, 
                         help='')
     
     cfgs = parser.parse_args()
