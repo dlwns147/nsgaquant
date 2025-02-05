@@ -5,13 +5,17 @@ from transformers.models.opt.modeling_opt import OPTDecoderLayer
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer, LlamaRMSNorm
 from transformers.activations import GELUActivation
 
-from autoquant.autoquant.method.base import BASE
-from autoquant.autoquant.model.skip_llama import LlamaDecoderSkipLayer
+# import sys
+# sys.path.append('..')
+from .base import BASE, get_awq_calib_dataset
+from model.skip_llama import LlamaDecoderSkipLayer
+from utils.dispatch import simple_dispatch_model
 
 import gc
 import tqdm
 import math
 import functools
+from copy import deepcopy
 
 from collections import defaultdict
 
@@ -131,8 +135,8 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
 
 
 class AWQ(BASE):
-    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None, **kwargs):
-        super().__init__(model_name, config, dev, arch, do_prune, do_owq, owq)
+    def __init__(self, model_name, config, arch, device_map, dev='cuda', prune=False, do_owq=False, owq=None, **kwargs):
+        super().__init__(model_name, config, arch, device_map=device_map, dev=dev, prune=prune, do_owq=do_owq, owq=owq)
         self.method = 'awq'
 
         self.do_clip_asym = kwargs.get('do_clip_asym', True)
@@ -145,12 +149,16 @@ class AWQ(BASE):
     @torch.no_grad()
     def run(
         self,
-        samples = None,
+        samples=None,
+        n_samples=128,
+        seqlen=512,
     ):
         assert self.arch is not None, "arch is not provided"
 
         if samples is None:
-            samples = self.get_awq_calib_dataset()
+            # samples = self.get_awq_calib_dataset(n_samples=n_samples, block_size=seqlen)
+            samples = get_awq_calib_dataset(tokenizer=self.tokenizer, n_samples=n_samples, block_size=seqlen)
+            samples = torch.cat(samples, dim=0)
 
         layers = self.model.model.layers
 
@@ -188,7 +196,7 @@ class AWQ(BASE):
         self.model.model.rotary_emb = self.model.model.rotary_emb.to('cpu')
 
         gc.collect()
-        torch.cuda.empty_cache()        
+        torch.cuda.empty_cache()
 
         # solve layer by layer
         for i in tqdm.tqdm(range(len(layers)), desc="Running AWQ..."):
@@ -212,9 +220,7 @@ class AWQ(BASE):
                         functools.partial(cache_input_hook, name=name, feat_dict=input_feat)
                     )
                 )
-            if self.do_prune:
-                inps = inps.to(self.dev)
-            else:
+            if layer.parameters():
                 inps = inps.to(next(layer.parameters()).device)  # in case multi-gpu
             # get output as next layer's input
             inps = layer(inps, **layer_kwargs)[0]
@@ -225,13 +231,12 @@ class AWQ(BASE):
 
             # Clear GPU memory
             torch.cuda.empty_cache()
+            # import pdb; pdb.set_trace()
 
             scales_list = self.auto_scale_block_bit_adjust_per_linear_owq(
                 layer,
                 layer_kwargs,
                 input_feat=input_feat,
-
-                ## customizing
                 module_bit = {proj : self.arch['linear'][proj][i] for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']},
                 owq_layer = {proj : self.owq[f'model.layers.{i}.{proj}'] for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']} if self.do_owq else None,
             )
@@ -241,15 +246,15 @@ class AWQ(BASE):
             torch.cuda.empty_cache()
 
             if self.do_clip_asym:
-                max_clip_list, min_clip_list = self.auto_clip_block_asym(
+                # max_clip_list, min_clip_list = self.auto_clip_block_asym(
+                clip_list = self.auto_clip_block_asym(
                     layer,
                     input_feat=input_feat,
-
-                    ## customizing
                     module_bit = {proj : int(self.arch['linear'][proj][i]) for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']},
                     # owq_layer = {proj : owq[f'model.layers.{i}.{proj}'] for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']} if owq is not None else None,
                 )
-                self.apply_clip_asym(layer, max_clip_list, min_clip_list)
+                # self.apply_clip_asym(layer, max_clip_list, min_clip_list)
+                self.apply_clip_asym(layer, clip_list)
             else:
                 clip_list = self.auto_clip_block_sym(
                     layer,
@@ -270,7 +275,7 @@ class AWQ(BASE):
                     for linear in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']:
                         module, proj = linear.split('.')
                         key = f'model.layers.{i}.{linear}'
-                        original[key] = getattr(getattr(self.model.model.layers[i], module), proj).weight[:, self.owq[key]].clone()
+                        original[key] = deepcopy(getattr(getattr(self.model.model.layers[i], module), proj).weight[:, self.owq[key]])
 
                         getattr(getattr(self.model.model.layers[i], module), proj).weight[:, self.owq[key]] = 0
 
@@ -297,31 +302,31 @@ class AWQ(BASE):
                     )
                     # m.cpu()
                 
-            layer = layer.cpu()
+            # layer = layer.cpu()
             gc.collect()
             torch.cuda.empty_cache()
 
-        self.model = self.model.to(self.dev)
-            
+        # self.model = self.model.to(self.dev)
+        self.model = simple_dispatch_model(self.model, self.device_map)
 
     @torch.no_grad()
-    def auto_scale_block_bit_adjust_per_linear_owq(self, module, module_kwargs, input_feat, module_bit = None, owq_layer = None):
+    def auto_scale_block_bit_adjust_per_linear_owq(self, module, module_kwargs, input_feat, module_bit=None, owq_layer=None):
+
         def w_quantize_func(p, bit=None):
             assert not self.is_owq(bit), "bit should be integer"
             return pseudo_quantize_tensor(
                 p,
                 n_bit=bit,
-                q_group_size = 128,
+                q_group_size=128,
             ).detach()
 
         if "use_cache" in module_kwargs:
             module_kwargs.pop("use_cache")
 
-
-        @torch.no_grad()
-        def _search_module_scale_per_linear(block, linears2scale: dict, x, kwargs={}, module_bit=None, owq_layer = None):
+        def _search_module_scale_per_linear(block, linears2scale: dict, x, kwargs={}, module_bit=None, owq_layer=None):
             # w: co, ci
             # x: n, ci
+            # import pdb; pdb.set_trace()
             assert module_bit is not None
             assert isinstance(linears2scale, dict)
 
@@ -345,7 +350,7 @@ class AWQ(BASE):
                 for fc_name, fc in linears2scale.items():
                     if fc_name != 'self_attn.o_proj':
                         assert owq_layer is not None, "if fc is not self_attn.o_proj, owq_layer should be provided"
-                        original[fc_name] = fc.weight[:, owq_layer[fc_name]].clone()
+                        original[fc_name] = deepcopy(fc.weight[:, owq_layer[fc_name]])
 
             org_sd = {k: v.cpu() for k, v in block.state_dict().items()}
             for ratio in range(n_grid):
@@ -354,20 +359,15 @@ class AWQ(BASE):
                 scales = scales / (scales.max() * scales.min()).sqrt()
                 for fc_name, fc in linears2scale.items():
                     if self.do_owq and self.is_owq(module_bit[fc_name]):
-
                         if fc_name != 'self_attn.o_proj':
                             fc.weight[:, owq_layer[fc_name]] = 0
-
                         fc.weight.mul_(scales.view(1, -1).to(fc.weight.device))
-                        fc.weight.data = w_quantize_func(fc.weight.data, bit = int(module_bit[fc_name])) / (scales.view(1, -1))
-
+                        fc.weight.data = w_quantize_func(fc.weight.data, bit=int(module_bit[fc_name])) / (scales.view(1, -1))
                         if fc_name != 'self_attn.o_proj':
                             fc.weight[:, owq_layer[fc_name]] = original[fc_name]
-
                     else:
                         fc.weight.mul_(scales.view(1, -1).to(fc.weight.device))
-                        fc.weight.data = w_quantize_func(fc.weight.data, bit = int(module_bit[fc_name])) / (scales.view(1, -1))
-
+                        fc.weight.data = w_quantize_func(fc.weight.data, bit=int(module_bit[fc_name])) / (scales.view(1, -1))
 
                 out = block(x, **kwargs)
                 if isinstance(out, tuple):
@@ -390,22 +390,23 @@ class AWQ(BASE):
             best_scales = best_scales.view(-1)
 
             if self.do_owq:
-                for fc_name, fc in linears2scale.items():
-                    if fc_name != 'self_attn.o_proj':
-                        del original[fc_name]
+                # for fc_name, fc in linears2scale.items():
+                #     if fc_name != 'self_attn.o_proj':
+                #         del original[fc_name]
+                del original
+                torch.cuda.empty_cache()
 
             assert torch.isnan(best_scales).sum() == 0, best_scales
             return best_scales.detach()
 
 
-        def _auto_get_scale(prev_op, layers, inp, module2inspect=None, kwargs={}, module_bit=None, owq_layer = None):
+        def _auto_get_scale(prev_op, layers, inp, module2inspect=None, kwargs={}, module_bit=None, owq_layer=None):
             # module2inspect: if given, we will check the output diff of this module instead of layers
             if module2inspect is None:
                 assert len(layers) == 1
                 module2inspect = list(layers.values())[0]
 
-
-            scales = _search_module_scale_per_linear(module2inspect, layers, inp, kwargs, module_bit = module_bit, owq_layer = owq_layer)
+            scales = _search_module_scale_per_linear(module2inspect, layers, inp, kwargs, module_bit=module_bit, owq_layer=owq_layer)
             scales = scales.detach().cpu()
             # prev_op_name, [layer_name], scale
             return (
@@ -494,10 +495,10 @@ class AWQ(BASE):
             prev_op = self.get_op_by_name(module, prev_op_name)
             layers = [self.get_op_by_name(module, name) for name in layer_names]
 
-            prev_op.to(self.dev)
-            for layer in layers:
-                layer.to(self.dev)
-            scales.to(self.dev)
+            # prev_op.to(self.dev)
+            # for layer in layers:
+            #     layer.to(self.dev)
+            # scales.to(self.dev)
 
             if isinstance(prev_op, nn.Linear):
                 assert len(layers) == 1
@@ -517,10 +518,10 @@ class AWQ(BASE):
                     inp = input_feat_dict[layer_name]
                     inp.div_(scales.view(1, -1).to(inp.device))
 
-            prev_op.cpu()
-            for layer in layers:
-                layer.cpu()
-            scales.cpu()
+            # prev_op.cpu()
+            # for layer in layers:
+            #     layer.cpu()
+            # scales.cpu()
 
 
     @torch.no_grad()
@@ -528,8 +529,9 @@ class AWQ(BASE):
         named_linears = {
             name: m for name, m in module.named_modules() if isinstance(m, nn.Linear)
         }
-        max_clip_list = []
-        min_clip_list = []
+        # max_clip_list = []
+        # min_clip_list = []
+        clip_list = []
         for name in named_linears:
             # due to qk bmm, it is hard to clip precisely
             if any([_ in name for _ in ["q_", "k_", "query", "key", "Wqkv"]]):
@@ -543,10 +545,13 @@ class AWQ(BASE):
                 ## customizing
                 # owq_column = owq_layer[name] if owq_layer is not None and 'o_' not in name else None
             )
-            max_clip_list.append((name, max_val))
-            min_clip_list.append((name, min_val))
+            # max_clip_list.append((name, max_val))
+            # min_clip_list.append((name, min_val))
+            clip_list.append((name, max_val, min_val))
+            
             named_linears[name].cpu()
-        return max_clip_list, min_clip_list
+        # return max_clip_list, min_clip_list
+        return clip_list
 
 
     @torch.no_grad()
@@ -628,26 +633,39 @@ class AWQ(BASE):
 
 
     @torch.no_grad()
-    def apply_clip_asym(self, module, max_clip, min_clip):
-        for name, max_val in max_clip:
+    # def apply_clip_asym(self, module, max_clip, min_clip):
+    #     for name, max_val, min_val in max_clip:
+    def apply_clip_asym(self, module, clip_list):
+        for name, max_val, min_val in clip_list:
             layer = self.get_op_by_name(module, name)
             layer.to(self.dev)
             max_val = max_val.to(layer.weight.device)
+            min_val = min_val.to(layer.weight.device)
             org_shape = layer.weight.shape
-            layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)
-            layer.weight.data = torch.clamp(layer.weight.data, max = max_val)
+            layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)            
+            layer.weight.data = torch.clamp(layer.weight.data, min_val, max_val)
             layer.weight.data = layer.weight.data.reshape(org_shape)
             layer.cpu()
 
-        for name, min_val in min_clip:
-            layer = self.get_op_by_name(module, name)
-            layer.to(self.dev)
-            min_val = min_val.to(layer.weight.device)
-            org_shape = layer.weight.shape
-            layer.weight.data = layer.weight.data.reshape(*min_val.shape[:2], -1)
-            layer.weight.data = torch.clamp(layer.weight.data, min = min_val)
-            layer.weight.data = layer.weight.data.reshape(org_shape)
-            layer.cpu()
+        # for name, max_val in max_clip:
+        #     layer = self.get_op_by_name(module, name)
+        #     layer.to(self.dev)
+        #     max_val = max_val.to(layer.weight.device)
+        #     org_shape = layer.weight.shape
+        #     layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)
+        #     layer.weight.data = torch.clamp(layer.weight.data, max = max_val)
+        #     layer.weight.data = layer.weight.data.reshape(org_shape)
+        #     layer.cpu()
+
+        # for name, min_val in min_clip:
+        #     layer = self.get_op_by_name(module, name)
+        #     layer.to(self.dev)
+        #     min_val = min_val.to(layer.weight.device)
+        #     org_shape = layer.weight.shape
+        #     layer.weight.data = layer.weight.data.reshape(*min_val.shape[:2], -1)
+        #     layer.weight.data = torch.clamp(layer.weight.data, min = min_val)
+        #     layer.weight.data = layer.weight.data.reshape(org_shape)
+        #     layer.cpu()
 
 
     @torch.no_grad()

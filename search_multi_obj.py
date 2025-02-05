@@ -35,7 +35,8 @@ class Search:
         self.save_path = kwargs.pop('save', 'save')  # path to save results
         self.result_file = kwargs.pop('result_file', 'results.txt')  # path to save results
         self.resume = kwargs.pop('resume', None)  # resume search from a checkpoint
-        self.sec_obj = kwargs.pop('sec_obj', 'bits')  # second objective to optimize simultaneously
+        # self.sec_obj = kwargs.pop('sec_obj', 'bits')  # second objective to optimize simultaneously
+        self.comp_obj = kwargs.pop('comp_obj', ['bits'])  # second objective to optimize simultaneously
         self.iterations = kwargs.pop('iterations', 30)  # number of iterations to run search
         self.n_doe = kwargs.pop('n_doe', 100)  # number of architectures to train before fit surrogate model
         self.n_iter = kwargs.pop('n_iter', 8)  # number of architectures to train in each iteration
@@ -49,8 +50,10 @@ class Search:
         self.method = kwargs.pop('method', '')
         self.quant_model_paths = kwargs.pop('quant_model_paths', [])
         self.quant_model_bits = kwargs.pop('quant_model_bits', [])
-        self.sec_obj_range = kwargs.pop('sec_obj_range', [])
-        assert len(self.sec_obj_range) == 2, "len(sec_obj_range) should be 2"
+        self.comp_obj_min = kwargs.pop('comp_obj_min', [])
+        self.comp_obj_max = kwargs.pop('comp_obj_max', [])
+        # assert len(self.sec_obj_range) == 2, "len(sec_obj_range) should be 2"
+        assert len(self.comp_obj) == len(self.comp_obj_min) and len(self.comp_obj_min) == len(self.comp_obj_max)
         # self.layer_prune_range = kwargs.pop('layer_prune_range', [1, 1])
 
         model_path = kwargs.pop('model_path', 'meta-llama')
@@ -129,6 +132,7 @@ class Search:
         accelerator.wait_for_everyone()
         
     def search(self, accelerator):
+        total_start = time()
         total_time_elapsed = 0
         start_it = 1
         

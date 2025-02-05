@@ -43,6 +43,7 @@ class LlamaEvaluator:
         
         # model_id = os.path.join(model_path, model_name)
         self.method = method
+        self.model = None
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
 
         with accelerator.main_process_first():
@@ -73,11 +74,15 @@ class LlamaEvaluator:
 
         self.quant_models = list()
         if 'hqq' in method:
-            with accelerator.main_process_first():
-                self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map, inference)
-                self.remove_linears(self.model, config)
-                self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
+            if quant_model_paths and quant_model_bits:
+                with accelerator.main_process_first():
+                    self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map, inference)
+                    self.remove_linears(self.model, config)
+                    self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
+
+        elif 'awq' in method or 'gptq' in method:
+            pass
 
         else:
             # self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
@@ -90,9 +95,11 @@ class LlamaEvaluator:
         self.config = config
         self.latency_table = latency_table
         self.seqlen = seqlen
+        
+        if self.model is not None:
+            self.model.eval()
+            self.model.use_cache = False
             
-        self.model.eval()
-        self.model.use_cache = False
         for q_model in self.quant_models:
             if q_model is not None:
                 q_model.eval()
@@ -159,7 +166,7 @@ class LlamaEvaluator:
     #         _, linear = linear.split('.')
     #         assert all([b in [0, self.small_model_bits, self.large_model_bits] for b in linear_bits]), f'{linear}: {linear_bits} are not compatible with the evaluator.'
 
-    def eval(self, accelerator, arch, metric, loss_func='cross_entropy'):
+    def eval(self, accelerator, arch, metric, model=None, loss_func='cross_entropy'):
         # if metric == 'latency':
         #     measure_latency(model=self.sample(arch))
         if metric == 'ppl':
@@ -170,7 +177,7 @@ class LlamaEvaluator:
             raise NotImplementedError(f"metric should be 'ppl' or 'loss', not {metric}")
         metric_list = dict()
         for dataset, loader in loaders.items():
-            metric_list[dataset] = eval_metric(model=self.sample(arch), accelerator=accelerator, metric=metric, loader=loader, seqlen=self.seqlen, loss_func=loss_func, dense_logits_list=self.dense_logits[dataset])
+            metric_list[dataset] = eval_metric(model=self.sample(arch) if model is None else model, accelerator=accelerator, metric=metric, loader=loader, seqlen=self.seqlen, loss_func=loss_func, dense_logits_list=self.dense_logits[dataset])
         complexity = get_net_info(arch, self.config, self.latency_table)
         torch.cuda.empty_cache()
         return metric_list, complexity

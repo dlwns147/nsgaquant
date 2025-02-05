@@ -3,6 +3,7 @@
 """
 
 import os
+import gc
 import json
 import argparse
 import torch
@@ -38,6 +39,13 @@ def main(args, arch):
         datasets=args.eval_datasets,
     )
 
+    # del evaluator.model
+    # torch.cuda.empty_cache()
+    # gc.collect()
+
+    model = evaluator.model
+
+
     ## customizing
     from autoquant.autoquant.algorithm import get_quantized_model
     tokenizer = get_tokenizer(model_id)
@@ -49,9 +57,12 @@ def main(args, arch):
     result = {}
 
     print("Get quantized model")
-    method = get_quantized_model(args.method, arch, model_id, 'cuda:0', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None)
-    model = method.model
-    model = model.to('cuda:0')
+    """
+    실험 끝나면 do clip asym True로 바꿀 것 !!!!!!!
+    """
+    # method = get_quantized_model(args.method, arch, model_id, 'cuda:0', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None)
+    # model = method.model
+    # model = model.to('cuda:0')
 
     print("Evaluate")
     metric, complexity = evaluator.eval_woo(arch=arch, model = model, metric='ppl', accelerator=accelerator)

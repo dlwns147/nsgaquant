@@ -17,6 +17,8 @@ from matplotlib import pyplot as plt
 from utils.func import init_accelerator, get_net_info
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
+from quant.model import get_quantized_model
+import gc
 
 class HighTradeoffPoints(DecisionMaking):
 
@@ -177,6 +179,15 @@ def main(args):
             latency_table = json.load(f)
 
     model_id = f'{args.model_path}/{args.model_name}'
+
+    use_awq_or_gptq = 'awq' in args.method or 'gptq' in args.method
+    method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else None
+    
+
+    if not use_awq_or_gptq:
+        args.quant_model_bits = []
+        args.quant_model_paths = []
+
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
@@ -193,21 +204,27 @@ def main(args):
     )
 
     # ppl_list = {dataset: [] for dataset in args.datasets}
-    arch_list = []
-    ppl_list = []
+    # arch_list = []
+    # ppl_list = []
     # bits_list = []
-    param_list = []
-    sparsity_list = []
-    metric_list = []
-    latency_list = []
-    complexity_list = []
+    # param_list = []
+    # sparsity_list = []
+    # metric_list = []
+    # latency_list = []
+    # complexity_list = []
     for idx in tqdm(I):
 
         arch = ps[idx]
-
-        metric, complexity = evaluator.eval(arch=arch, metric='ppl', accelerator=accelerator)
-        model = evaluator.sample(arch)
-        latency = measure_latency(evaluator.sample(arch), generation=True, device=model.device) if args.latency else 0
+        arch = dict()
+        arch['linear'] = {linear: [4] * config['n_block'] for linear in config['linear']}
+        accelerator.print(arch)
+        
+        if use_awq_or_gptq:
+            model = get_quantized_model(method, arch, model_id, device_map, prune='layer_prune' in args.method)
+        else:
+            model = evaluator.sample(arch)
+        metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
+        latency = measure_latency(model, generation=True, device=model.device) if args.latency else 0
         # arch_list.append(arch)
         # metric_list.append(pf[idx, 0])
         # ppl_list.append({d: metric[d] for d in args.datasets})
@@ -219,19 +236,30 @@ def main(args):
         print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}\n')
         
         if args.zeroshot:
-            import gc
             torch.cuda.empty_cache()
             gc.collect()
             
-            results = eval_zeroshot(evaluator.sample(arch), tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size)
-            avg_acc_norm = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
-            avg_acc = np.mean([task_result['acc,none'] for task_result in results.values()])
-            print(f'avg_acc_norm : {avg_acc_norm}, avg_acc : {avg_acc}, results : {results}')
-            for task, task_result in results.items():
-                if 'acc_norm,none' in task_result:
-                    print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
-                else:
-                    print(f'{task} acc : {task_result["acc,none"]}')
+            results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size)
+            acc_norm = [task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()]
+            acc = [task_result['acc,none'] for task_result in results.values()]
+            
+            task = list(results.keys())
+            avg_acc_norm = np.mean(acc_norm)
+            avg_acc = np.mean(acc)
+            print(f'avg_acc_norm : {avg_acc_norm}, avg_acc : {avg_acc}')
+            print(f'task : {task}')
+            print(f'avg_acc_norm : {acc_norm}')
+            print(f'acc : {acc}')
+            # print(F'results: {results}')
+            # for task, task_result in results.items():
+            #     if 'acc_norm,none' in task_result:
+            #         print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
+            #     else:
+            #         print(f'{task} acc : {task_result["acc,none"]}')
+        if use_awq_or_gptq:
+            del model
+            torch.cuda.empty_cache()
+            gc.collect()
 
     print(args)
     exit()
