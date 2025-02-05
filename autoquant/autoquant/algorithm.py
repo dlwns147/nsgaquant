@@ -43,8 +43,8 @@ def get_args():
     return parser.parse_args()
 
 
-def get_quantized_model(method, arch, model_name, dev, do_prune = False, do_owq = False, owq_path = None):
-    method = args2method[method](model_name = model_name, config = None, dev = dev, arch = arch, do_prune = do_prune, do_owq = do_owq, owq = owq_path)
+def get_quantized_model(method, arch, model_name, dev, do_prune = False, do_owq = False, owq_path = None, **kwargs):
+    method = args2method[method](model_name = model_name, config = None, dev = dev, arch = arch, do_prune = do_prune, do_owq = do_owq, owq = owq_path, **kwargs)
 
     if do_prune:
         print('Pruning the model')

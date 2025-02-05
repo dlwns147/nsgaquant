@@ -431,6 +431,7 @@ class SubsetProblem(Problem):
             #     f[i, j] = np.std(np.diff(tmp))
             tmp = np.sort(np.concatenate((self.archive, self.candidates[_x])), axis=0)
             f[i, 0] = np.std(np.diff(tmp, axis=0))
+            # f[i, 0] = np.std(np.diff(tmp, axis=0), axis=0).sum()
             # we penalize if the number of selected candidates is not exactly K
             g[i, 0] = (self.n_max - np.sum(_x)) ** 2
 
