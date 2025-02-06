@@ -3,8 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 # METHOD="hqq layer_prune"
@@ -21,8 +21,8 @@ GROUP_SIZE=128
 QSCALE=false
 QZERO=false
 
-PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
-# PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
+# PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
+PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
 
@@ -47,8 +47,7 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 # LOSS_FUNC=cross_entropy
 LOSS_FUNC=jsd
 
-# PREDICTOR=mlp
-PREDICTOR=rbf
+PREDICTOR=mlp
 
 DATASET=wikitext2
 # DATASET=c4
@@ -75,11 +74,11 @@ SEC_OBJ_RANGE_LARGE=4.1
 # # LAYER_PRUNE_RANGE_SMALL=1.0
 # LAYER_PRUNE_RANGE_LARGE=1.0
 
-N_DOE=250
-ITER=300
+# N_DOE=250
+# ITER=300
 
-# N_DOE=300
-# ITER=400
+N_DOE=300
+ITER=400
 
 N_ITER=50
 GA_POP_SIZE=200

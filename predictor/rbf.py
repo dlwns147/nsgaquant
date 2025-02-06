@@ -4,11 +4,13 @@ from pySOT.surrogate import RBFInterpolant, CubicKernel, TPSKernel, LinearTail, 
 class RBF:
     """ Radial Basis Function """
 
-    def __init__(self, kernel='cubic', tail='linear'):
+    def __init__(self, kernel='cubic', tail='linear', lb=None, ub=None):
         self.kernel = kernel
         self.tail = tail
         self.name = 'rbf'
         self.model = None
+        self.lb = lb
+        self.ub = ub
 
     def fit(self, train_data, train_label):
         if self.kernel == 'cubic':
@@ -26,7 +28,7 @@ class RBF:
             raise NotImplementedError("unknown RBF tail")
 
         self.model = RBFInterpolant(
-            dim=train_data.shape[1], kernel=kernel(), tail=tail(train_data.shape[1]))
+            dim=train_data.shape[1], kernel=kernel(), tail=tail(train_data.shape[1]), lb=self.lb, ub=self.ub)
 
         for i in range(len(train_data)):
             self.model.add_points(train_data[i, :], train_label[i])

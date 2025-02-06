@@ -104,7 +104,7 @@ class Search:
             device_map=device_map,
             latency_table=self.latency_table
         )
-        # search_space = LlamaLinearGroupSearchSpace if kwargs.pop('use_linear_group', False) else LlamaSearchSpace
+        
         self.search_space = LlamaQuantSearchSpace(
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
@@ -285,7 +285,30 @@ class Search:
         targets = np.array([x[1] for x in archive])
         # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
 
-        metric_predictor = get_predictor(self.predictor, inputs, targets, device=device)
+        n_block = self.config['n_block']
+        n_linear = self.config['n_linear']
+        lb = np.zeros((n_block, n_linear))
+        ub = np.ones((n_block, n_linear))
+        
+        for linear_idx, linear in enumerate(self.config['linear']):
+            ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+
+        for pass_linear in self.search_space.pass_linear_list:
+            blk, linear = pass_linear.split('.', 1)
+            blk = int(blk)
+
+            linear_idx = 0.
+            for i, group in enumerate(self.search_space.linear_group):
+                if linear in group:
+                    linear_idx = i
+                    break
+            # linear_idx = search_space.linear_group.index(linear)
+            lb[blk, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+
+        lb = lb.flatten()
+        ub = ub.flatten()
+
+        metric_predictor = get_predictor(self.predictor, inputs, targets, device=device, lb=lb, ub=ub)
 
         return metric_predictor, metric_predictor.predict(inputs)
     

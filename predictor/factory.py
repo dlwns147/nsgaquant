@@ -1,8 +1,8 @@
-def get_predictor(model, inputs, targets, device='cpu'):
+def get_predictor(model, inputs, targets, device='cpu', **kwargs):
 
     if model == 'rbf':
         from predictor.rbf import RBF
-        predictor = RBF()
+        predictor = RBF(**kwargs)
         predictor.fit(inputs, targets)
 
     elif model == 'carts':
