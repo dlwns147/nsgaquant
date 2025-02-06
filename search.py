@@ -307,6 +307,8 @@ class Search:
 
         lb = lb.flatten()
         ub = ub.flatten()
+        print(f'lb : {lb}')
+        print(f'ub : {ub}')
 
         metric_predictor = get_predictor(self.predictor, inputs, targets, device=device, lb=lb, ub=ub)
 
