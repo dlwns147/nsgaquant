@@ -162,6 +162,7 @@ def get_hfmodel(model_name_or_path: str,
                 device_map='auto',
                 dtype='auto',
                 trust_remote_code=False,
+                use_cache=False,
                 **kwargs
                 ):
 
@@ -191,6 +192,7 @@ def get_hfmodel(model_name_or_path: str,
         device_map=device_map, 
         trust_remote_code=trust_remote_code,
         low_cpu_mem_usage=True,
+        use_cache=use_cache,
         **kwargs
     )
     

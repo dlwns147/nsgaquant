@@ -60,6 +60,7 @@ DATASETS="wikitext2 c4"
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
 
 N_PROC=1
+# N_PROC=2
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} post_search.py \
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \

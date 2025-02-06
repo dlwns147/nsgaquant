@@ -302,7 +302,7 @@ class AWQ(BASE):
                     )
                     # m.cpu()
                 
-            # layer = layer.cpu()
+            layer = layer.cpu()
             gc.collect()
             torch.cuda.empty_cache()
 
@@ -638,14 +638,14 @@ class AWQ(BASE):
     def apply_clip_asym(self, module, clip_list):
         for name, max_val, min_val in clip_list:
             layer = self.get_op_by_name(module, name)
-            layer.to(self.dev)
+            # layer.to(self.dev)
             max_val = max_val.to(layer.weight.device)
             min_val = min_val.to(layer.weight.device)
             org_shape = layer.weight.shape
             layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)            
             layer.weight.data = torch.clamp(layer.weight.data, min_val, max_val)
             layer.weight.data = layer.weight.data.reshape(org_shape)
-            layer.cpu()
+            # layer.cpu()
 
         # for name, max_val in max_clip:
         #     layer = self.get_op_by_name(module, name)
@@ -678,7 +678,7 @@ class AWQ(BASE):
             # due to qk bmm, it is hard to clip precisely
             if any([_ in name for _ in ["q_", "k_", "query", "key", "Wqkv"]]):
                 continue
-            named_linears[name].cuda()
+            # named_linears[name].cuda()
             q_config = {}
 
             q_config['q_group_size'] = 128
@@ -686,7 +686,7 @@ class AWQ(BASE):
                 named_linears[name].weight, input_feat[name], n_bit=module_bit[name], q_config=q_config
             )
             clip_list.append((name, max_val))
-            named_linears[name].cpu()
+            # named_linears[name].cpu()
         return clip_list
 
 
@@ -750,10 +750,10 @@ class AWQ(BASE):
     def apply_clip_sym(self, module, clip_list):
         for name, max_val in clip_list:
             layer = self.get_op_by_name(module, name)
-            layer.cuda()
+            # layer.cuda()
             max_val = max_val.to(layer.weight.device)
             org_shape = layer.weight.shape
             layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)
             layer.weight.data = torch.clamp(layer.weight.data, -max_val, max_val)
             layer.weight.data = layer.weight.data.reshape(org_shape)
-            layer.cpu()
+            # layer.cpu()

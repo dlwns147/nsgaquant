@@ -89,7 +89,7 @@ class BASE:
         # self.model = LlamaForCausalLM.from_pretrained(model_name, config = self.config, trust_remote_code = True, torch_dtype = torch.float16)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, 
                                                         torch_dtype='auto',
-                                                        device_map='auto',
+                                                        # device_map='auto',
                                                         low_cpu_mem_usage=True,
                                                         # trust_remote_code=True, 
                                                         config=model_config

@@ -375,6 +375,7 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--latency', action='store_true', help='')
     parser.add_argument('--zeroshot', action='store_true', help='')
+    parser.add_argument('--tasks', type=str, nargs='+', default=['piqa','winogrande','hellaswag','arc_challenge','arc_easy', 'lambada', 'boolq'])
     parser.add_argument('--zeroshot_csv_file', type=str, default=None,
                         help='')
     parser.add_argument('--zeroshot_batch_size', type=int, default=64,
