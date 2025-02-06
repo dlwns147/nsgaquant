@@ -150,6 +150,19 @@ def main(args):
         # choose the architectures thats closest to the preferences
         I = ASF().do(pf, weights).argsort()[:args.n].reshape(args.n)
 
+        # import matplotlib.pyplot as plt
+        # plt.scatter(pf[:, 1], pf[:, 0], c='b', s=5, alpha=0.8, facecolor=None, label='candidates')
+        # plt.scatter(pf[I, 1], pf[I, 0], c='r', s=5, label='selected points')
+        # plt.ylim([None, 0.1])
+        # # plt.scatter(temp_norm[:, 1], temp_norm[:, 0], c='b', s=5, alpha=0.8, facecolor=None, label='candidates')
+        # # plt.scatter(temp_norm[I, 1], temp_norm[I, 0], c='r', s=5, label='selected points')
+        # plt.xlabel('latency')
+        # plt.ylabel('metric')
+        # plt.grid()
+        # plt.legend()
+        # plt.savefig('fig/quant/test.png')
+        # exit()
+
     else:
         I = range(len(pf))
 
@@ -375,7 +388,7 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--latency', action='store_true', help='')
     parser.add_argument('--zeroshot', action='store_true', help='')
-    parser.add_argument('--tasks', type=str, nargs='+', default=['piqa','winogrande','hellaswag','arc_challenge','arc_easy', 'lambada', 'boolq'])
+    parser.add_argument('--tasks', type=str, nargs='+', default=['piqa','winogrande','hellaswag','arc_challenge','arc_easy', 'lambada_openai', 'boolq'])
     parser.add_argument('--zeroshot_csv_file', type=str, default=None,
                         help='')
     parser.add_argument('--zeroshot_batch_size', type=int, default=64,

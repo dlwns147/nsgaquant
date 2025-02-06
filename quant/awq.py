@@ -220,7 +220,7 @@ class AWQ(BASE):
                         functools.partial(cache_input_hook, name=name, feat_dict=input_feat)
                     )
                 )
-            if layer.parameters():
+            if sum(1 for _ in layer.parameters()):
                 inps = inps.to(next(layer.parameters()).device)  # in case multi-gpu
             # get output as next layer's input
             inps = layer(inps, **layer_kwargs)[0]
@@ -326,7 +326,6 @@ class AWQ(BASE):
         def _search_module_scale_per_linear(block, linears2scale: dict, x, kwargs={}, module_bit=None, owq_layer=None):
             # w: co, ci
             # x: n, ci
-            # import pdb; pdb.set_trace()
             assert module_bit is not None
             assert isinstance(linears2scale, dict)
 

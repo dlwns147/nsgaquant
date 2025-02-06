@@ -384,21 +384,6 @@ class LlamaQuantSearchSpace:
 
         return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
     
-    # def encode_predictor(self, arch):
-        
-    #     attn_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['self_attn']]).reshape(-1, 1)
-    #     mlp_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['mlp']]).reshape(-1, 1)
-        
-    #     q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']]).reshape(-1, 1) * attn_encode
-    #     k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']]).reshape(-1, 1) * attn_encode
-    #     v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']]).reshape(-1, 1) * attn_encode
-    #     o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']]).reshape(-1, 1) * attn_encode
-    #     gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']]).reshape(-1, 1) * mlp_encode
-    #     up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']]).reshape(-1, 1) * mlp_encode
-    #     down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']]).reshape(-1, 1) * mlp_encode
-
-    #     return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
-
     def decode(self, x):
         # decode integer bit-string [1, 0, 2, 1, ...] to arch ({'q': [0, 2, 4], 'k: , etc})
         x_reshape = x.reshape(self.n_block, self.n_linear)

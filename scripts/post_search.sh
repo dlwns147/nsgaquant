@@ -16,8 +16,11 @@ Q_BITS_TEXT="234"
 # METHOD=hqq
 # METHOD_TEXT=hqq
 
-METHOD=awq
-METHOD_TEXT=awq
+# METHOD=awq
+# METHOD_TEXT=awq
+
+METHOD="awq layer_prune"
+METHOD_TEXT=awq_layer_prune
 
 GROUP_SIZE=128
 AXIS=1
@@ -38,7 +41,10 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 
 COMP_OBJ=bits
 COMP_OBJ_TEXT=bits
-TARGET_COMP_OBJ_VAL=3.0
+# TARGET_COMP_OBJ_VAL=3.0
+TARGET_COMP_OBJ_VAL=2.0
+
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
 
 TARGET_COMP_OBJ=bits
 COMP_OBJ_THRESHOLD=0.005
@@ -49,12 +55,13 @@ MAX_COMP_OBJ=$(echo "scale=3; $TARGET_COMP_OBJ_VAL + $COMP_OBJ_THRESHOLD" | bc)
 
 EXPR_FOLDER=save/search/quant
 
+EXPR_FILE=2502012035_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_300.stats
 # EXPR_FILE=2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
-EXPR_FILE=2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats
+# EXPR_FILE=2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats
 # EXPR_FILE=2501231756_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_300.stats
 # EXPR_FILE=2411211754_Llama-2-7b-hf_bits_loss_hqq_iter_300_nsga2_234_obj_2_4_jsd_mut_0.05_layer_prune_1.0_1.0/iter_299.stats
 
-SAVE=save/result/${TODAY}_${MODEL_NAME}_${METHOD_TEXT}_${MIN_BITS}_${MAX_BITS}
+SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${MIN_COMP_OBJ}_${MAX_COMP_OBJ}
 N=1
 DATASETS="wikitext2 c4"
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
@@ -78,7 +85,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --prefer ${PREFER} \
 --datasets ${DATASETS} \
 --method ${METHOD} \
---zeroshot
+--zeroshot \
+--tasks ${TASKS}
 # --latency_table_file ${LATENCY_TABLE}
 # --outlier_path ${OUTLIER_PATH} \
 # --only_front \

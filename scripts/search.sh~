@@ -47,8 +47,7 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 # LOSS_FUNC=cross_entropy
 LOSS_FUNC=jsd
 
-# PREDICTOR=mlp
-PREDICTOR=rbf
+PREDICTOR=mlp
 
 DATASET=wikitext2
 # DATASET=c4
