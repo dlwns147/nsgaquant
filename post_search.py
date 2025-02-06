@@ -215,8 +215,8 @@ def main(args):
     for idx in tqdm(I):
 
         arch = ps[idx]
-        arch = dict()
-        arch['linear'] = {linear: [4] * config['n_block'] for linear in config['linear']}
+        # arch = dict()
+        # arch['linear'] = {linear: [4] * config['n_block'] for linear in config['linear']}
         accelerator.print(arch)
         
         if use_awq_or_gptq:
@@ -248,7 +248,7 @@ def main(args):
             avg_acc = np.mean(acc)
             print(f'avg_acc_norm : {avg_acc_norm}, avg_acc : {avg_acc}')
             print(f'task : {task}')
-            print(f'avg_acc_norm : {acc_norm}')
+            print(f'acc_norm : {acc_norm}')
             print(f'acc : {acc}')
             # print(F'results: {results}')
             # for task, task_result in results.items():
