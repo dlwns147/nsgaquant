@@ -39,10 +39,13 @@ COMP_OBJ_TEXT=bits
 
 EXPR_FOLDER=save/search/quant
 
-# EXPR_FILE=2502012042_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.95_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_400.stats
+# EXPR_FILE=2502061619_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_400.stats
+EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_300.stats
+
+# EXPR_FILE=2502012042_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.95_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0
 # EXPR_FILE=2502012041_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_400.stats
 # EXPR_FILE=2502012043_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.95_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_300.stats
-EXPR_FILE=2502012035_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_300.stats
+# EXPR_FILE=2502012035_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_300.stats
 
 # EXPR_FILE=2501311854_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.9_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_lp_0.7_1.0/iter_400.stats
 # EXPR_FILE=2501311855_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.9_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.7_1.0/iter_300.stats
@@ -80,8 +83,8 @@ DATASETS="wikitext2 c4"
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
 
 TARGET_COMP_OBJ=bits
-TARGET_COMP_OBJ_VAL_LIST=(2.0 2.25 2.5 2.75 3.0 3.25 3.5 3.75)
-# TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75)
+# TARGET_COMP_OBJ_VAL_LIST=(2.0 2.25 2.5 2.75 3.0 3.25 3.5 3.75)
+TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75)
 # TARGET_COMP_OBJ_VAL_LIST=(2.0)
 COMP_OBJ_THRESHOLD=0.005
 

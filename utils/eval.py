@@ -9,6 +9,7 @@ import torch.nn as nn
 from .data import *
 from .loss import JSD
 
+
 # Function to evaluate perplexity (ppl) on a specified model and tokenizer
 @torch.no_grad()
 def load_and_eval_ppl(model, model_name='', device=torch.device("cuda:0"), dataset='wikitext2', seqlen=2048, testloader=None, tokenizer=None):
@@ -310,6 +311,8 @@ def eval_zeroshot(model, tokenizer, task_list=['piqa','winogrande','hellaswag','
     import os
     from lm_eval.models.huggingface import HFLM
     from lm_eval import tasks, evaluator, utils
+    import datasets
+    datasets.config.HF_DATASETS_TRUST_REMOTE_CODE = True
 
     # task_manager = tasks.TaskManager()
     # task_manager = tasks.TaskManager(include_path='')
