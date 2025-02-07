@@ -198,6 +198,7 @@ def get_hfmodel(model_name_or_path: str,
     
     if ft:
         convert_model_to_ft(model)
+        model = model.to(torch.half).to(device) # half
         replace_generate_functions()
 
     torch.nn.init.kaiming_uniform_ = org_kaiming_uniform

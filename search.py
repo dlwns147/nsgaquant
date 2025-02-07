@@ -285,33 +285,34 @@ class Search:
         targets = np.array([x[1] for x in archive])
         # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
 
-        n_block = self.config['n_block']
-        n_linear = self.config['n_linear']
-        lb = np.zeros((n_block, n_linear))
-        ub = np.ones((n_block, n_linear))
+        # n_block = self.config['n_block']
+        # n_linear = self.config['n_linear']
+        # lb = np.zeros((n_block, n_linear))
+        # ub = np.ones((n_block, n_linear))
         
-        for linear_idx, linear in enumerate(self.config['linear']):
-            ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+        # for linear_idx, linear in enumerate(self.config['linear']):
+        #     ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
 
-        for pass_linear in self.search_space.pass_linear_list:
-            blk, linear = pass_linear.split('.', 1)
-            blk = int(blk)
+        # for pass_linear in self.search_space.pass_linear_list:
+        #     blk, linear = pass_linear.split('.', 1)
+        #     blk = int(blk)
 
-            linear_idx = 0.
-            for i, group in enumerate(self.search_space.linear_group):
-                if linear in group:
-                    linear_idx = i
-                    break
-            # linear_idx = search_space.linear_group.index(linear)
-            lb[blk, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+        #     linear_idx = 0.
+        #     for i, group in enumerate(self.search_space.linear_group):
+        #         if linear in group:
+        #             linear_idx = i
+        #             break
+        #     # linear_idx = search_space.linear_group.index(linear)
+        #     lb[blk, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
 
-        lb = lb.flatten()
-        ub = ub.flatten()
-        print(f'lb : {lb}')
-        print(f'ub : {ub}')
-        import pdb; pdb.set_trace()
+        # lb = lb.flatten()
+        # ub = ub.flatten()
+        # print(f'lb : {lb}')
+        # print(f'ub : {ub}')
+        # import pdb; pdb.set_trace()
 
-        metric_predictor = get_predictor(self.predictor, inputs, targets, device=device, lb=lb, ub=ub)
+        # metric_predictor = get_predictor(self.predictor, inputs, targets, device=device, lb=lb, ub=ub)
+        metric_predictor = get_predictor(self.predictor, inputs, targets, device=device)
 
         return metric_predictor, metric_predictor.predict(inputs)
     
