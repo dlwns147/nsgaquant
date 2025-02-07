@@ -104,7 +104,7 @@ class Search:
             device_map=device_map,
             latency_table=self.latency_table
         )
-        
+
         self.search_space = LlamaQuantSearchSpace(
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
@@ -309,6 +309,7 @@ class Search:
         ub = ub.flatten()
         print(f'lb : {lb}')
         print(f'ub : {ub}')
+        import pdb; pdb.set_trace()
 
         metric_predictor = get_predictor(self.predictor, inputs, targets, device=device, lb=lb, ub=ub)
 
