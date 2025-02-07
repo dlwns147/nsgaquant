@@ -3,17 +3,17 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
-METHOD="hqq layer_prune"
-METHOD_TEXT="hqq_layer_prune"
-# METHOD=hqq
-# METHOD_TEXT=hqq
+# METHOD="hqq layer_prune"
+# METHOD_TEXT="hqq_layer_prune"
+METHOD=hqq
+METHOD_TEXT=hqq
 
 GROUP_SIZE=128
 AXIS=1
@@ -37,10 +37,12 @@ COMP_OBJ_TEXT=bits
 # COMP_OBJ="bits latency"
 # COMP_OBJ_TEXT=bits_latency
 
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
+
 EXPR_FOLDER=save/search/quant
 
-# EXPR_FILE=2502061619_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_400.stats
-EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_300.stats
+EXPR_FILE=2502061619_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_400.stats
+# EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_300.stats
 
 # EXPR_FILE=2502012042_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.95_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0
 # EXPR_FILE=2502012041_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_400.stats
@@ -118,7 +120,8 @@ do
     --method ${METHOD} \
     --outlier_path ${OUTLIER_PATH} \
     --prefer ${PREFER} \
-    --zeroshot
+    --zeroshot \
+    --tasks ${TASKS}
 
     # --high_tradeoff
     # --outlier_path ${OUTLIER_PATH} \
