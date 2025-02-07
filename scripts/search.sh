@@ -89,6 +89,8 @@ MAX_VALUE=12
 MUT_PROB=0.1
 CROSSOVER_PROB=0.9
 
+SAVE_ITER=20
+
 # LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit_iter10000.json
 # LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_13b_lpe_24bit_iter10000.json
 
@@ -126,6 +128,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --loss_func ${LOSS_FUNC} \
 --n_sample ${N_SAMPLE} \
 --dataset ${DATASET} \
+--save_iter ${SAVE_ITER} \
 --base_outlier_bits ${OUTLIER_BITS} \
 --outlier_path ${OUTLIER_PATH} \
 --n_outlier ${N_OUTLIER} \

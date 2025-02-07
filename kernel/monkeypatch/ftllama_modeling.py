@@ -54,12 +54,16 @@ def replace_attn_ft(self):
             if hasattr(self.q_proj, 'weight'):
                 dtype = self.q_proj.weight.dtype
                 device = self.q_proj.weight.device
-            elif hasattr(self.q_proj, 'scales'):
-                dtype = self.q_proj.scales.dtype
-                device = self.q_proj.scales.device
-            else:
-                raise ValueError
-            assert dtype == torch.half, "dtype have to be torch.half to use attention kernel of FasterTransformer"
+                assert dtype == torch.half, "dtype have to be torch.half to use attention kernel of FasterTransformer"
+            # # elif hasattr(self.q_proj, 'scales'):
+            # #     dtype = self.q_proj.scales.dtype
+            # #     device = self.q_proj.scales.device
+            # else:
+            #     raise ValueError
+            # assert dtype == torch.half, "dtype have to be torch.half to use attention kernel of FasterTransformer"
+            dtype = torch.half
+            device = next(self.parameters()).device
+            
             self.register_buffer("value_cache",
                 torch.zeros((1, self.num_key_value_heads, self.max_position_embeddings, self.head_dim), dtype=dtype, device=device),
                 persistent=False
@@ -81,6 +85,7 @@ def replace_attn_ft(self):
             cache_position: Optional[torch.LongTensor] = None,
             **kwargs,
         ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+            # print(f'value_cache : {self.value_cache.dtype}, key_cache : {self.key_cache.dtype}, hidden_states : {hidden_states.dtype}')
             bsz, q_len, _ = hidden_states.size()
             
             query_states = self.q_proj(hidden_states)
