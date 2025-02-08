@@ -90,7 +90,6 @@ def get_hfmodel(model_name_or_path: str,
 def get_memory_footprint(module: torch.nn.Module, return_buffers: bool = True) -> int:
     if not isinstance(module, torch.nn.Module):
         raise TypeError("Input must be a PyTorch Module")
-    import code; code.interact('get_memory_footprint', local=dict(globals(), **locals()))
     mem = sum([param.nelement() * param.element_size() for param in module.parameters()])
     if return_buffers:
         mem_bufs = sum([buf.nelement() * buf.element_size() for buf in module.buffers()])
@@ -112,6 +111,13 @@ def main():
     parser.add_argument('--batch_size', type=int, help='batch size', default = 1)
     parser.add_argument('--seq_length', type=int, help='sequence length', default = 128)
     parser.add_argument('--gen_length', type=int, help='generation length', default = 128)
+
+    parser.add_arugment('--tps', action='store_true', help='token per second')
+    parser.add_argument('--gemm', action='store_true', help='gemm')
+    parser.add_argument('--gemv', action='store_true', help='gemv')
+    parser.add_argument('--ttft', action='store_true', help='ttft')
+    parser.add_argument('--memory', action='store_true', help='memory')
+    parser.add_argument('--peak_memory', action='store_true', help='peak memory')
 
     parser.add_argument('--file_name', type=str, help='save path', default = None)
 
@@ -185,7 +191,6 @@ def main():
     cleanup()
 
     base_model = get_hfmodel(model_name, dtype='float16', attn_implementation='ft' if args.use_ft else 'hf')
-    base_model_memory = get_memory_footprint(base_model) / 1024 ** 3
     base_layers = base_model.model.layers
 
     base_model.eval()
@@ -207,24 +212,30 @@ def main():
     print(f"Get Speed...")
     result['fp16'] = {}
 
-    # token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=True)
-    # result['fp16'].update(token_per_second)
-    # print('Token per second : ', token_per_second)
+    if args.tps:
+        token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
+        result['fp16'].update(token_per_second)
+        print('Token per second : ', token_per_second)
 
-    # gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
-    # result['fp16'].update(gemm)
-    # print('GeMM : ', gemm)
+    if args.gemm:
+        gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+        result['fp16'].update(gemm)
+        print('GeMM : ', gemm)
 
-    # gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
-    # result['fp16'].update(gemv)
-    # print('GeMV : ', gemv)
+    if args.gemv:
+        gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+        result['fp16'].update(gemv)
+        print('GeMV : ', gemv)
 
-    # ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
-    # result['fp16'].update(ttft)
-    # print('TTFT : ', ttft)
+    if args.ttft:
+        ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+        result['fp16'].update(ttft)
+        print('TTFT : ', ttft)
 
-    # result['fp16'].update({'memory' : base_model_memory})
-    # print(f"Base Model Memory : {base_model_memory} GB")
+    if args.memory:
+        memory = get_memory_footprint(base_model) / 1024 ** 3
+        result['fp16'].update({'memory' : memory})
+        print(f"Base Model Memory : {memory} GB")
 
     if args.file_name:
         result_dir = f'benchmark/outputs'
@@ -237,7 +248,6 @@ def main():
     linears = list(get_named_linears(base_layers[0]).keys())
 
     for bit in [2, 3, 4]:
-        # linears
         arch = {linear : [bit] * base_layers_length for linear in linears}
 
         model = deepcopy(base_model)
@@ -269,10 +279,6 @@ def main():
                 setattr(getattr(model.model.layers[layer_idx], module), linear, source)
 
         cleanup()
-        quantized_model_memory = get_memory_footprint(model) / 1024 ** 3
-
-        # print(f"Base Model Memory : {base_model_memory} GB\nQuantized Model Memory : {quantized_model_memory} GB")
-        # print(f"Memory Saving : {1 - quantized_model_memory / base_model_memory} %")
 
         model.eval()
         model = model.to('cuda')
@@ -280,24 +286,30 @@ def main():
         print(f"Get Speed...")
         result[f'{bit}bit'] = {}
 
-        token_per_second = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=True)
-        result[f'{bit}bit'].update(token_per_second)
-        print('Token per second : ', token_per_second)
+        if args.tps:
+            token_per_second = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
+            result[f'{bit}bit'].update(token_per_second)
+            print('Token per second : ', token_per_second)
 
-        gemm = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
-        result[f'{bit}bit'].update(gemm)
-        print('GeMM : ', gemm)
+        if args.gemm:
+            gemm = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+            result[f'{bit}bit'].update(gemm)
+            print('GeMM : ', gemm)
+        
+        if args.gemv:
+            gemv = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+            result[f'{bit}bit'].update(gemv)
+            print('GeMV : ', gemv)
 
-        gemv = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
-        result[f'{bit}bit'].update(gemv)
-        print('GeMV : ', gemv)
+        if args.ttft:
+            ttft = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+            result[f'{bit}bit'].update(ttft)
+            print('TTFT : ', ttft)
 
-        ttft = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
-        result[f'{bit}bit'].update(ttft)
-        print('TTFT : ', ttft)
-
-        result[f'{bit}bit'].update({'memory' : quantized_model_memory})
-        print(f"Quantized Model Memory : {quantized_model_memory} GB")
+        if args.memory:
+            memory = get_memory_footprint(model) / 1024 ** 3
+            result[f'{bit}bit'].update({'memory' : memory})
+            print(f"Quantized Model Memory : {memory} GB")
 
         model = model.cpu()
         del model
