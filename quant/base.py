@@ -95,7 +95,7 @@ class BASE:
                                                         config=model_config
                                                         )
         # self.model.seqlen = 2048
-        # self.model.use_cache = False
+        self.model.use_cache = False
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code = True, use_fast=False)
 
