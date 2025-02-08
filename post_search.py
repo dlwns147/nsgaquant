@@ -93,7 +93,6 @@ def main(args):
     n_comp_obj_min, n_comp_obj_max = len(args.comp_obj_min), len(args.comp_obj_max)
     assert n_comp_obj == n_comp_obj_min and n_comp_obj_min == n_comp_obj_max
     
-    # import pdb; pdb.set_trace()
     if n_comp_obj_min > 0:
         # assert args.sec_obj_range[0] >= min(args.quant_model_bits) and args.sec_obj_range[1] <= max(args.quant_model_bits), f'Target bits range should be in [small model bits, large model bits]'
         # range_idx = np.argwhere(np.logical_and(F[:, 1] > args.sec_obj_range[0], F[:, 1] < args.sec_obj_range[1])).flatten()
@@ -250,7 +249,6 @@ def main(args):
         if args.zeroshot:
             torch.cuda.empty_cache()
             gc.collect()
-            import pdb; pdb.set_trace()
             
             results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size, task_list=args.tasks)
             acc_norm = [task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()]
