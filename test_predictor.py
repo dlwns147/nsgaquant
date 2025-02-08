@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 model_name = 'Llama-2-7b-hf'
 # trainset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_ppl_1000_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
 # testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_ppl_250_2_4_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
-trainset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_loss_1000_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
-testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_loss_250_range_2_4_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
+# trainset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_loss_1000_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
+# testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_loss_250_range_2_4_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
+trainset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4.json'
+testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4_test.json'
 config_path = '/NAS/SJ/nsgaquant/config/llama.json'
 
 # predictor_type = 'rbf'

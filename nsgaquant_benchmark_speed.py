@@ -1,5 +1,6 @@
 import os
 import gc
+import csv
 import math
 import json
 import argparse
@@ -112,7 +113,7 @@ def main():
     parser.add_argument('--seq_length', type=int, help='sequence length', default = 128)
     parser.add_argument('--gen_length', type=int, help='generation length', default = 128)
 
-    parser.add_arugment('--tps', action='store_true', help='token per second')
+    parser.add_argument('--tps', action='store_true', help='token per second')
     parser.add_argument('--gemm', action='store_true', help='gemm')
     parser.add_argument('--gemv', action='store_true', help='gemv')
     parser.add_argument('--ttft', action='store_true', help='ttft')
@@ -320,6 +321,25 @@ def main():
             result.update({'args' : vars(args)})
             result.update({'unit' : {'tps' : 'tokens/second', 'gemm' : 'tokens/second', 'gemv' : 'tokens/second', 'ttft' : 'latency(ms)', 'peak_memory' : 'GB'}})
             json.dump(result, f, indent=4)
+
+        field = list(result['fp16'].keys())
+        fp16_value = list(result['fp16'].values())
+        int2_value = list(result['2bit'].values())
+        int3_value = list(result['3bit'].values())
+        int4_value = list(result['4bit'].values())
+
+        fp16_value = [list(v.values())[0] if isinstance(v, dict) else v for v in fp16_value]
+        int2_value = [list(v.values())[0] if isinstance(v, dict) else v for v in int2_value]
+        int3_value = [list(v.values())[0] if isinstance(v, dict) else v for v in int3_value]
+        int4_value = [list(v.values())[0] if isinstance(v, dict) else v for v in int4_value]
+
+        with open(result_path.replace('.json', '.csv'), 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(field)
+            writer.writerow(fp16_value)
+            writer.writerow(int2_value)
+            writer.writerow(int3_value)
+            writer.writerow(int4_value)
 
 
 if __name__ == '__main__':

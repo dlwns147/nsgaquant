@@ -8,12 +8,9 @@ from time import time
 
 from search_space.llama import LlamaQuantSearchSpace
 from evaluator import LlamaEvaluator
-from accelerate import Accelerator
-
+from utils.func import init_accelerator
 
 def gen_data_linear(args):
-    accelerator = Accelerator()
-    accelerator.print(args)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -21,26 +18,8 @@ def gen_data_linear(args):
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
 
-    search_space = search_space(
-        config=config,
-        n_block=config['n_block'],
-        quant_model_bits=args.quant_model_bits,
-        pass_linear_list=args.pass_linear_list,
-        sec_obj_range=args.sec_obj_range,
-        layer_prune_range=args.layer_prune_range
-    )
-    
-    evaluator = LlamaEvaluator(
-        config=config,
-        model_name=args.model_name,
-        accelerator=accelerator,
-        method=args.method,
-        quant_model_bits=args.quant_model_bits,
-        quant_model_paths=args.quant_model_paths,
-        seqlen=args.seqlen,
-        n_sample=args.n_sample,
-        datasets=[args.dataset]
-    )
+    accelerator, device_map = init_accelerator(args.gpu_id, config)
+    accelerator.print(args)
 
     model_id=f'{args.model_path}/{args.model_name}'
     evaluator = LlamaEvaluator(
@@ -58,6 +37,8 @@ def gen_data_linear(args):
         device_map=device_map,
     )
 
+    outlier_bits = {l: [] for l in config['linear']}
+                
     search_space = LlamaQuantSearchSpace(
         n_block=config['n_block'],
         quant_model_bits=args.quant_model_bits,
@@ -70,12 +51,17 @@ def gen_data_linear(args):
         only_outlier_bits=False
     )
 
-    ppl_archive = list()
+    # ppl_archive = list()
     loss_archive = list()
 
     # complexity_list = list()
     if accelerator.is_main_process:
-        archs = search_space.initialize(args.n_data)
+        if not args.pool:
+            archs = search_space.initialize(args.n_data)
+        else:
+            with open(args.pool, 'r') as f:
+                pool = json.load(f)['archive']
+            archs = search_space.sample(args.n_data, pool=pool)
     else:
         archs = list()
     archs = accelerator.gather_for_metrics(archs, use_gather_object=True)
@@ -83,9 +69,9 @@ def gen_data_linear(args):
     for arch in tqdm(archs):
         iter_start = time()
 
-        ppl, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='ppl')
-        ppl_archive.append([arch, ppl[args.dataset], complexity[args.sec_obj]])
-        loss, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='loss')
+        # ppl, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='ppl')
+        # ppl_archive.append([arch, ppl[args.dataset], complexity[args.sec_obj]])
+        loss, complexity = evaluator.eval(arch=arch, accelerator=accelerator, metric='loss', loss_func=args.loss_func)
         loss = min(np.nan_to_num(loss[args.dataset], nan=args.max_value), args.max_value)
         loss_archive.append([arch, loss, complexity[args.sec_obj]])
 
@@ -96,14 +82,15 @@ def gen_data_linear(args):
         # complexity_list.append(complexity)
 
         if accelerator.is_main_process:
-            if args.ppl_json_file:
-                with open(args.ppl_json_file, 'w') as f:
-                    json.dump({'archive': ppl_archive}, f, ensure_ascii=False, indent=4)
+            # if args.ppl_json_file:
+            #     with open(args.ppl_json_file, 'w') as f:
+            #         json.dump({'archive': ppl_archive}, f, ensure_ascii=False, indent=4)
 
-            # if args.loss_json_file:
-            #     with open(args.loss_json_file, 'w') as f:
-            #         json.dump({'archive': loss_archive, 'iteration': 0}, f, ensure_ascii=False, indent=4)
+            if args.loss_json_file:
+                with open(args.loss_json_file, 'w') as f:
+                    json.dump({'archive': loss_archive, 'iteration': 0}, f, ensure_ascii=False, indent=4)
         accelerator.wait_for_everyone()
+    print(args)
     # from matplotlib import pyplot as plt
     # plt.hist(complexity_list)
     # plt.show()
@@ -116,6 +103,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--gpu_id', type=str, default='0',
+                        help='id of available gpus')
     parser.add_argument('--model_path', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
@@ -150,11 +139,15 @@ if __name__ == '__main__':
                         help='second objective to optimize simultaneously')
     parser.add_argument('--sec_obj_range', type=float, nargs='+', default=[2, 4], 
                         help='')
+    parser.add_argument('--loss_func', type=str, default='cross_entropy',
+                        help='')
     parser.add_argument('--max_value', type=float, default=50,
                         help='')
     parser.add_argument('--layer_prune_range', type=float, nargs='+', default=[1., 1.], 
                         help='')
     parser.add_argument('--use_linear_group', action='store_true',
+                        help='')
+    parser.add_argument('--pool', type=str, default='',
                         help='')
     
     cfgs = parser.parse_args()
