@@ -20,6 +20,9 @@ from utils.data import get_tokenizer
 from quant.model import get_quantized_model
 import gc
 
+import datasets
+datasets.config.HF_DATASETS_TRUST_REMOTE_CODE = True 
+
 class HighTradeoffPoints(DecisionMaking):
 
     def __init__(self, epsilon=0.125, n_survive=None, normalize=True, **kwargs) -> None:
