@@ -169,16 +169,16 @@ def get_hfmodel(model_name_or_path: str,
     # assert kwargs.get('attn_implementation') in ['hf', 'ft']        ## hf : huggingface, ft : faster transformer
     
     # for fast model loading
-    org_kaiming_uniform = torch.nn.init.kaiming_uniform_
-    org_uniform = torch.nn.init.uniform_
-    org_normal = torch.nn.init.normal_
+    # org_kaiming_uniform = torch.nn.init.kaiming_uniform_
+    # org_uniform = torch.nn.init.uniform_
+    # org_normal = torch.nn.init.normal_
 
-    def skip(*args, **kwargs):
-        pass
+    # def skip(*args, **kwargs):
+    #     pass
 
-    torch.nn.init.kaiming_uniform_ = skip
-    torch.nn.init.uniform_ = skip
-    torch.nn.init.normal_ = skip
+    # torch.nn.init.kaiming_uniform_ = skip
+    # torch.nn.init.uniform_ = skip
+    # torch.nn.init.normal_ = skip
     
     # ft = False
     # if kwargs.get('attn_implementation') == 'ft':
@@ -195,13 +195,14 @@ def get_hfmodel(model_name_or_path: str,
         use_cache=use_cache,
         **kwargs
     )
+    model.config.use_cache = use_cache
     
     # if ft:
     #     convert_model_to_ft(model)
     #     replace_generate_functions()
 
-    torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
-    torch.nn.init.uniform_ = org_uniform
-    torch.nn.init.normal_ = org_normal
+    # torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
+    # torch.nn.init.uniform_ = org_uniform
+    # torch.nn.init.normal_ = org_normal
     
     return model

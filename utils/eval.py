@@ -246,6 +246,8 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
         # setting for token generation
         max_length = prompt_length + generation_length
         model.config.max_length = max_length
+        config_use_cache = model.config.use_cache
+        generation_config_use_cache = model.generation_config.use_cache
         model.config.use_cache = True
         model.generation_config.use_cache = True
 
@@ -274,6 +276,8 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
     else :
         # setting for prompt processing
         # batch_size = 1
+        config_use_cache = model.config.use_cache
+        generation_config_use_cache = model.generation_config.use_cache
         model.config.use_cache = False
         model.generation_config.use_cache = False
         # iteration = 50
@@ -299,6 +303,10 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
     # curr_time = starter.elapsed_time(ender)
     median_latency = median(latency)
     # mean_latency = curr_time/iteration
+
+    model.config.use_cache = config_use_cache
+    model.generation_config.use_cache = generation_config_use_cache
+    
     gc.collect()
     torch.cuda.empty_cache()
 

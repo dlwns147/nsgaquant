@@ -250,6 +250,7 @@ def main(args):
         if args.zeroshot:
             torch.cuda.empty_cache()
             gc.collect()
+            import pdb; pdb.set_trace()
             
             results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size, task_list=args.tasks)
             acc_norm = [task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()]

@@ -331,7 +331,6 @@ class Search:
 
         # decode integer bit-string to config and also return predicted top1_err
         return candidates, predictor.predict(self.search_space.decode_encode_predictor(pop.get("X")))
-        # return candidates, predictor.predict(np.stack([self.search_space.encode_predictor(self.search_space.decode(x)) for x in pop.get("X")]))
         # return candidates, predictor.predict(pop.get("X"))
 
     # @staticmethod
@@ -412,7 +411,6 @@ class AuxiliarySingleLevelProblem(Problem):
         g = np.full((x.shape[0], self.n_constr), np.nan)
 
         metrics = self.predictor.predict(self.ss.decode_encode_predictor(x))[:, 0]
-        # metrics = self.predictor.predict(np.stack([self.ss.encode_predictor(self.ss.decode(_x)) for _x in x]))[:, 0]
         # metrics = self.predictor.predict(x)[:, 0]
 
         for i, (_x, metric) in enumerate(zip(x, metrics)):
