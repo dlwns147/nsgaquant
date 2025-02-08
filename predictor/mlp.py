@@ -37,7 +37,7 @@ class Net(nn.Module):
     @staticmethod
     def init_weights(m):
         if type(m) == nn.Linear:
-            # n = m.in_features
+            n = m.in_features
             # y = 1.0 / np.sqrt(n)
             # m.weight.data.uniform_(-y, y)
             # m.bias.data.fill_(0)
@@ -95,16 +95,23 @@ def train(net, x, y, trn_split=0.8, pretrained=None, device='cpu', batch_size=12
         # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, int(epochs), eta_min=1e-8)
 
         best_loss = 1e33
-        trn_inputs, trn_labels = inputs[trn_idx], target[trn_idx]
-        val_inputs, val_labels = inputs[vld_idx], target[vld_idx]
+        # trn_inputs, trn_labels = inputs[trn_idx], target[trn_idx]
+        # val_inputs, val_labels = inputs[vld_idx], target[vld_idx]
         for epoch in range(epochs):
             # loss_trn = train_one_epoch(net, trn_inputs, trn_labels, criterion, optimizer, device, batch_size)
-            loss_trn = train_one_epoch(net, trn_inputs, trn_labels, criterion, optimizer, device)
-            loss_vld = infer(net, val_inputs, val_labels, criterion, device)
-            scheduler.step()
+            # loss_trn = train_one_epoch(net, trn_inputs, trn_labels, criterion, optimizer, device)
+            # loss_vld = infer(net, val_inputs, val_labels, criterion, device)
 
-            if epoch % 500 == 0 and verbose:
-                print("Epoch {:4d}: trn loss = {:.4E}, vld loss = {:.4E}".format(epoch, loss_trn, loss_vld))
+            
+            trn_inputs = inputs[trn_idx]
+            trn_labels = target[trn_idx]
+            loss_trn = train_one_epoch(net, trn_inputs, trn_labels, criterion, optimizer, device)
+            loss_vld = infer(net, inputs[vld_idx], target[vld_idx], criterion, device)
+            scheduler.step()
+            
+
+            # if epoch % 500 == 0 and verbose:
+            #     print("Epoch {:4d}: trn loss = {:.4E}, vld loss = {:.4E}".format(epoch, loss_trn, loss_vld))
 
             if loss_vld < best_loss:
                 best_loss = loss_vld

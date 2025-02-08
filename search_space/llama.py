@@ -277,6 +277,14 @@ class LlamaQuantSearchSpace:
         assert math.isclose(sec_obj_range[0], sec_obj_range[1]) or sec_obj_range[0] < sec_obj_range[1], f"sec_obj_range is invalid: {sec_obj_range}"
         
         self.n_bits = len(quant_model_bits)
+        self.pass_linear_idx_list = []
+        for pass_linear in self.pass_linear_list:
+            blk, linear = pass_linear.split('.', maxsplit=1)
+            linear_idx = self.config['linear'].index(linear)
+            self.pass_linear_idx_list.append(int(blk) * self.n_linear + linear_idx)
+            
+        self.pass_linear_idx_list.sort()
+        print(f'self.pass_linear_idx_list : {self.pass_linear_idx_list}')
 
     def sample(self, n_samples=1, nb=None, q=None, k=None, v=None, o=None, down=None, up=None, gate=None, lp=None, pool=[]):
         """ randomly sample a architecture"""
@@ -398,6 +406,22 @@ class LlamaQuantSearchSpace:
                         'mlp.down_proj': np.array(self.down_proj_option)[x_reshape[:, 6]].tolist(),
                     },
                 }
+    
+    def encode_predictor(self, arch):
+        q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for blk_idx, _x in enumerate(arch['linear']['self_attn.q_proj']) if f'{blk_idx}.self_attn.q_proj' not in self.pass_linear_list])
+        k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for blk_idx, _x in enumerate(arch['linear']['self_attn.k_proj']) if f'{blk_idx}.self_attn.k_proj' not in self.pass_linear_list])
+        v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for blk_idx, _x in enumerate(arch['linear']['self_attn.v_proj']) if f'{blk_idx}.self_attn.v_proj' not in self.pass_linear_list])
+        o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for blk_idx, _x in enumerate(arch['linear']['self_attn.o_proj']) if f'{blk_idx}.self_attn.o_proj' not in self.pass_linear_list])
+        gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for blk_idx, _x in enumerate(arch['linear']['mlp.gate_proj']) if f'{blk_idx}.mlp.gate_proj' not in self.pass_linear_list])
+        up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for blk_idx, _x in enumerate(arch['linear']['mlp.up_proj']) if f'{blk_idx}.mlp.up_proj' not in self.pass_linear_list])
+        down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for blk_idx, _x in enumerate(arch['linear']['mlp.down_proj']) if f'{blk_idx}.mlp.down_proj' not in self.pass_linear_list])
+
+        return np.concatenate((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode))
+    
+    def decode_encode_predictor(self, x): # x : (batch_size, dim)
+        x = np.delete(x, self.pass_linear_idx_list, axis=-1)
+        return x
+
 
 class LlamaQuantMultiObjSearchSpace:
     def __init__(self, 

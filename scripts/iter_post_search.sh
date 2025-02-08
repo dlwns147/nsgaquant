@@ -38,6 +38,8 @@ COMP_OBJ_TEXT=bits
 # COMP_OBJ_TEXT=bits_latency
 
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
+BATCH_SIZE=32
+# BATCH_SIZE=64
 
 EXPR_FOLDER=save/search/quant
 
@@ -81,13 +83,14 @@ EXPR_FILE=2502061619_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4.1_jsd_co_
 
 
 N=1
-DATASETS="wikitext2 c4"
+# DATASETS="wikitext2 c4"
+DATASETS=wikitext2
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
 
 TARGET_COMP_OBJ=bits
 # TARGET_COMP_OBJ_VAL_LIST=(2.0 2.25 2.5 2.75 3.0 3.25 3.5 3.75)
-TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75)
-# TARGET_COMP_OBJ_VAL_LIST=(2.0)
+# TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75)
+TARGET_COMP_OBJ_VAL_LIST=(2.25)
 COMP_OBJ_THRESHOLD=0.005
 
 for TARGET_COMP_OBJ_VAL in ${TARGET_COMP_OBJ_VAL_LIST[*]}
@@ -121,7 +124,8 @@ do
     --outlier_path ${OUTLIER_PATH} \
     --prefer ${PREFER} \
     --zeroshot \
-    --tasks ${TASKS}
+    --tasks ${TASKS} \
+    --zeroshot_batch_size ${BATCH_SIZE}
 
     # --high_tradeoff
     # --outlier_path ${OUTLIER_PATH} \

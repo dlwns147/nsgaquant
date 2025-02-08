@@ -280,39 +280,31 @@ class Search:
         return metric_list, complexity_list
 
     def _fit_predictor(self, archive, device='cpu'):
-        inputs = np.array([self.search_space.encode(x[0]) for x in archive])
-        # inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
+        # inputs = np.array([self.search_space.encode(x[0]) for x in archive])
+        inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
         targets = np.array([x[1] for x in archive])
         # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
 
-        # n_block = self.config['n_block']
-        # n_linear = self.config['n_linear']
-        # lb = np.zeros((n_block, n_linear))
-        # ub = np.ones((n_block, n_linear))
-        
-        # for linear_idx, linear in enumerate(self.config['linear']):
-        #     ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+        kwargs = {}
+        if self.predictor == 'rbf':
+            n_block = self.config['n_block']
+            n_linear = self.config['n_linear']
+            lb = np.zeros((n_block, n_linear))
+            ub = np.ones((n_block, n_linear))
+            
+            for linear_idx, linear in enumerate(self.config['linear']):
+                ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
 
-        # for pass_linear in self.search_space.pass_linear_list:
-        #     blk, linear = pass_linear.split('.', 1)
-        #     blk = int(blk)
+            lb, ub = lb.flatten(), ub.flatten()
 
-        #     linear_idx = 0.
-        #     for i, group in enumerate(self.search_space.linear_group):
-        #         if linear in group:
-        #             linear_idx = i
-        #             break
-        #     # linear_idx = search_space.linear_group.index(linear)
-        #     lb[blk, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+            lb = np.delete(lb, self.search_space.pass_linear_idx_list, axis=-1)
+            ub = np.delete(ub, self.search_space.pass_linear_idx_list, axis=-1)
 
-        # lb = lb.flatten()
-        # ub = ub.flatten()
-        # print(f'lb : {lb}')
-        # print(f'ub : {ub}')
-        # import pdb; pdb.set_trace()
+            kwargs = {'lb': lb, 'ub': ub}
+            # print(f'lb : {lb.shape}, ub : {ub.shape}')
 
-        # metric_predictor = get_predictor(self.predictor, inputs, targets, device=device, lb=lb, ub=ub)
-        metric_predictor = get_predictor(self.predictor, inputs, targets, device=device)
+        metric_predictor = get_predictor(self.predictor, inputs, targets, device=device, **kwargs)
+        # metric_predictor = get_predictor(self.predictor, inputs, targets, device=device)
 
         return metric_predictor, metric_predictor.predict(inputs)
     
@@ -355,16 +347,14 @@ class Search:
         indices = self._subset_selection(res.pop[not_duplicate], F[front, 1], K, self.subset_pop_size)
         pop = res.pop[not_duplicate][indices]
         # pop = res.pop[not_duplicate]
-        print(f'not_duplicate : {len(not_duplicate)}')
-        
 
         candidates = []
         for x in pop.get("X"):
             candidates.append(self.search_space.decode(x))
 
         # decode integer bit-string to config and also return predicted top1_err
-        # return candidates, predictor.predict(np.stack([self.search_space.encode_predictor(self.search_space.decode(x)) for x in pop.get("X")]))
-        return candidates, predictor.predict(pop.get("X"))
+        return candidates, predictor.predict(self.search_space.decode_encode_predictor(pop.get("X")))
+        # return candidates, predictor.predict(pop.get("X"))
 
     # @staticmethod
     def _subset_selection(self, pop, nd_F, K, pop_size):
@@ -430,8 +420,8 @@ class AuxiliarySingleLevelProblem(Problem):
         f = np.full((x.shape[0], self.n_obj), np.nan)
         g = np.full((x.shape[0], self.n_constr), np.nan)
 
-        # metrics = self.predictor.predict(np.stack([self.ss.encode_predictor(self.ss.decode(_x)) for _x in x]))[:, 0]
-        metrics = self.predictor.predict(x)[:, 0]
+        metrics = self.predictor.predict(self.ss.decode_encode_predictor(x))[:, 0]
+        # metrics = self.predictor.predict(x)[:, 0]
 
         for i, (_x, metric) in enumerate(zip(x, metrics)):
             arch = self.ss.decode(_x)

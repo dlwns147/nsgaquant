@@ -1,0 +1,314 @@
+import os
+import gc
+import math
+import json
+import argparse
+from copy import deepcopy
+
+import torch
+from torch import nn
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
+from hqq.utils.patching import prepare_for_inference
+from hqq.models.hf.base import AutoHQQHFModel
+from hqq.backends.autogptq import GPTQLinear
+from hqq.backends.bitblas import HQQLinearBitBlas
+from hqq.core.quantize import HQQLinear
+from monkeypatch.ftllama_modeling import convert_model_to_ft
+from monkeypatch.ftllama_generate import replace_generate_functions
+
+from benchmark.benchmark_speed import benchmark_speed
+
+default_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_name = None
+
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+
+
+def cleanup():
+    torch.cuda.empty_cache()
+    gc.collect()
+
+
+def get_named_linears(module, specific_cls=None):
+    if specific_cls is None:
+        return {name: m for name, m in module.named_modules() if (isinstance(m, nn.Linear) 
+                                                              or isinstance(m, GPTQLinear)
+                                                              or isinstance(m, HQQLinearBitBlas)
+                                                              or isinstance(m, HQQLinear))}
+    else:
+        return {name: m for name, m in module.named_modules() if isinstance(m, specific_cls)}
+    
+
+def get_hfmodel(model_name_or_path: str,
+                dtype='auto',
+                device_map='cpu',
+                trust_remote_code=False,
+                **kwargs
+                ):
+
+    assert kwargs.get('attn_implementation') in ['hf', 'ft']        ## hf : huggingface, ft : faster transformer
+    
+    # for fast model loading
+    org_kaiming_uniform = torch.nn.init.kaiming_uniform_
+    org_uniform = torch.nn.init.uniform_
+    org_normal = torch.nn.init.normal_
+
+    def skip(*args, **kwargs):
+        pass
+
+    torch.nn.init.kaiming_uniform_ = skip
+    torch.nn.init.uniform_ = skip
+    torch.nn.init.normal_ = skip
+    
+    ft = False
+    if kwargs.get('attn_implementation') == 'ft':
+        assert 'llama' in model_name_or_path.lower() or 'vicuna' in model_name_or_path.lower()
+        ft = True
+    
+    print('attention implementaion is :', kwargs.pop('attn_implementation'))
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name_or_path, 
+        torch_dtype=dtype,
+        device_map=device_map, 
+        trust_remote_code=trust_remote_code,
+        **kwargs
+    )
+    
+    if ft:
+        convert_model_to_ft(model)
+        replace_generate_functions()
+
+    torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
+    torch.nn.init.uniform_ = org_uniform
+    torch.nn.init.normal_ = org_normal
+    
+    return model
+
+
+def get_memory_footprint(module: torch.nn.Module, return_buffers: bool = True) -> int:
+    if not isinstance(module, torch.nn.Module):
+        raise TypeError("Input must be a PyTorch Module")
+    import code; code.interact('get_memory_footprint', local=dict(globals(), **locals()))
+    mem = sum([param.nelement() * param.element_size() for param in module.parameters()])
+    if return_buffers:
+        mem_bufs = sum([buf.nelement() * buf.element_size() for buf in module.buffers()])
+        mem = mem + mem_bufs
+    return mem
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('model_name_or_path', type=str, help='model path')
+    parser.add_argument('--use_ft', action='store_true', help='use faster transformer')
+    parser.add_argument('--use_owq', action='store_true', help='use owq')
+
+    parser.add_argument('--backend_2bit', type=str, choices=['gptq', 'bitblas', 'gemlite', 'gptq_cuda', 'gptq_tritonv2'], help='backend for 2bit', default = 'gptq')
+    parser.add_argument('--backend_3bit', type=str, choices=['gptq', 'gptq_cuda', 'gptq_tritonv2'], help='backend for 3bit', default = 'gptq')
+    parser.add_argument('--backend_4bit', type=str, choices=['gptq', 'bitblas', 'gemlite', 'gptq_cuda', 'gptq_tritonv2'], help='backend for 4bit', default = 'gptq')
+
+    parser.add_argument('--batch_size', type=int, help='batch size', default = 1)
+    parser.add_argument('--seq_length', type=int, help='sequence length', default = 128)
+    parser.add_argument('--gen_length', type=int, help='generation length', default = 128)
+
+    parser.add_argument('--file_name', type=str, help='save path', default = None)
+
+    args = parser.parse_args()
+
+    global model_name
+    model_name = args.model_name_or_path
+    model_path, model_id = model_name.split('/')
+    result = {}
+
+    int2_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_2bit_128gs_1axis')
+    int3_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_3bit_128gs_1axis')
+    int4_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_4bit_128gs_1axis')
+
+    int2_model = int2_model.to(default_device)
+    int3_model = int3_model.to(default_device)
+    int4_model = int4_model.to(default_device)
+
+    prepare_for_inference(int2_model, backend = args.backend_2bit, load_path = f"/SSD/Woo/hqq/{model_id}_2bit_128gs_1axis_{args.backend_2bit.upper()}Linear.pt")
+    prepare_for_inference(int3_model, backend = args.backend_3bit, load_path = f"/SSD/Woo/hqq/{model_id}_3bit_128gs_1axis_{args.backend_3bit.upper()}Linear.pt")
+    prepare_for_inference(int4_model, backend = args.backend_4bit, load_path = f"/SSD/Woo/hqq/{model_id}_4bit_128gs_1axis_{args.backend_4bit.upper()}Linear.pt")
+
+    if 'gemlite' in [args.backend_2bit, args.backend_3bit, args.backend_4bit]:
+        import gemlite
+        gemlite.core.GEMLITE_TRITON_RESTRICT_M = True #Restrict the batch-size to powers of 2 if True
+        gemlite.core.GemLiteLinear.cache_config('gemlite_config.json') #Cache- run this over multiple batch-sizes
+        gemlite.core.GemLiteLinear.load_config('gemlite_config.json') #Load
+
+    int2_layers = int2_model.model.layers
+    int3_layers = int3_model.model.layers
+    int4_layers = int4_model.model.layers
+
+    int2_model = int2_model.to('cpu')
+    int3_model = int3_model.to('cpu')
+    int4_model = int4_model.to('cpu')
+
+    if args.use_owq:
+        owq_path = f"/NAS/Woo/Automation/autoopt/kernel/outlier/{model_id}/w16_r32/outlier.pth"
+        owq = torch.load(owq_path, weights_only = True) if os.path.exists(owq_path) else None
+
+        int2_owq_model = deepcopy(int2_model)
+        int3_owq_model = deepcopy(int3_model)
+        int4_owq_model = deepcopy(int4_model)
+
+        intN_models = [int2_owq_model, int3_owq_model, int4_owq_model]
+        for intN_model in intN_models:
+            linears = get_named_linears(intN_model, specific_cls=HQQLinear)
+            for name, module in linears.items():
+                module.name = name
+
+                if 'o_proj' in name:
+                    continue
+
+                owq_layer = owq[name]
+                module.do_owq = False
+                module.register_buffer('oweight', torch.zeros((len(owq_layer), module.out_features), dtype=torch.float))
+                module.register_buffer('outlieridx', torch.Tensor(owq_layer).to(torch.int))
+
+        prepare_for_inference(int2_owq_model, backend = args.backend_2bit, load_path = f"/SSD/Woo/hqq/{model_id}_2bit_128gs_1axis_{args.backend_2bit.upper()}Linear_owq.pt", owq = True)
+        prepare_for_inference(int3_owq_model, backend = args.backend_3bit, load_path = f"/SSD/Woo/hqq/{model_id}_3bit_128gs_1axis_{args.backend_3bit.upper()}Linear_owq.pt", owq = True)
+        prepare_for_inference(int4_owq_model, backend = args.backend_4bit, load_path = f"/SSD/Woo/hqq/{model_id}_4bit_128gs_1axis_{args.backend_4bit.upper()}Linear_owq.pt", owq = True)
+
+        int2_owq_layers = int2_owq_model.model.layers
+        int3_owq_layers = int3_owq_model.model.layers
+        int4_owq_layers = int4_owq_model.model.layers
+
+        del int2_owq_model
+        del int3_owq_model
+        del int4_owq_model
+
+    cleanup()
+
+    base_model = get_hfmodel(model_name, dtype='float16', attn_implementation='ft' if args.use_ft else 'hf')
+    base_model_memory = get_memory_footprint(base_model) / 1024 ** 3
+    base_layers = base_model.model.layers
+
+    base_model.eval()
+    base_model = base_model.to('cuda')
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        pretrained_model_name_or_path=model_name,
+        use_fast=False,
+        trust_remote_code=True
+        )
+
+    if not tokenizer.pad_token_id:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    sizes = [args.batch_size, args.seq_length, args.gen_length]
+    gemm_iteration = 20
+    gemv_iteration = 5 if args.gen_length < 1024 else 2
+
+    print(f"Get Speed...")
+    result['fp16'] = {}
+
+    # token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=True)
+    # result['fp16'].update(token_per_second)
+    # print('Token per second : ', token_per_second)
+
+    # gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+    # result['fp16'].update(gemm)
+    # print('GeMM : ', gemm)
+
+    # gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+    # result['fp16'].update(gemv)
+    # print('GeMV : ', gemv)
+
+    # ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+    # result['fp16'].update(ttft)
+    # print('TTFT : ', ttft)
+
+    # result['fp16'].update({'memory' : base_model_memory})
+    # print(f"Base Model Memory : {base_model_memory} GB")
+
+    if args.file_name:
+        result_dir = f'benchmark/outputs'
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir, exist_ok=True)
+        result_path = os.path.join(result_dir, args.file_name)        
+                       
+    base_model = base_model.to('cpu')
+    base_layers_length = len(base_layers)
+    linears = list(get_named_linears(base_layers[0]).keys())
+
+    for bit in [2, 3, 4]:
+        # linears
+        arch = {linear : [bit] * base_layers_length for linear in linears}
+
+        model = deepcopy(base_model)
+
+        print("Replacing...")
+        for layer_idx, layer in enumerate(base_layers):
+            named_linears = get_named_linears(layer)
+            for name in named_linears:
+                module, linear = name.split('.')
+
+                if math.isclose(arch[name][layer_idx], 2):
+                    source = getattr(getattr(int2_layers[layer_idx], module), linear)
+                elif math.isclose(arch[name][layer_idx], 3):
+                    source = getattr(getattr(int3_layers[layer_idx], module), linear)
+                elif math.isclose(arch[name][layer_idx], 4):
+                    source = getattr(getattr(int4_layers[layer_idx], module), linear)
+                elif args.use_owq and math.isclose(int(arch[name][layer_idx]), 2):
+                    source = getattr(getattr(int2_owq_layers[layer_idx], module), linear)
+                elif args.use_owq and math.isclose(int(arch[name][layer_idx]), 3):
+                    source = getattr(getattr(int3_owq_layers[layer_idx], module), linear)
+                elif args.use_owq and math.isclose(int(arch[name][layer_idx]), 4):
+                    source = getattr(getattr(int4_owq_layers[layer_idx], module), linear)
+                else:
+                    raise ValueError(f'bit should be 2, 3, 4, but got {arch[name][layer_idx]}')
+
+                if hasattr(getattr(model.model.layers[layer_idx], module), linear):
+                    delattr(getattr(model.model.layers[layer_idx], module), linear)
+
+                setattr(getattr(model.model.layers[layer_idx], module), linear, source)
+
+        cleanup()
+        quantized_model_memory = get_memory_footprint(model) / 1024 ** 3
+
+        # print(f"Base Model Memory : {base_model_memory} GB\nQuantized Model Memory : {quantized_model_memory} GB")
+        # print(f"Memory Saving : {1 - quantized_model_memory / base_model_memory} %")
+
+        model.eval()
+        model = model.to('cuda')
+
+        print(f"Get Speed...")
+        result[f'{bit}bit'] = {}
+
+        token_per_second = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=True)
+        result[f'{bit}bit'].update(token_per_second)
+        print('Token per second : ', token_per_second)
+
+        gemm = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+        result[f'{bit}bit'].update(gemm)
+        print('GeMM : ', gemm)
+
+        gemv = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+        result[f'{bit}bit'].update(gemv)
+        print('GeMV : ', gemv)
+
+        ttft = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+        result[f'{bit}bit'].update(ttft)
+        print('TTFT : ', ttft)
+
+        result[f'{bit}bit'].update({'memory' : quantized_model_memory})
+        print(f"Quantized Model Memory : {quantized_model_memory} GB")
+
+        model = model.cpu()
+        del model
+        cleanup()
+
+    if args.file_name:
+        with open(result_path, 'w') as f:
+            result.update({'args' : vars(args)})
+            result.update({'unit' : {'tps' : 'tokens/second', 'gemm' : 'tokens/second', 'gemv' : 'tokens/second', 'ttft' : 'latency(ms)', 'peak_memory' : 'GB'}})
+            json.dump(result, f, indent=4)
+
+
+if __name__ == '__main__':
+    main()
