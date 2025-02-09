@@ -281,7 +281,8 @@ class LlamaQuantSearchSpace:
         for pass_linear in self.pass_linear_list:
             blk, linear = pass_linear.split('.', maxsplit=1)
             linear_idx = self.config['linear'].index(linear)
-            self.pass_linear_idx_list.append(int(blk) * self.n_linear + linear_idx)
+            # self.pass_linear_idx_list.append(int(blk) * self.n_linear + linear_idx)
+            self.pass_linear_idx_list.append(int(blk) + self.n_block * linear_idx)
             
         self.pass_linear_idx_list.sort()
         print(f'self.pass_linear_idx_list : {self.pass_linear_idx_list}')
@@ -355,7 +356,6 @@ class LlamaQuantSearchSpace:
                     
                 new_arch = {'linear': {'self_attn.q_proj': q_list, 'self_attn.k_proj': k_list, 'self_attn.v_proj': v_list, 'self_attn.o_proj': o_list, 'mlp.gate_proj': gate_list, 'mlp.up_proj': up_list, 'mlp.down_proj': down_list}}
                 complexity = get_net_info(new_arch, self.config, self.latency_table)
-                # import pdb; pdb.set_trace()
                 # print(f'new_arch : {new_arch}')
                 # print(f'complexity : {complexity}')
                 if (new_arch not in data) and \
@@ -420,9 +420,13 @@ class LlamaQuantSearchSpace:
         return np.concatenate((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode))
     
     def decode_encode_predictor(self, x): # x : (batch_size, dim)
-        x = np.delete(x, self.pass_linear_idx_list, axis=-1)
-        return x
-
+        B = x.shape[0]
+        x = x.reshape(B, self.n_block, self.n_linear).transpose(0, 2, 1).reshape(B, -1)
+        return np.delete(x, self.pass_linear_idx_list, axis=-1)
+        # import pdb; pdb.set_trace()
+        # return np.stack([self.encode_predictor(self.decode(_x)) for _x in x])
+        # return np.delete(x, self.pass_linear_idx_list, axis=-1)
+    
 
 class LlamaQuantMultiObjSearchSpace:
     def __init__(self, 
@@ -635,6 +639,16 @@ class LlamaLayerSearchSpace:
         assert len(layer_prune_range) == 2, f"layer_prune_range is invalid: {sec_obj_range}"
         assert math.isclose(layer_prune_range[0], layer_prune_range[1]) or layer_prune_range[0] < layer_prune_range[1], f"layer_prune_range is invalid: {layer_prune_range}"
 
+        self.pass_layer_idx_list = []
+        for pass_layer in pass_layer_list:
+            blk, layer = pass_layer.split('.', maxsplit=1)
+            layer_idx = self.config['layer'].index(layer)
+            # self.pass_layer_idx_list.append(int(blk) * self.n_linear + linear_idx)
+            self.pass_layer_idx_list.append(int(blk) + self.n_block * layer_idx)
+            
+        self.pass_layer_idx_list.sort()
+        print(f'self.pass_layer_idx_list : {self.pass_layer_idx_list}')
+
     def sample(self, n_samples=1, nb=None, lp=None, pool=[]):
         """ randomly sample a architecture"""
         nb = self.n_block if nb is None else nb
@@ -705,6 +719,17 @@ class LlamaLayerSearchSpace:
                         'mlp': np.array(self.layer_option)[x_reshape[:, 1]].tolist()
                     }
                 }
+
+    def encode_predictor(self, arch):
+        attn_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for blk_idx, _x in enumerate(arch['layer']['self_attn']) if f'{blk_idx}.self_attn' not in self.pass_layer_list])
+        mlp_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for blk_idx, _x in enumerate(arch['layer']['mlp']) if f'{blk_idx}.mlp' not in self.pass_layer_list])
+        return np.concatenate((attn_encode, mlp_encode))
+    
+    def decode_encode_predictor(self, x): # x : (batch_size, dim)
+        B = x.shape[0]
+        x = x.reshape(B, self.n_block, self.n_layer).transpose(0, 2, 1).reshape(B, -1)
+        return np.delete(x, self.pass_layer_idx_list, axis=-1)
+
 
 
 class LlamaMultiObjLayerSearchSpace:

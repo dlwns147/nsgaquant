@@ -9,8 +9,8 @@ model_name = 'Llama-2-7b-hf'
 # testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_ppl_250_2_4_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
 # trainset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_loss_1000_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
 # testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_loss_250_range_2_4_axis_1_lb_4_lgs_128_lqs_false_lqz_false_sb_2_sgs_64_sqs_false_sqz_false.json'
-trainset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4.json'
-testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4_test.json'
+trainset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4_pass_128sample_train.json'
+testset_path = '/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4_pass_128sample_test.json'
 config_path = '/NAS/SJ/nsgaquant/config/llama.json'
 
 predictor_type = 'rbf'
@@ -18,19 +18,22 @@ predictor_type = 'rbf'
 # predictor_type = 'gp'
 # predictor_type = 'carts'
 
-fig_path = f'/NAS/SJ/nsgaquant/fig/test_predictor_{predictor_type}.png'
+nsample=500
+# nsample=1000
+fig_path = f'/NAS/SJ/nsgaquant/fig/test_predictor_{predictor_type}_{nsample}.png'
 
 with open(config_path, 'r') as f:
     config = json.load(f)[model_name]
 
 with open(trainset_path, 'r') as f:
-    trainset = json.load(f)['archive']
+    trainset = json.load(f)['archive'][:nsample]
     # trainset = [[{'linear': x[0]}, x[1], x[2]] for x in trainset]
 
 with open(testset_path, 'r') as f:
-    testset = json.load(f)['archive']
+    testset = json.load(f)['archive'][:nsample]
     # testset = [[{'linear': x[0]}, x[1], x[2]] for x in testset]
 
+# import pdb; pdb.set_trace()
 pass_linear_list = []
 for linear, linear_bits in trainset[0][0]['linear'].items():
     for blk, bits in enumerate(linear_bits):
@@ -55,6 +58,7 @@ train_targets = np.array([x[1] for x in trainset])
 test_inputs = np.array([search_space.encode_predictor(x[0]) for x in testset])
 test_targets = np.array([x[1] for x in testset])
 
+# import pdb; pdb.set_trace()
 print(f'loaded data')
 
 n_block = config['n_block']
@@ -73,7 +77,7 @@ ub = np.delete(ub, search_space.pass_linear_idx_list, axis=-1)
 kwargs = {'lb': lb, 'ub': ub}
 # print(f'lb : {lb.shape}, ub : {ub.shape}')
 
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 metric_predictor = get_predictor(predictor_type, train_inputs, train_targets, device='cpu', **kwargs)
 train_output = metric_predictor.predict(train_inputs)
 test_output = metric_predictor.predict(test_inputs)

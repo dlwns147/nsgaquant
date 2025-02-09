@@ -22,15 +22,15 @@ LAYER_PRUNE_RANGE_SMALL=0.45
 # LAYER_PRUNE_RANGE_SMALL=0.001
 LAYER_PRUNE_RANGE_LARGE=1.0
 
-# LOSS_FUNC=cross_entropy
-LOSS_FUNC=jsd
+LOSS_FUNC=cross_entropy
+# LOSS_FUNC=jsd
 
 # PREDICTOR=mlp
 # PREDICTOR=gp
 PREDICTOR=rbf
 
-# OBJ=sparsity
-OBJ=params
+OBJ=sparsity
+# OBJ=params
 # OBJ=latency
 
 DATASET=wikitext2

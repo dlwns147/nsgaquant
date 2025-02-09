@@ -29,17 +29,17 @@ LOSS_FUNC=jsd
 # PREDICTOR=gp
 PREDICTOR=rbf
 
-# OBJ=sparsity
-OBJ=params
+OBJ=sparsity
+# OBJ=params
 # OBJ=latency
 
 DATASET=wikitext2
 # DATASET=c4
 
 # N_SAMPLE=16
-# N_SAMPLE=32
+N_SAMPLE=32
 # N_SAMPLE=64
-N_SAMPLE=128
+# N_SAMPLE=128
 
 N_DOE=64
 N_ITER=32

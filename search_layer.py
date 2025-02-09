@@ -66,16 +66,6 @@ class Search:
         
         # self.config['mpe_table_json'] = kwargs.pop('mpe_table_json', '/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json')
 
-        assert (outlier_path and base_outlier_bits and n_outlier > 0) or (not outlier_path and not base_outlier_bits and n_outlier == 0), "must use outlier_path, outlier_bits and n_outlier together when using outlier channel"
-        
-        outlier_bits = {l: [] for l in config['linear']}
-        if outlier_path and base_outlier_bits and n_outlier > 0:
-            for linear in config['linear']:
-                for base_bits in base_outlier_bits:
-                    _, in_dim = config['linear_shape'][linear]
-                    avg_linear_bits = ((in_dim - n_outlier) * base_bits + n_outlier * 16) / (in_dim)
-                    outlier_bits[linear].append(avg_linear_bits)
-
         pass_layer_list = kwargs.pop('pass_layer_list', [])
         layer_sensitivity_file = kwargs.pop('layer_sensitivity_file' , '')
         if layer_sensitivity_file:
@@ -269,12 +259,26 @@ class Search:
         return metric_list, complexity_list
 
     def _fit_predictor(self, archive, device='cpu'):
-        inputs = np.array([self.search_space.encode(x[0]) for x in archive])
-        # inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
+        # inputs = np.array([self.search_space.encode(x[0]) for x in archive])
+        inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
         targets = np.array([x[1] for x in archive])
         # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
 
-        predictor = get_predictor(self.predictor, inputs, targets, device=device)
+        kwargs = {}
+        if self.predictor == 'rbf':
+            n_block = self.config['n_block']
+            n_layer = self.config['n_layer']
+            lb = np.zeros((n_block * n_layer))
+            ub = np.ones((n_block * n_layer)) * (len(self.search_space.layer_option) - 1)
+
+            lb = np.delete(lb, self.search_space.pass_layer_idx_list, axis=-1)
+            ub = np.delete(ub, self.search_space.pass_layer_idx_list, axis=-1)
+
+            kwargs = {'lb': lb, 'ub': ub}
+            # print(f'lb : {lb.shape}, ub : {ub.shape}')
+
+        predictor = get_predictor(self.predictor, inputs, targets, device=device, **kwargs)
+        # predictor = get_predictor(self.predictor, inputs, targets, device=device)
 
         return predictor, predictor.predict(inputs)
     
@@ -314,15 +318,14 @@ class Search:
         indices = self._subset_selection(res.pop[not_duplicate], F[front, 1], K, self.subset_pop_size)
         pop = res.pop[not_duplicate][indices]
         # pop = res.pop[not_duplicate]
-        print(f'not_duplicate : {len(not_duplicate)}')
 
         candidates = []
         for x in pop.get("X"):
             candidates.append(self.search_space.decode(x))
 
         # decode integer bit-string to config and also return predicted top1_err
-        # return candidates, predictor.predict(np.stack([self.search_space.encode_predictor(self.search_space.decode(x)) for x in pop.get("X")]))
-        return candidates, predictor.predict(pop.get("X"))
+        return candidates, predictor.predict(self.search_space.decode_encode_predictor(pop.get("X")))
+        # return candidates, predictor.predict(pop.get("X"))
 
     # @staticmethod
     def _subset_selection(self, pop, nd_F, K, pop_size):
@@ -379,8 +382,8 @@ class AuxiliarySingleLevelProblem(Problem):
         f = np.full((x.shape[0], self.n_obj), np.nan)
         g = np.full((x.shape[0], self.n_constr), np.nan)
 
-        # metrics = self.predictor.predict(np.stack([self.ss.encode_predictor(self.ss.decode(_x)) for _x in x]))[:, 0]
-        metrics = self.predictor.predict(x)[:, 0]
+        metrics = self.predictor.predict(self.ss.decode_encode_predictor(x))[:, 0]
+        # metrics = self.predictor.predict(x)[:, 0]
 
         for i, (_x, metric) in enumerate(zip(x, metrics)):
             arch = self.ss.decode(_x)
@@ -467,7 +470,7 @@ if __name__ == '__main__':
     parser.add_argument('--metric', type=str, default='ppl',
                         help='which metric predictor model to fit (ppl/loss)')
     parser.add_argument('--pass_layer_list', type=str, nargs='+', default=[], 
-                        help='linear list not to replace')
+                        help='layer list not to replace')
     parser.add_argument('--config', type=str, default='config/llama.json',
                         help='config file to read the model meta data')
     parser.add_argument('--ga_pop_size', type=int, default=40,
