@@ -340,6 +340,7 @@ class Search:
         # check for duplicates
         not_duplicate = np.logical_not(
             [x in [x[0] for x in archive] for x in [self.search_space.decode(x) for x in res.pop.get("X")]])
+        print(f'not_duplicate : {not_duplicate}')
 
         # the following lines corresponding to Algo 1 line 11 / Fig. 3(c)-(d) in the paper
         # form a subset selection problem to short list K from pop_size
