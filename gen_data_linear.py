@@ -60,8 +60,12 @@ def gen_data_linear(args):
             archs = search_space.initialize(args.n_data)
         else:
             with open(args.pool, 'r') as f:
-                pool = json.load(f)['archive']
+                pool = [x[0] for x in json.load(f)['archive']]
+
             archs = search_space.sample(args.n_data, pool=pool)
+            # for _ in range(args.n_data):
+            #     pool.append(search_space.sample(1, pool=pool))
+            # archs = pool
     else:
         archs = list()
     archs = accelerator.gather_for_metrics(archs, use_gather_object=True)

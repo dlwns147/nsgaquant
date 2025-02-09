@@ -1,6 +1,7 @@
 from pydacefit.regr import regr_constant
 from pydacefit.dace import DACE, regr_linear, regr_quadratic
 from pydacefit.corr import corr_gauss, corr_cubic, corr_exp, corr_expg, corr_spline, corr_spherical
+import numpy as np
 
 
 class GP:
@@ -37,7 +38,8 @@ class GP:
             raise NotImplementedError("unknown GP correlation")
 
         self.model = DACE(
-            regr=regr, corr=corr, theta=1.0, thetaL=0.00001, thetaU=100)
+            regr=regr, corr=corr, theta=1.0, thetaL=np.atleast_1d(0.00001), thetaU=np.atleast_1d(100))
+            # regr=regr, corr=corr, theta=1.0, thetaL=0.00001, thetaU=100)
         self.model.fit(train_data, train_label)
 
     def predict(self, test_data):
