@@ -38,8 +38,9 @@ SEC_OBJ_RANGE_SMALL=${Q_BITS:0:1}
 SEC_OBJ_RANGE_LARGE=${Q_BITS:(-1)}
 SEC_OBJ_RANGE="${SEC_OBJ_RANGE_SMALL} ${SEC_OBJ_RANGE_LARGE}"
 
-LOSS_FILE=data/${MODEL_NAME}_${METHOD_TEXT}_loss_${N_DATA}_${Q_BITS_TEXT}_${SEC_OBJ}_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_test.json
-POOL=data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4.json
+LOSS_FILE=data/${MODEL_NAME}_${METHOD_TEXT}_loss_${N_DATA}_${Q_BITS_TEXT}_${SEC_OBJ}_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_pass_test.json
+# POOL=data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4.json
+POOL=/NAS/SJ/nsgaquant/data/Llama-2-7b-hf_hqq_loss_1000_2_4_bits_2_4_pass_train.json
 # PPL_FILE=data/${MODEL_NAME}_${METHOD_TEXT}_ppl_${N_DATA}_range_bits_${Q_BITS_TEXT}_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_axis_${AXIS}_scale_${QSCALE}_qz_${QZERO}_lp_range_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}.json
 
 # LOSS_FILE=data/${MODEL_NAME}_${METHOD}_loss_${N_DATA}_range_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_axis_${SMALL_AXIS}_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_lqs_${LARGE_QSCALE}_lqz_${LARGE_QZERO}_sb_${SMALL_WBITS}_sgs_${SMALL_GROUP_SIZE}_sqs_${SMALL_QSCALE}_sqz_${SMALL_QZERO}.json
@@ -62,14 +63,16 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
 --loss_json_file ${LOSS_FILE} \
+--pass_linear_list ${PASS_LIST} \
 --n_data ${N_DATA} \
 --n_sample ${N_SAMPLE} \
 --sec_obj ${SEC_OBJ} \
 --sec_obj_range ${SEC_OBJ_RANGE} \
 --method ${METHOD} \
 --max_value ${MAX_VALUE} \
---loss_func ${LOSS_FUNC} \
---pool ${POOL}
+--pool ${POOL} \
+--loss_func ${LOSS_FUNC}
+
 # --layer_prune_range ${LAYER_PRUNE_RANGE} \
 # --use_linear_group
 # --ppl_json_file ${PPL_FILE} \

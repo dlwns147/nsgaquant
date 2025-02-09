@@ -240,7 +240,7 @@ class Search:
                         F[:, 1] = c_metric_pred[:, 0]
                         plot.add(F, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
                         plot.save(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
-                accelerator.wait_for_everyone()
+            accelerator.wait_for_everyone()
 
         if accelerator.is_main_process:
             total_time_elapsed = time() - total_start
