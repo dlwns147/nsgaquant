@@ -1,8 +1,8 @@
 DEVICES=${1}
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
 
 CONFIG=config/llama.json
@@ -22,7 +22,10 @@ COMP_OBJ="params"
 # COMP_OBJ="params latency"
 # TRADEOFF_OBJ="latency"
 
-EXPR_FILE=2501301838_Llama-2-13b-hf_mo_params_latency_loss_iter_240_n_iter_40_obj_0.45_0.45_1_1_jsd_co_0.9_mut_0.1_mask_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
+EXPR_FILE=2502091509_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_obj_0.45_1_jsd_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_128.stats
+# EXPR_FILE=2502091452_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_obj_0.45_1_cross_entropy_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_128.stats
+
+# EXPR_FILE=2501301838_Llama-2-13b-hf_mo_params_latency_loss_iter_240_n_iter_40_obj_0.45_0.45_1_1_jsd_co_0.9_mut_0.1_mask_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
 # EXPR_FILE=2501301838_Llama-2-13b-hf_mo_params_latency_loss_iter_240_n_iter_40_obj_0.45_0.45_1_1_cross_entropy_co_0.9_mut_0.1_mask_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
 # EXPR_FILE=2501301733_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_240_n_iter_40_obj_0.45_1_cross_entropy_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
 # EXPR_FILE=2501301733_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_240_n_iter_40_obj_0.45_1_jsd_co_0.9_mut_0.1_mask_0.45_1.0_32sample_pop_200_wikitext2_rtx6000ada/iter_240.stats
@@ -156,3 +159,4 @@ done
 # EXPR_FILE=2412301248_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_32sample_rtx6000ada/iter_160.stats
 # EXPR_FILE=2412301249_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_64sample_rtx6000ada/iter_160.stats
 
+                                                                                                                                                                                   
