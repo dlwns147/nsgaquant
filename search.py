@@ -273,7 +273,6 @@ class Search:
         metric_list, complexity_list = [], []
         for arch in tqdm(archs, desc='Eval Arch'):
             metric, complexity = self.evaluator.eval(accelerator=accelerator, arch=arch, metric=self.metric, loss_func=self.loss_func)
-            # import pdb; pdb.set_trace()
             metric_list.append(min(self.max_value, np.nan_to_num(metric[self.dataset], nan=self.max_value)))
             complexity_list.append(complexity[self.sec_obj])
 
@@ -295,7 +294,7 @@ class Search:
             for linear_idx, linear in enumerate(self.config['linear']):
                 ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
 
-            lb, ub = lb.flatten(), ub.flatten()
+            lb, ub = lb.transpose(0, 1).flatten(), ub.transpose(0, 1).flatten()
 
             lb = np.delete(lb, self.search_space.pass_linear_idx_list, axis=-1)
             ub = np.delete(ub, self.search_space.pass_linear_idx_list, axis=-1)

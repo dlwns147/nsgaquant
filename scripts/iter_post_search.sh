@@ -38,13 +38,14 @@ COMP_OBJ_TEXT=bits
 # COMP_OBJ_TEXT=bits_latency
 
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
-BATCH_SIZE=32
-# BATCH_SIZE=64
+# BATCH_SIZE=32
+BATCH_SIZE=64
 
 EXPR_FOLDER=save/search/quant
 
+EXPR_FILE=2502091342_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_100.stats
 # EXPR_FILE=2502061619_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_400.stats
-EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_300.stats
+# EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_300.stats
 
 # EXPR_FILE=2502012042_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.95_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0
 # EXPR_FILE=2502012041_Llama-2-13b-hf_bits_loss_hqq_layer_prune_iter_400_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_400.stats
@@ -83,14 +84,14 @@ EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0
 
 
 N=1
-# DATASETS="wikitext2 c4"
-DATASETS=wikitext2
+DATASETS="wikitext2 c4"
 LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
 
 TARGET_COMP_OBJ=bits
 # TARGET_COMP_OBJ_VAL_LIST=(2.0 2.25 2.5 2.75 3.0 3.25 3.5 3.75)
 # TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75)
-TARGET_COMP_OBJ_VAL_LIST=(2.25)
+# TARGET_COMP_OBJ_VAL_LIST=(3.0)
+TARGET_COMP_OBJ_VAL_LIST=(2.5 3.5)
 COMP_OBJ_THRESHOLD=0.005
 
 for TARGET_COMP_OBJ_VAL in ${TARGET_COMP_OBJ_VAL_LIST[*]}

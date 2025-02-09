@@ -29,8 +29,8 @@ LOSS_FUNC=jsd
 # PREDICTOR=gp
 PREDICTOR=rbf
 
-# OBJ=sparsity
-OBJ=params
+OBJ=sparsity
+# OBJ=params
 # OBJ=latency
 
 DATASET=wikitext2

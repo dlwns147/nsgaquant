@@ -110,7 +110,7 @@ def main():
     parser.add_argument('--backend_4bit', type=str, choices=['gptq', 'bitblas', 'gemlite', 'gptq_cuda', 'gptq_tritonv2'], help='backend for 4bit', default = 'gptq')
 
     parser.add_argument('--batch_size', type=int, help='batch size', default = 1)
-    parser.add_argument('--seq_length', type=int, help='sequence length', default = 128)
+    parser.add_argument('--seq_length', type=int, help='sequence length', default = 64)
     parser.add_argument('--gen_length', type=int, help='generation length', default = 128)
 
     parser.add_argument('--tps', action='store_true', help='token per second')

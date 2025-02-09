@@ -20,34 +20,6 @@ def device_warmup(device: str):
 
 
 @torch.inference_mode()
-def faster_transformer(model, input_ids, start_pos):
-    out = model(input_ids, start_pos=start_pos, use_cache=False)
-    start_pos += out.logits.shape[1]
-    max_logit = out.logits[:, -1].max(1)[1].unsqueeze(1)
-
-    return max_logit, start_pos
-
-
-@torch.inference_mode()
-def huggingface(model, input_ids, last_key_values = None):
-    out = model(input_ids, past_key_values=last_key_values)
-    logits, last_key_values = out.logits, out.past_key_values
-
-    max_logit = logits[:, -1].max(1)[1].unsqueeze(1)
-
-    return max_logit, last_key_values
-
-
-@torch.inference_mode()
-def model_generate(model, input_ids, attention_mask, generation_length):
-    _ = model.generate(input_ids, 
-                min_new_tokens = generation_length,
-                max_new_tokens = generation_length,
-                do_sample=False,
-                num_beams=1,
-                attention_mask = attention_mask)
-
-
 def benchmark_tps(model, input_ids, attention_mask, gen_seq_len):
     global device, wrapped_ft, benchmark_iteration
 
@@ -59,7 +31,12 @@ def benchmark_tps(model, input_ids, attention_mask, gen_seq_len):
         torch.cuda.synchronize()
         start = time.perf_counter()
 
-        model_generate(model, input_ids, attention_mask, gen_seq_len)
+        _ = model.generate(input_ids, 
+            min_new_tokens = gen_seq_len,
+            max_new_tokens = gen_seq_len,
+            do_sample=False,
+            num_beams=1,
+            attention_mask = attention_mask)
 
         torch.cuda.synchronize()
         end = time.perf_counter()
@@ -69,6 +46,7 @@ def benchmark_tps(model, input_ids, attention_mask, gen_seq_len):
     return gen_seq_len / np.median(time_list)
 
 
+@torch.inference_mode()
 def benchmark_gemv_gemm(model, input_ids, gen_seq_len, mode = 'gemv'):
     global device, wrapped_ft, benchmark_iteration
 
@@ -84,7 +62,7 @@ def benchmark_gemv_gemm(model, input_ids, gen_seq_len, mode = 'gemv'):
                 torch.cuda.synchronize()
                 start = time.perf_counter()
 
-            max_logit, start_pos = faster_transformer(model, input_ids, start_pos)
+            out = model(input_ids, start_pos=start_pos, use_cache=False)
 
             if mode.lower() == 'gemm':
                 torch.cuda.synchronize()
@@ -92,15 +70,23 @@ def benchmark_gemv_gemm(model, input_ids, gen_seq_len, mode = 'gemv'):
 
                 time_list.append(end - start)
 
+            start_pos += out.logits.shape[1]
+            max_logit = out.logits[:, -1].max(1)[1].unsqueeze(1)
+            gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
+
             if mode.lower() == 'gemv':
                 for _ in range(gen_seq_len):
                     torch.cuda.synchronize()
                     start = time.perf_counter()
 
-                    max_logit, start_pos = faster_transformer(model, max_logit, start_pos)
+                    out = model(gemv_input_ids, start_pos=start_pos, use_cache=False)
 
                     torch.cuda.synchronize()
                     end = time.perf_counter()
+
+                    start_pos += out.logits.shape[1]
+                    max_logit = out.logits[:, -1].max(1)[1].unsqueeze(1)
+                    gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
 
                     time_list.append(end - start)
         else:
@@ -110,7 +96,7 @@ def benchmark_gemv_gemm(model, input_ids, gen_seq_len, mode = 'gemv'):
                 torch.cuda.synchronize()
                 start = time.perf_counter()
 
-            max_logit, last_key_values = huggingface(model, input_ids, last_key_values)
+            out = model(input_ids, past_key_values=last_key_values)
 
             if mode.lower() == 'gemm':
                 torch.cuda.synchronize()
@@ -118,15 +104,23 @@ def benchmark_gemv_gemm(model, input_ids, gen_seq_len, mode = 'gemv'):
 
                 time_list.append(end - start)
 
+            logits, last_key_values = out.logits, out.past_key_values
+            max_logit = logits[:, -1].max(1)[1].unsqueeze(1)
+            gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
+
             if mode.lower() == 'gemv':
                 for _ in range(gen_seq_len):
                     torch.cuda.synchronize()
                     start = time.perf_counter()
 
-                    max_logit, last_key_values = huggingface(model, max_logit, last_key_values)
+                    out = model(gemv_input_ids, past_key_values=last_key_values)
 
                     torch.cuda.synchronize()
                     end = time.perf_counter()
+
+                    logits, last_key_values = out.logits, out.past_key_values
+                    max_logit = logits[:, -1].max(1)[1].unsqueeze(1)
+                    gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
 
                     time_list.append(end - start)
 
@@ -220,7 +214,8 @@ def benchmark_speed(model, tokenizer = None, use_ft = True, iteration = 1, sizes
                 start = time.perf_counter()
 
                 input_ids = tokenizer(text, return_tensors='pt', truncation = True, max_length=input_seq_len).input_ids.to(model.device)
-                max_logit, _ = faster_transformer(model, input_ids, start_pos)
+                out = model(input_ids, start_pos=start_pos, use_cache=False)
+                max_logit = out.logits[:, -1].max(1)[1].unsqueeze(1)
                 _ = tokenizer.decode(max_logit[0])
 
                 torch.cuda.synchronize()
@@ -232,9 +227,10 @@ def benchmark_speed(model, tokenizer = None, use_ft = True, iteration = 1, sizes
                 start = time.perf_counter()
 
                 input_ids = tokenizer(text, return_tensors='pt', truncation = True, max_length=input_seq_len).input_ids.to(model.device)
-                max_logit, _ = huggingface(model, input_ids, last_key_values)
+                out = model(input_ids, past_key_values=last_key_values)
+                max_logit = out.logits[:, -1].max(1)[1].unsqueeze(1)
                 _ = tokenizer.decode(max_logit[0])
-
+                
                 torch.cuda.synchronize()
                 end = time.perf_counter()
 
