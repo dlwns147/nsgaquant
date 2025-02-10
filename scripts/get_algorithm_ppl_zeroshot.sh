@@ -1,4 +1,4 @@
-DEVICES=2
+DEVICES=1
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
@@ -22,7 +22,7 @@ DATASETS=( "wikitext2" "c4" )
 # OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/${MODEL_NAME}-${METHOD}.csv
 GROUP_SIZE=-1
 TARGET_BITS=( 2 3 4 )
-OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}.csv
+OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}_sym.csv
 
 N_PROC=1
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} get_algorithm_ppl_zeroshot.py \
@@ -38,7 +38,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --output_path ${OUTPUT_PATH} \
 --target_bits ${TARGET_BITS[@]} \
 --group_size ${GROUP_SIZE} \
---output_path ${OUTPUT_PATH}
+--output_path ${OUTPUT_PATH} \
+--do_clip_sym
 
 # --do_prune \
 # --do_owq \

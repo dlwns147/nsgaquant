@@ -139,15 +139,32 @@ def init_accelerator(gpu_id, config):
     return accelerator, device_map
 
 def load_hqq_model(model_id, device_map, use_cache=False, inference=False):
+
+    # for fast model loading
+    org_kaiming_uniform = torch.nn.init.kaiming_uniform_
+    org_uniform = torch.nn.init.uniform_
+    org_normal = torch.nn.init.normal_
+    def skip(*args, **kwargs):
+        pass
+    torch.nn.init.kaiming_uniform_ = skip
+    torch.nn.init.uniform_ = skip
+    torch.nn.init.normal_ = skip
+
     if model_id is not None:
         model = AutoHQQHFModel.from_quantized(model_id, device_map='cpu')
         model = simple_dispatch_model(model, device_map)
         model.use_cache = use_cache
         model.config.use_cache = use_cache
+        print(f'{model_id} :  {torch.cuda.max_memory_reserved() / 1024 / 1024}MB')
         # if inference:
         #     prepare_for_inference(model, backend='gptq')
     else :
         model = None
+
+    torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
+    torch.nn.init.uniform_ = org_uniform
+    torch.nn.init.normal_ = org_normal
+
     return model
 
 def insert_fp16_channel_hqq(linear, outlier):
@@ -177,16 +194,16 @@ def get_hfmodel(model_name_or_path: str,
     # assert kwargs.get('attn_implementation') in ['hf', 'ft']        ## hf : huggingface, ft : faster transformer
     
     # for fast model loading
-    # org_kaiming_uniform = torch.nn.init.kaiming_uniform_
-    # org_uniform = torch.nn.init.uniform_
-    # org_normal = torch.nn.init.normal_
+    org_kaiming_uniform = torch.nn.init.kaiming_uniform_
+    org_uniform = torch.nn.init.uniform_
+    org_normal = torch.nn.init.normal_
 
-    # def skip(*args, **kwargs):
-    #     pass
+    def skip(*args, **kwargs):
+        pass
 
-    # torch.nn.init.kaiming_uniform_ = skip
-    # torch.nn.init.uniform_ = skip
-    # torch.nn.init.normal_ = skip
+    torch.nn.init.kaiming_uniform_ = skip
+    torch.nn.init.uniform_ = skip
+    torch.nn.init.normal_ = skip
     
     # ft = False
     # if kwargs.get('attn_implementation') == 'ft':
@@ -209,8 +226,8 @@ def get_hfmodel(model_name_or_path: str,
     #     convert_model_to_ft(model)
     #     replace_generate_functions()
 
-    # torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
-    # torch.nn.init.uniform_ = org_uniform
-    # torch.nn.init.normal_ = org_normal
+    torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
+    torch.nn.init.uniform_ = org_uniform
+    torch.nn.init.normal_ = org_normal
     
     return model

@@ -290,15 +290,27 @@ class Search:
         kwargs = {}
         if self.predictor == 'rbf':
             n_block = self.config['n_block']
-            n_layer = self.config['n_layer']
-            lb = np.zeros((n_block * n_layer))
-            ub = np.ones((n_block * n_layer))
+            n_linear = self.config['n_linear']
 
-            lb = np.delete(lb, self.search_space.pass_layer_idx_list, axis=-1)
-            ub = np.delete(ub, self.search_space.pass_layer_idx_list, axis=-1)
+            # lb = np.zeros((n_block, n_linear))
+            # ub = np.ones((n_block, n_linear))
+
+            # for linear_idx, linear in enumerate(self.config['linear']):
+            #     ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+            
+            # lb, ub = lb.transpose(0, 1).flatten(), ub.transpose(0, 1).flatten()
+
+            lb = np.zeros((n_linear, n_block))
+            ub = np.ones((n_linear, n_block))
+
+            for linear_idx, linear in enumerate(self.config['linear']):
+                ub[linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+
+
+            lb = np.delete(lb.flatten(), self.search_space.pass_linear_idx_list)
+            ub = np.delete(ub.flatten(), self.search_space.pass_linear_idx_list)
 
             kwargs = {'lb': lb, 'ub': ub}
-            # print(f'lb : {lb.shape}, ub : {ub.shape}')
 
         predictor = get_predictor(self.predictor, inputs, targets, device=device, **kwargs)
         # metric_predictor = get_predictor(self.predictor, inputs, targets, device=device)
