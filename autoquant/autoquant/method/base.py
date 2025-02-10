@@ -87,6 +87,8 @@ class BASE:
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code = True, use_fast=False)
 
+        self.group_size = self.set_group_size(128)
+
 
     def prune_model(self):
         self.model = skip_llama.block_replace(self.model)
@@ -110,6 +112,10 @@ class BASE:
             self.get_gptq_calib_dataset()
         elif self.method == 'awq':
             self.get_awq_calib_dataset()
+
+        
+    def set_group_size(self, group_size):
+        self.group_size = group_size
 
     
     def get_gptq_calib_dataset(self, calib_data='c4', n_samples=128, seqlen=2049, seed=0):

@@ -39,11 +39,11 @@ def main(args, arch):
         datasets=args.eval_datasets,
     )
 
-    # del evaluator.model
-    # torch.cuda.empty_cache()
-    # gc.collect()
+    del evaluator.model
+    torch.cuda.empty_cache()
+    gc.collect()
 
-    model = evaluator.model
+    # model = evaluator.model
 
 
     ## customizing
@@ -60,9 +60,10 @@ def main(args, arch):
     """
     실험 끝나면 do clip asym True로 바꿀 것 !!!!!!!
     """
-    # method = get_quantized_model(args.method, arch, model_id, 'cuda:0', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None)
-    # model = method.model
-    # model = model.to('cuda:0')
+    method = get_quantized_model(args.method, arch, model_id, 'cuda:0', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None, 
+                                 group_size = args.group_size, do_clip_asym = args.do_clip_asym)
+    model = method.model
+    model = model.to('cuda:0')
 
     print("Evaluate")
     metric, complexity = evaluator.eval_woo(arch=arch, model = model, metric='ppl', accelerator=accelerator)
@@ -78,7 +79,7 @@ def main(args, arch):
     
     if args.zeroshot:
         print("Evaluate zeroshot")
-        results = eval_zeroshot(model, tokenizer=tokenizer, batch_size='auto')
+        results = eval_zeroshot(model, tokenizer=tokenizer, batch_size='auto', task_list=['boolq', 'piqa','winogrande','hellaswag','arc_challenge','arc_easy'])
         avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
         print(f'avg_acc : {avg_acc}, results : {results}')
         for task, task_result in results.items():
@@ -127,9 +128,14 @@ if __name__ == '__main__':
     
     parser.add_argument('--target_bits', type=int, nargs='+', default=[],
                         help='')
+    parser.add_argument('--group_size', type=int, default=128,
+                        help='')
     
     parser.add_argument('--do_prune', action='store_true', help='Whether to use pruning')
     parser.add_argument('--do_owq', action='store_true', help='Whether to use owq')
+    parser.add_argument('--do_clip_asym', action='store_true', help='Whether to clip asym')
+    parser.set_defaults(do_clip_asym=True)
+    
     parser.add_argument('--outlier_path', type=str, default='',
                         help='')
 
@@ -137,7 +143,7 @@ if __name__ == '__main__':
 
     ## customizing
     global field
-    field = ['algorithm', 'bits', *cfgs.eval_datasets, 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
+    field = ['algorithm', 'bits', *cfgs.eval_datasets, 'boolq', 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
 
     assert 'llama' in cfgs.model_name.lower() , 'not supported model'
     linears = ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']
@@ -155,6 +161,8 @@ if __name__ == '__main__':
             layer_len = 32
         elif '13b' in cfgs.model_name:
             layer_len = 40
+        elif '70b' in cfgs.model_name:
+            layer_len = 80
         else:
             assert False, 'not supported model'
 

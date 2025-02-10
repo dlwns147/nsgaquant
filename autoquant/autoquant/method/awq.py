@@ -92,6 +92,10 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
     if q_group_size > 0:
         assert org_w_shape[-1] % q_group_size == 0
         w = w.reshape(-1, q_group_size)
+    # if w.dim() != 2:
+        # import code; code.interact('pseudo_quantize_tensor', local=dict(locals(), **globals()))
+    if q_group_size == -1:
+        w = w.reshape(-1, w.shape[-1])
     assert w.dim() == 2
     if zero_point:
         max_val = w.amax(dim=1, keepdim=True)
@@ -148,6 +152,8 @@ class AWQ(BASE):
         samples = None,
     ):
         assert self.arch is not None, "arch is not provided"
+
+        print(f"Do pruning: {self.do_prune}, Do owq: {self.do_owq}, Do clip asym: {self.do_clip_asym}, Group size: {self.group_size}")
 
         if samples is None:
             samples = self.get_awq_calib_dataset()
@@ -277,7 +283,7 @@ class AWQ(BASE):
                     # m.to(self.dev)
                     m.weight.data = pseudo_quantize_tensor(
                         m.weight.data, n_bit = int(self.arch['linear'][n][i]),
-                        q_group_size = 128
+                        q_group_size = self.group_size
                     )
                     # m.cpu()
 
@@ -293,7 +299,7 @@ class AWQ(BASE):
                     # m.to(self.dev)
                     m.weight.data = pseudo_quantize_tensor(
                         m.weight.data, n_bit=int(self.arch['linear'][n][i]),
-                        q_group_size = 128
+                        q_group_size = self.group_size
                     )
                     # m.cpu()
                 
@@ -311,7 +317,7 @@ class AWQ(BASE):
             return pseudo_quantize_tensor(
                 p,
                 n_bit=bit,
-                q_group_size = 128,
+                q_group_size = self.group_size,
             ).detach()
 
         if "use_cache" in module_kwargs:
@@ -537,7 +543,7 @@ class AWQ(BASE):
             named_linears[name].to(self.dev)
             q_config = {}
 
-            q_config['q_group_size'] = 128
+            q_config['q_group_size'] = self.group_size
             max_val, min_val = self.auto_clip_layer_asym(
                 named_linears[name].weight, input_feat[name], n_bit=module_bit[name], q_config=q_config,
                 ## customizing
@@ -663,7 +669,7 @@ class AWQ(BASE):
             named_linears[name].cuda()
             q_config = {}
 
-            q_config['q_group_size'] = 128
+            q_config['q_group_size'] = self.group_size
             max_val = self.auto_clip_layer_sym(
                 named_linears[name].weight, input_feat[name], n_bit=module_bit[name], q_config=q_config
             )
