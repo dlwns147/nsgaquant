@@ -192,7 +192,7 @@ def get_hfmodel(model_name_or_path: str,
 
     # assert kwargs.get('attn_implementation') in ['hf', 'ft']        ## hf : huggingface, ft : faster transformer
     
-    for fast model loading
+    # for fast model loading
     org_kaiming_uniform = torch.nn.init.kaiming_uniform_
     org_uniform = torch.nn.init.uniform_
     org_normal = torch.nn.init.normal_
