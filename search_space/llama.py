@@ -223,8 +223,8 @@ class LlamaSearchSpace:
         B = x.shape[0]
         x = x.reshape(B, self.n_block, self.n_linear + self.n_layer).transpose(0, 2, 1) # x : (B, n_linear + n_layer, n_block)
         x, x_layer = x[:, :self.n_linear], x[:, self.n_linear:] # x : (B, n_linear, n_block), x_layer : (B, n_layer, n_block)
-        x[:, :4] *= x_layer[:, 0]
-        x[:, 4:] *= x_layer[:, 1]
+        x[:, :4] *= x_layer[:, 0, None]
+        x[:, 4:] *= x_layer[:, 1, None]
         return np.delete(x.reshape(B, -1), self.pass_linear_idx_list, axis=-1)
 
 

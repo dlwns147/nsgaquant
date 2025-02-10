@@ -135,11 +135,16 @@ if __name__ == '__main__':
     parser.add_argument('--do_owq', action='store_true', help='Whether to use owq')
     parser.add_argument('--do_clip_asym', action='store_true', help='Whether to clip asym')
     parser.set_defaults(do_clip_asym=True)
+
+    parser.add_argument('--do_clip_sym', action='store_true', help='Whether to clip sym')
     
     parser.add_argument('--outlier_path', type=str, default='',
                         help='')
 
     cfgs = parser.parse_args()
+
+    if cfgs.do_clip_sym:
+        cfgs.do_clip_asym = False
 
     ## customizing
     global field
