@@ -46,9 +46,9 @@ class LlamaEvaluator:
         self.model = None
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
 
-        with accelerator.main_process_first():
-            self.train_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, n_sample=n_sample, train=True, seed=seed, seqlen=seqlen)) for dataset in datasets}
-            self.test_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, train=False, seqlen=seqlen)) for dataset in datasets}
+        # with accelerator.main_process_first():
+        self.train_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, n_sample=n_sample, train=True, seed=seed, seqlen=seqlen)) for dataset in datasets}
+        self.test_loaders = {dataset: accelerator.prepare(get_loader(dataset, model=model_id, train=False, seqlen=seqlen)) for dataset in datasets}
 
         self.loss_func = loss_func
         self.outlier = dict()
@@ -75,10 +75,10 @@ class LlamaEvaluator:
         self.quant_models = list()
         if 'hqq' in method:
             if quant_model_paths and quant_model_bits:
-                with accelerator.main_process_first():
-                    self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map, inference)
-                    self.remove_linears(self.model, config)
-                    self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
+                # with accelerator.main_process_first():
+                self.model = load_hqq_model(quant_model_paths[np.argmax(quant_model_bits)], device_map, inference)
+                self.remove_linears(self.model, config)
+                self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
 
         elif 'awq' in method or 'gptq' in method:
