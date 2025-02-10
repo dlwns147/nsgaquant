@@ -141,12 +141,6 @@ def main():
     prepare_for_inference(int3_model, backend = args.backend_3bit, load_path = f"/SSD/Woo/hqq/{model_id}_3bit_128gs_1axis_{args.backend_3bit.upper()}Linear.pt")
     prepare_for_inference(int4_model, backend = args.backend_4bit, load_path = f"/SSD/Woo/hqq/{model_id}_4bit_128gs_1axis_{args.backend_4bit.upper()}Linear.pt")
 
-    if 'gemlite' in [args.backend_2bit, args.backend_3bit, args.backend_4bit]:
-        import gemlite
-        gemlite.core.GEMLITE_TRITON_RESTRICT_M = True #Restrict the batch-size to powers of 2 if True
-        gemlite.core.GemLiteLinear.cache_config('gemlite_config.json') #Cache- run this over multiple batch-sizes
-        gemlite.core.GemLiteLinear.load_config('gemlite_config.json') #Load
-
     int2_layers = int2_model.model.layers
     int3_layers = int3_model.model.layers
     int4_layers = int4_model.model.layers
@@ -213,40 +207,41 @@ def main():
     print(f"Get Speed...")
     result['fp16'] = {}
 
-    if args.tps:
-        token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
-        result['fp16'].update(token_per_second)
-        print('Token per second : ', token_per_second)
+    # if args.tps:
+    #     token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
+    #     result['fp16'].update(token_per_second)
+    #     print('Token per second : ', token_per_second)
 
-    if args.gemm:
-        gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
-        result['fp16'].update(gemm)
-        print('GeMM : ', gemm)
+    # if args.gemm:
+    #     gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+    #     result['fp16'].update(gemm)
+    #     print('GeMM : ', gemm)
 
-    if args.gemv:
-        gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
-        result['fp16'].update(gemv)
-        print('GeMV : ', gemv)
+    # if args.gemv:
+    #     gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+    #     result['fp16'].update(gemv)
+    #     print('GeMV : ', gemv)
 
-    if args.ttft:
-        ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
-        result['fp16'].update(ttft)
-        print('TTFT : ', ttft)
+    # if args.ttft:
+    #     ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+    #     result['fp16'].update(ttft)
+    #     print('TTFT : ', ttft)
 
-    if args.memory:
-        memory = get_memory_footprint(base_model) / 1024 ** 3
-        result['fp16'].update({'memory' : memory})
-        print(f"Base Model Memory : {memory} GB")
+    # if args.memory:
+    #     memory = get_memory_footprint(base_model) / 1024 ** 3
+    #     result['fp16'].update({'memory' : memory})
+    #     print(f"Base Model Memory : {memory} GB")
 
-    if args.file_name:
-        result_dir = f'benchmark/outputs'
-        if not os.path.exists(result_dir):
-            os.makedirs(result_dir, exist_ok=True)
-        result_path = os.path.join(result_dir, args.file_name)        
+    # if args.file_name:
+    #     result_dir = f'benchmark/outputs'
+    #     if not os.path.exists(result_dir):
+    #         os.makedirs(result_dir, exist_ok=True)
+    #     result_path = os.path.join(result_dir, args.file_name)        
                        
     base_model = base_model.to('cpu')
     base_layers_length = len(base_layers)
     linears = list(get_named_linears(base_layers[0]).keys())
+
 
     for bit in [2, 3, 4]:
         arch = {linear : [bit] * base_layers_length for linear in linears}
@@ -286,6 +281,17 @@ def main():
 
         print(f"Get Speed...")
         result[f'{bit}bit'] = {}
+
+        if 'gemlite' in [args.backend_2bit, args.backend_4bit] and bit in [2, 4]:
+            import gemlite
+            gemlite.core.GEMLITE_TRITON_RESTRICT_M = True #Restrict the batch-size to powers of 2 if True
+            if os.path.exists(f'gemlite_config_{bit}.json'):
+                gemlite.core.GemLiteLinear.load_config(f'gemlite_config_{bit}.json') #Load
+            else:
+                print("optimize gemlite kernel")
+                token_per_second = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = 1, sizes = sizes, mode = 'TPS', get_peak_memory=False)
+                gemlite.core.GemLiteLinear.cache_config(f'gemlite_config_{bit}.json') #Cache- run this over multiple batch-sizes
+            # import code; code.interact('gemlite triton cache', local = dict(globals(), **locals()))
 
         if args.tps:
             token_per_second = benchmark_speed(model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)

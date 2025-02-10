@@ -45,6 +45,8 @@ def get_args():
 
 def get_quantized_model(method, arch, model_name, dev, do_prune = False, do_owq = False, owq_path = None, **kwargs):
     method = args2method[method](model_name = model_name, config = None, dev = dev, arch = arch, do_prune = do_prune, do_owq = do_owq, owq = owq_path, **kwargs)
+    group_size = kwargs.get('group_size', 128)
+    method.set_group_size(group_size)
 
     if do_prune:
         print('Pruning the model')

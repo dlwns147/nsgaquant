@@ -1,10 +1,11 @@
 import numpy as np
-from accelerate import Accelerator
+from accelerate import Accelerator, InitProcessGroupKwargs
 from hqq.models.hf.base import AutoHQQHFModel
 from .dispatch import simple_dispatch_model
 import scipy.stats as stats
 import torch
 from transformers import AutoModelForCausalLM
+from datetime import timedelta
 # from hqq.utils.patching_woo import prepare_for_inference
 
 def get_correlation(prediction, target):
@@ -104,7 +105,12 @@ def getblock(model, config):
 
 def init_accelerator(gpu_id, config):
     gpu_id = gpu_id.split(',')
-    accelerator = Accelerator()
+
+    ipg_handler = InitProcessGroupKwargs(
+            timeout=timedelta(seconds=5400)
+            )
+
+    accelerator = Accelerator(kwargs_handlers=[ipg_handler])
     n_proc = accelerator.num_processes
     assert len(gpu_id) % n_proc == 0, 'Total number of gpus (args.gpu_id) should be divisible by num_processes'
 

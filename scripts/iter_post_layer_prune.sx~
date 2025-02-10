@@ -22,13 +22,7 @@ COMP_OBJ="params"
 # COMP_OBJ="params latency"
 # TRADEOFF_OBJ="latency"
 
-EXPR_FILE=2502101057_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.4_1_jsd_co_0.9_mut_0.1_mask_0.4_1.0_128sample_pop_200_100_wikitext2_rbf_rtx6000ada/iter_100.stats
-# EXPR_FILE=2502101102_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_obj_0.4_1_cross_entropy_co_0.9_mut_0.1_mask_0.4_1.0_128sample_pop_200_100_wikitext2_mlp_rtx6000ada/iter_128.stats
-# EXPR_FILE=2502101102_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_128_n_iter_32_obj_0.4_1_jsd_co_0.9_mut_0.1_mask_0.4_1.0_128sample_pop_200_100_wikitext2_mlp_rtx6000ada/iter_128.stats
-# EXPR_FILE=2502101057_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.4_1_jsd_co_0.9_mut_0.1_mask_0.4_1.0_128sample_pop_200_100_wikitext2_rbf_rtx6000ada/iter_100.stats
-# EXPR_FILE=2502100843_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.45_1_jsd_co_0.9_mut_0.1_mask_0.45_1.0_128sample_pop_100_100_wikitext2_mlp_rtx6000ada/iter_100.stats
-# EXPR_FILE=2502100843_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.45_1_cross_entropy_co_0.9_mut_0.1_mask_0.45_1.0_128sample_pop_100_100_wikitext2_mlp_rtx6000ada/iter_100.stats
-# EXPR_FILE=2502101007_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.4_1_jsd_co_0.9_mut_0.1_mask_0.4_1.0_128sample_pop_100_50_wikitext2_rbf_rtx6000ada/iter_100.stats
+EXPR_FILE=2502101007_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.4_1_jsd_co_0.9_mut_0.1_mask_0.4_1.0_128sample_pop_100_50_wikitext2_rbf_rtx6000ada/iter_100.stats
 # EXPR_FILE=2502100843_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.45_1_jsd_co_0.9_mut_0.1_mask_0.45_1.0_128sample_pop_100_100_wikitext2_rtx6000ada/iter_100.stats
 # EXPR_FILE=2502100843_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.45_1_cross_entropy_co_0.9_mut_0.1_mask_0.45_1.0_128sample_pop_100_100_wikitext2_rtx6000ada/iter_100.stats
 # EXPR_FILE=2502101006_Llama-2-7b-hf_sparsity_loss_layer_prune_iter_100_n_iter_20_obj_0.4_1_jsd_co_0.9_mut_0.1_mask_0.4_1.0_128sample_pop_100_50_wikitext2_rbf_rtx6000ada/iter_100.stats
@@ -175,3 +169,5 @@ done
 # EXPR_FILE=2412301248_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_32sample_rtx6000ada/iter_160.stats
 # EXPR_FILE=2412301249_Llama-2-13b-hf_sparsity_loss_layer_prune_iter_160_n_iter_40_nsga2_obj_0.001_1_jsd_mut_0.1_mask_0.40_1.0_64sample_rtx6000ada/iter_160.stats
 
+                                                                                                                                                                                   
+                                                                                                                                                                                      

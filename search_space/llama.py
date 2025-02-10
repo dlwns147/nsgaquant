@@ -60,6 +60,15 @@ class LlamaSearchSpace:
         assert math.isclose(layer_prune_range[0], layer_prune_range[1]) or layer_prune_range[0] < layer_prune_range[1], f"layer_prune_range is invalid: {layer_prune_range}"
 
         self.n_bits = len(quant_model_bits)
+        self.pass_linear_idx_list = []
+        for pass_linear in self.pass_linear_list:
+            blk, linear = pass_linear.split('.', maxsplit=1)
+            linear_idx = self.config['linear'].index(linear)
+            # self.pass_linear_idx_list.append(int(blk) * self.n_linear + linear_idx)
+            self.pass_linear_idx_list.append(int(blk) + self.n_block * linear_idx)
+            
+        self.pass_linear_idx_list.sort()
+        print(f'self.pass_linear_idx_list : {self.pass_linear_idx_list}')
 
     def sample(self, n_samples=1, nb=None, q=None, k=None, v=None, o=None, down=None, up=None, gate=None, lp=None, pool=[]):
         """ randomly sample a architecture"""
@@ -195,29 +204,29 @@ class LlamaSearchSpace:
         return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode, attn_encode, mlp_encode), axis=-1).flatten()
     
     def encode_predictor(self, arch):
+        attn_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] if f'{blk_idx}.self_attn' not in self.pass_layer_list else 1 for blk_idx, _x in enumerate(arch['layer']['self_attn'])])# .reshape(-1, 1)
+        mlp_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] if f'{blk_idx}.mlp' not in self.pass_layer_list else 1 for blk_idx, _x in enumerate(arch['layer']['mlp'])])# .reshape(-1, 1)
         
-        attn_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['self_attn']]).reshape(-1, 1)
-        mlp_encode = np.array([np.argwhere(_x == np.array(self.layer_option))[0, 0] for _x in arch['layer']['mlp']]).reshape(-1, 1)
-        
-        q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']]).reshape(-1, 1) * attn_encode
-        k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']]).reshape(-1, 1) * attn_encode
-        v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']]).reshape(-1, 1) * attn_encode
-        o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']]).reshape(-1, 1) * attn_encode
-        gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']]).reshape(-1, 1) * mlp_encode
-        up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']]).reshape(-1, 1) * mlp_encode
-        down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']]).reshape(-1, 1) * mlp_encode
+        q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']]) * attn_encode
+        k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']]) * attn_encode
+        v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']]) * attn_encode
+        o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']]) * attn_encode
+        gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']]) * mlp_encode
+        up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']]) * mlp_encode
+        down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']]) * mlp_encode
 
-        return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
+        # return np.concatenate((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode))
+        return np.delete(np.concatenate((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode)), self.pass_linear_idx_list, axis=-1)
+        # return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
     
-    def decode_encode_predictor(self, x):
-        batch = x.shape[0]
-        x = x.reshape(batch, self.n_block, self.n_linear + self.n_layer)
-        x, x_layer = x[:, :, :self.n_linear], x[:, :, self.n_linear:]
-        # x[:, :, :4] *= np.exapdn_dims(x_layer[:, :, 0], -1)
-        # x[:, :, 4:] *= np.exapdn_dims(x_layer[:, :, 1], -1)
-        x[:, :, :4] *= x_layer[:, :, 0][..., None]
-        x[:, :, 4:] *= x_layer[:, :, 1][..., None]
-        return x.reshape(batch, -1)
+    def decode_encode_predictor(self, x): # x : (batch_size, dim)
+        B = x.shape[0]
+        x = x.reshape(B, self.n_block, self.n_linear + self.n_layer).transpose(0, 2, 1) # x : (B, n_linear + n_layer, n_block)
+        x, x_layer = x[:, :self.n_linear], x[:, self.n_linear:] # x : (B, n_linear, n_block), x_layer : (B, n_layer, n_block)
+        x[:, :4] *= x_layer[:, 0]
+        x[:, 4:] *= x_layer[:, 1]
+        return np.delete(x.reshape(B, -1), self.pass_linear_idx_list, axis=-1)
+
 
     def decode(self, x):
         # decode integer bit-string [1, 0, 2, 1, ...] to arch ({'q': [0, 2, 4], 'k: , etc})

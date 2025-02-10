@@ -287,10 +287,23 @@ class Search:
         inputs = np.array([self.search_space.encode_predictor(x[0]) for x in archive])
         targets = np.array([x[1] for x in archive])
         # assert len(inputs) > len(inputs[0]), "# of training samples have to be > # of dimensions"
+        kwargs = {}
+        if self.predictor == 'rbf':
+            n_block = self.config['n_block']
+            n_layer = self.config['n_layer']
+            lb = np.zeros((n_block * n_layer))
+            ub = np.ones((n_block * n_layer))
 
-        metric_predictor = get_predictor(self.predictor, inputs, targets, device=device)
+            lb = np.delete(lb, self.search_space.pass_layer_idx_list, axis=-1)
+            ub = np.delete(ub, self.search_space.pass_layer_idx_list, axis=-1)
 
-        return metric_predictor, metric_predictor.predict(inputs)
+            kwargs = {'lb': lb, 'ub': ub}
+            # print(f'lb : {lb.shape}, ub : {ub.shape}')
+
+        predictor = get_predictor(self.predictor, inputs, targets, device=device, **kwargs)
+        # metric_predictor = get_predictor(self.predictor, inputs, targets, device=device)
+
+        return predictor, predictor.predict(inputs)
     
     def _next(self, archive, predictor, K):
         """ searching for next K candidate for high-fidelity evaluation (lower level) """
@@ -324,7 +337,6 @@ class Search:
         pop = res.pop[not_duplicate][indices]
         # pop = res.pop[not_duplicate]
         
-
         candidates = []
         for x in pop.get("X"):
             candidates.append(self.search_space.decode(x))

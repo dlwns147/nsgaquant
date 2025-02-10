@@ -21,7 +21,7 @@ def quantize(x, scale, zero, maxq):
 
 
 class GPTQ(BASE):
-    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None):
+    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None, **kwargs):
         super().__init__(model_name, config, dev, arch, do_prune, do_owq, owq)
         self.method = 'gptq'
 
@@ -42,6 +42,8 @@ class GPTQ(BASE):
     ):
         
         assert self.arch is not None, "arch is not provided"
+
+        print(f"Do pruning: {self.do_prune}, Do owq: {self.do_owq}, Group size: {self.group_size}")
 
         if samples is None:
             samples = self.get_gptq_calib_dataset()
@@ -141,7 +143,7 @@ class GPTQ(BASE):
                     #     percdamp=args.percdamp, groupsize=args.groupsize, actorder=args.act_order, static_groups=args.static_groups
                     # )
                     gptq[name].fasterquant(
-                        percdamp=percdamp, groupsize=128, actorder=act_order, static_groups=static_groups
+                        percdamp=percdamp, groupsize=self.group_size, actorder=act_order, static_groups=static_groups
                     )
                     quantizers['self.model.layers.%d.%s' % (i, name)] = gptq[name].quantizer
                     gptq[name].free()
