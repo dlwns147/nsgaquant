@@ -155,6 +155,7 @@ def load_hqq_model(model_id, device_map, use_cache=False, inference=False):
         model = simple_dispatch_model(model, device_map)
         model.use_cache = use_cache
         model.config.use_cache = use_cache
+        print(f'{model_id} :  {torch.cuda.max_memory_reserved() / 1024 / 1024}MB')
         # if inference:
         #     prepare_for_inference(model, backend='gptq')
     else :
