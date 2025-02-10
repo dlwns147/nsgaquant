@@ -246,14 +246,12 @@ class AWQ(BASE):
             torch.cuda.empty_cache()
 
             if self.do_clip_asym:
-                # max_clip_list, min_clip_list = self.auto_clip_block_asym(
                 clip_list = self.auto_clip_block_asym(
                     layer,
                     input_feat=input_feat,
                     module_bit = {proj : int(self.arch['linear'][proj][i]) for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']},
-                    # owq_layer = {proj : owq[f'model.layers.{i}.{proj}'] for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']} if owq is not None else None,
+                    owq_layer = {proj : self.owq[f'model.layers.{i}.{proj}'] for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']} if self.do_owq else None,
                 )
-                # self.apply_clip_asym(layer, max_clip_list, min_clip_list)
                 self.apply_clip_asym(layer, clip_list)
             else:
                 clip_list = self.auto_clip_block_sym(
@@ -293,6 +291,8 @@ class AWQ(BASE):
                         getattr(getattr(self.model.model.layers[i], module), proj).weight[:, self.owq[key]] = original[key]
 
                         del original[key]
+                        torch.cuda.empty_cache()
+                        gc.collect()
 
                 else:
                     # m.to(self.dev)
@@ -394,6 +394,7 @@ class AWQ(BASE):
                 #         del original[fc_name]
                 del original
                 torch.cuda.empty_cache()
+                gc.collect()
 
             assert torch.isnan(best_scales).sum() == 0, best_scales
             return best_scales.detach()
@@ -524,7 +525,7 @@ class AWQ(BASE):
 
 
     @torch.no_grad()
-    def auto_clip_block_asym(self, module, input_feat, module_bit = None):
+    def auto_clip_block_asym(self, module, input_feat, module_bit=None, owq_layer=None):
         named_linears = {
             name: m for name, m in module.named_modules() if isinstance(m, nn.Linear)
         }
@@ -542,7 +543,7 @@ class AWQ(BASE):
             max_val, min_val = self.auto_clip_layer_asym(
                 named_linears[name].weight, input_feat[name], n_bit=module_bit[name], q_config=q_config,
                 ## customizing
-                # owq_column = owq_layer[name] if owq_layer is not None and 'o_' not in name else None
+                owq_column = owq_layer[name] if owq_layer is not None else None
             )
             # max_clip_list.append((name, max_val))
             # min_clip_list.append((name, min_val))
@@ -555,7 +556,7 @@ class AWQ(BASE):
 
     @torch.no_grad()
     def auto_clip_layer_asym(
-        self, w, input_feat, n_bit, q_config, n_grid=20, max_shrink=0.5, n_sample_token=512
+        self, w, input_feat, n_bit, q_config, n_grid=20, max_shrink=0.5, n_sample_token=512, owq_column=None
     ):
         assert n_bit == int(n_bit), "bit should be integer"
         assert w.dim() == 2
@@ -566,8 +567,8 @@ class AWQ(BASE):
             q_config["q_group_size"] if q_config["q_group_size"] > 0 else w.shape[1]
         )
 
-        # if owq_column is not None:
-            # original = w[:, owq_column].clone()
+        if owq_column is not None:
+            original = w[:, owq_column].clone()
             
         input_feat = input_feat.view(-1, input_feat.shape[-1])
         input_feat = input_feat.reshape(1, input_feat.shape[0], -1, group_size)
@@ -593,11 +594,9 @@ class AWQ(BASE):
             input_feat = input_feat.to(w.device)
             
             org_out = (input_feat * w).sum(dim=-1)  # co, n_token, n_group
-            # if owq_column is not None:
-            #     original = w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]].clone()
-            #     w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = 0
-
-            org_out_dict = {}
+            if owq_column is not None:
+                original = deepcopy(w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]])
+                w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = 0
 
             for i_s in range(int(max_shrink * n_grid)):
                 max_val = org_max_val * (1 - i_s / n_grid)
@@ -605,8 +604,8 @@ class AWQ(BASE):
                 cur_w = torch.clamp(w, min_val, max_val)
                 q_w = pseudo_quantize_tensor(cur_w, n_bit=n_bit, **q_config)
 
-                # if owq_column is not None:
-                    # q_w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = original
+                if owq_column is not None:
+                    q_w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = original
 
                 cur_out = (input_feat * q_w).sum(dim=-1)
 
@@ -645,27 +644,6 @@ class AWQ(BASE):
             layer.weight.data = torch.clamp(layer.weight.data, min_val, max_val)
             layer.weight.data = layer.weight.data.reshape(org_shape)
             # layer.cpu()
-
-        # for name, max_val in max_clip:
-        #     layer = self.get_op_by_name(module, name)
-        #     layer.to(self.dev)
-        #     max_val = max_val.to(layer.weight.device)
-        #     org_shape = layer.weight.shape
-        #     layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)
-        #     layer.weight.data = torch.clamp(layer.weight.data, max = max_val)
-        #     layer.weight.data = layer.weight.data.reshape(org_shape)
-        #     layer.cpu()
-
-        # for name, min_val in min_clip:
-        #     layer = self.get_op_by_name(module, name)
-        #     layer.to(self.dev)
-        #     min_val = min_val.to(layer.weight.device)
-        #     org_shape = layer.weight.shape
-        #     layer.weight.data = layer.weight.data.reshape(*min_val.shape[:2], -1)
-        #     layer.weight.data = torch.clamp(layer.weight.data, min = min_val)
-        #     layer.weight.data = layer.weight.data.reshape(org_shape)
-        #     layer.cpu()
-
 
     @torch.no_grad()
     def auto_clip_block_sym(self, module, input_feat, module_bit = None):

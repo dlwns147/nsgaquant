@@ -311,7 +311,8 @@ class LlamaQuantSearchSpace:
         for n in tqdm(range(n_samples), desc='Sampling'):
             while True:
                 # prob = np.random.rand(3)
-                prob = np.random.rand(5)
+                # prob = np.random.rand(5)
+                prob = np.random.rand(6)
                 # q_prob = np.random.rand(len(q))
                 q_prob = prob[np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in q])]
                 q_list = np.random.choice(q, size=nb, p=q_prob / q_prob.sum(), replace=True).tolist()
