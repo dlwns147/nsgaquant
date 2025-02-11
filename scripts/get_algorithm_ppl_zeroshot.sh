@@ -1,4 +1,4 @@
-DEVICES=1
+DEVICES=3
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
@@ -20,8 +20,8 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 DATASETS=( "wikitext2" "c4" )
 
 # OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/${MODEL_NAME}-${METHOD}.csv
-GROUP_SIZE=-1
-TARGET_BITS=( 2 3 4 )
+GROUP_SIZE=128
+TARGET_BITS=( 4 )
 OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}_sym.csv
 
 N_PROC=1

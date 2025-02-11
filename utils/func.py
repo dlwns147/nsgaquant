@@ -6,6 +6,7 @@ import scipy.stats as stats
 import torch
 from transformers import AutoModelForCausalLM
 from datetime import timedelta
+import gc
 # from hqq.utils.patching_woo import prepare_for_inference
 
 def get_correlation(prediction, target):
@@ -155,6 +156,8 @@ def load_hqq_model(model_id, device_map, use_cache=False, inference=False):
         model = simple_dispatch_model(model, device_map)
         model.use_cache = use_cache
         model.config.use_cache = use_cache
+        torch.cuda.empty_cache()
+        gc.collect()
         print(f'{model_id} :  {torch.cuda.max_memory_reserved() / 1024 / 1024}MB')
         # if inference:
         #     prepare_for_inference(model, backend='gptq')

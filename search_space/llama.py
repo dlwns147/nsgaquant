@@ -311,33 +311,27 @@ class LlamaQuantSearchSpace:
         for n in tqdm(range(n_samples), desc='Sampling'):
             while True:
                 # prob = np.random.rand(3)
-                # prob = np.random.rand(5)
+                prob = np.random.rand(5)
+                # max(len(q), len(k), len(v), len(o), len(gate), len(up), len(down))
                 prob = np.random.rand(6)
-                # q_prob = np.random.rand(len(q))
                 q_prob = prob[np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in q])]
                 q_list = np.random.choice(q, size=nb, p=q_prob / q_prob.sum(), replace=True).tolist()
 
-                # k_prob = np.random.rand(len(k))
                 k_prob = prob[np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in k])]
                 k_list = np.random.choice(k, size=nb, p=k_prob / k_prob.sum(), replace=True).tolist()
                 
-                # v_prob = np.random.rand(len(v))
                 v_prob = prob[np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in v])]
                 v_list = np.random.choice(v, size=nb, p=v_prob / v_prob.sum(), replace=True).tolist()
                 
-                # o_prob = np.random.rand(len(o))
                 o_prob = prob[np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in o])]
                 o_list = np.random.choice(o, size=nb, p=o_prob / o_prob.sum(), replace=True).tolist()
 
-                # gate_prob = np.random.rand(len(gate))
                 gate_prob = prob[np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in gate])]
                 gate_list = np.random.choice(gate, size=nb, p=gate_prob / gate_prob.sum(), replace=True).tolist()
                 
-                # up_prob = np.random.rand(len(up))
                 up_prob = prob[np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in up])]
                 up_list = np.random.choice(up, size=nb, p=up_prob / up_prob.sum(), replace=True).tolist()
 
-                # down_prob = np.random.rand(len(down))
                 down_prob = prob[np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in down])]
                 down_list = np.random.choice(down, size=nb, p=down_prob / down_prob.sum(), replace=True).tolist()
 
