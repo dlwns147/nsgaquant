@@ -233,8 +233,10 @@ def main(args):
         # arch['linear'] = {linear: [4] * config['n_block'] for linear in config['linear']}
         accelerator.print(arch)
         
+        linear_bits = np.concatenate(list(arch['linear'].values()))
+        do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)
         if use_awq_or_gptq:
-            model = get_quantized_model(method, arch, model_id, device_map, prune='layer_prune' in args.method)
+            model = get_quantized_model(method, arch, model_id, device_map, config=config, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path)
         else:
             model = evaluator.sample(arch)
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
