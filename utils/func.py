@@ -7,6 +7,7 @@ import torch
 from transformers import AutoModelForCausalLM
 from datetime import timedelta
 import gc
+from copy import deepcopy
 # from hqq.utils.patching_woo import prepare_for_inference
 
 def get_correlation(prediction, target):
@@ -180,7 +181,8 @@ def remove_fp16_channel_hqq(linear):
 
 def get_fp16_channel(linear, idx):
     # print(f'linear.weight : {linear.weight.data.device}, idx : {idx}')
-    return linear.weight.data[:, idx]
+    return deepcopy(linear.weight.data[:, idx])
+    # return linear.weight.data[:, idx]
 
 def get_outlier_bits(config):
     pass
@@ -234,3 +236,14 @@ def get_hfmodel(model_name_or_path: str,
     torch.nn.init.normal_ = org_normal
     
     return model
+
+def load_outlier(model, outlier, config):
+    outlier = dict()
+    for blk_idx in range(int(config['n_block'])):
+        # for linear_group in config['linear']:
+        #     for linear in linear_group.split(','):
+        for linear in config['linear']:
+            key = f'{config["layers"]}.{blk_idx}.{linear}'
+            if key in outlier:
+                outlier[f'{blk_idx}.{linear}'] = [outlier[key], get_fp16_channel(getsubattr(getblock(model, config)[blk_idx], linear), outlier[key])]
+    return outlier

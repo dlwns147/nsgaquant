@@ -8,6 +8,7 @@ from copy import deepcopy
 
 import torch
 from torch import nn
+import numpy as np
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from hqq.utils.patching import prepare_for_inference
@@ -107,7 +108,7 @@ def main():
 
     parser.add_argument('--backend_2bit', type=str, choices=['gptq', 'bitblas', 'gemlite', 'gptq_cuda', 'gptq_tritonv2'], help='backend for 2bit', default = 'gptq')
     parser.add_argument('--backend_3bit', type=str, choices=['gptq', 'gptq_cuda', 'gptq_tritonv2'], help='backend for 3bit', default = 'gptq')
-    parser.add_argument('--backend_4bit', type=str, choices=['gptq', 'bitblas', 'gemlite', 'gptq_cuda', 'gptq_tritonv2'], help='backend for 4bit', default = 'gptq')
+    parser.add_argument('--backend_4bit', type=str, choices=['gptq', 'bitblas', 'gemlite', 'gptq_cuda', 'gptq_tritonv2', 'qeft'], help='backend for 4bit', default = 'gptq')
 
     parser.add_argument('--batch_size', type=int, help='batch size', default = 1)
     parser.add_argument('--seq_length', type=int, help='sequence length', default = 64)
@@ -242,9 +243,41 @@ def main():
     base_layers_length = len(base_layers)
     linears = list(get_named_linears(base_layers[0]).keys())
 
+    arch_7b = '/NAS/SJ/nsgaquant/save/search/quant/2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats'
+    arch_13b = '/NAS/SJ/nsgaquant/save/search/quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats'
 
+    with open(arch_7b, 'r') as f:
+        arch_7b = json.load(f)
+        candidate_7b = arch_7b['candidates']
+    
+    with open(arch_13b, 'r') as f:
+        arch_13b = json.load(f)
+        candidate_13b = arch_13b['candidates']
+
+    candidates_7b = []
+    for candidate in candidate_7b:
+        if abs(candidate[-1] - 3.5) < 0.05:
+            candidates_7b.append(candidate)
+
+    candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_7b]
+    count_4bit = [(bits == 4.0).sum() for bits in candidates_bits]
+    candidate_7b = candidates_7b[np.argmax(count_4bit)]
+
+    candidates_13b = []
+    for candidate in candidate_13b:
+        if abs(candidate[-1] - 3.5) < 0.05:
+            candidates_13b.append(candidate)
+
+    candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_13b]
+    count_4bit = [(bits == 4.0).sum() for bits in candidates_bits]
+    candidate_13b = candidates_13b[np.argmax(count_4bit)]
+        
     for bit in [2, 3, 4]:
-        arch = {linear : [bit] * base_layers_length for linear in linears}
+        # arch = {linear : [bit] * base_layers_length for linear in linears}
+        if '7b' in args.model_name_or_path.lower():
+            arch = candidate_7b[0]['linear']
+        elif '13b' in args.model_name_or_path.lower():
+            arch = candidate_13b[0]['linear']
 
         model = deepcopy(base_model)
 

@@ -74,8 +74,11 @@ def main(args, arch):
 
     result['algorithm'] = args.method
     result['bits'] = complexity['bits']
-    result['wikitext2'] = metric['wikitext2']
-    result['c4'] = metric['c4']
+
+    if 'wikitext2' in args.eval_datasets:
+        result['wikitext2'] = metric['wikitext2']
+    if 'c4' in args.eval_datasets:
+        result['c4'] = metric['c4']
     
     if args.zeroshot:
         print("Evaluate zeroshot")
@@ -120,6 +123,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_sample', type=int, default=128,
                         help='')
     
+    parser.add_argument('--arch_path', type=str, default=None)
     parser.add_argument('--eval_datasets', type=str, nargs='+', default=[],
                         help='')
     parser.add_argument('--zeroshot', action='store_true', help='Whether to evaluate zeroshot')
@@ -148,7 +152,11 @@ if __name__ == '__main__':
 
     ## customizing
     global field
-    field = ['algorithm', 'bits', *cfgs.eval_datasets, 'boolq', 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
+    
+    if cfgs.zeroshot:
+        field = ['algorithm', 'bits', *cfgs.eval_datasets, 'boolq', 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
+    else:
+        field = ['algorithm', 'bits', *cfgs.eval_datasets]
 
     assert 'llama' in cfgs.model_name.lower() , 'not supported model'
     linears = ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']
@@ -161,18 +169,28 @@ if __name__ == '__main__':
             writer = csv.DictWriter(f, fieldnames=field)
             writer.writeheader()
 
-    for target_bit in cfgs.target_bits:
-        if '7b' in cfgs.model_name:
-            layer_len = 32
-        elif '13b' in cfgs.model_name:
-            layer_len = 40
-        elif '70b' in cfgs.model_name:
-            layer_len = 80
-        else:
-            assert False, 'not supported model'
+    if '7b' in cfgs.model_name:
+        layer_len = 32
+    elif '13b' in cfgs.model_name:
+        layer_len = 40
+    elif '70b' in cfgs.model_name:
+        layer_len = 80
+    else:
+        assert False, 'not supported model'
 
-        arch = {'linear' : {linear : [target_bit] * layer_len for linear in linears},
-                'layer' : {'self_attn' : [1] * layer_len, 'mlp' : [1] * layer_len}}
+    if cfgs.arch_path is not None:
+        with open(cfgs.arch_path, 'r') as f:
+            archs = json.load(f)['archive']
 
-        print(arch)
-        main(cfgs, arch)
+            for arch in archs:
+                arch = {'linear' : arch['arch'], 
+                        'layer' : {'self_attn' : [1] * layer_len, 'mlp' : [1] * layer_len}}
+                main(cfgs, arch)
+
+    else:
+        for target_bit in cfgs.target_bits:
+            arch = {'linear' : {linear : [target_bit] * layer_len for linear in linears},
+                    'layer' : {'self_attn' : [1] * layer_len, 'mlp' : [1] * layer_len}}
+
+            print(arch)
+            main(cfgs, arch)

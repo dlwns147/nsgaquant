@@ -6,6 +6,8 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer
 from transformers import AutoModelForCausalLM
 from transformers.models.llama.modeling_llama import LlamaForCausalLM
 from datasets import load_dataset
+from utils.func import load_outlier
+import gc
 
 import sys
 sys.path.append('..')
@@ -68,7 +70,7 @@ def get_gptq_calib_dataset(data="c4", tokenizer=None, n_samples = 128, seed = 0,
 
 
 class BASE:
-    def __init__(self, model_name, config, arch, device_map, dev='cuda', prune=False, do_owq=False, owq=None):
+    def __init__(self, model_name, config, arch, device_map, dev='cuda', prune=False, do_owq=False, owq=None, use_cache=False):
         self.model_name = model_name
         self.config = config
         self.dev = dev
@@ -83,22 +85,29 @@ class BASE:
                 self.owq = torch.load(owq)
             else:
                 self.owq = owq
+        self.load_model(device_map='cpu')
+        
+    def load_model(self, device_map='auto', use_cache=False):
+        if hasattr(self, 'model'):
+            del self.model
+            gc.collect()
+            torch.cuda.empty_cache()
 
-        model_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-        model_config.use_cache = False
-        # self.model = LlamaForCausalLM.from_pretrained(model_name, config = self.config, trust_remote_code = True, torch_dtype = torch.float16)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, 
-                                                        torch_dtype='auto',
-                                                        # device_map='auto',
-                                                        low_cpu_mem_usage=True,
-                                                        # trust_remote_code=True, 
-                                                        config=model_config
-                                                        )
-        # self.model.seqlen = 2048
+        model_config = AutoConfig.from_pretrained(self.model_name, trust_remote_code=True)
+        model_config.use_cache = use_cache
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_name, 
+                                                torch_dtype='auto',
+                                                device_map=device_map,
+                                                low_cpu_mem_usage=True,
+                                                trust_remote_code=True, 
+                                                config=model_config,
+                                                )
         self.model.use_cache = False
-        self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code = True, use_fast=False)
-
+        self.model.eval()        
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code = True, use_fast=False)
+        
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def prune_model(self):
         self.model = skip_llama.block_replace(self.model)
