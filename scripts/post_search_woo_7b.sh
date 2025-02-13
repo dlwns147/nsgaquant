@@ -6,8 +6,8 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # MODEL_PATH=/SSD/.cache/
 # MODEL_NAME=Llama-2-7b-hf
 MODEL_PATH=meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 Q_BITS="2 3 4"
@@ -54,7 +54,7 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 # done
 
 OBJ=bits
-TARGET_BITS=2.1
+TARGET_BITS=3
 
 THRESHOLD=0.005
 PREFER="metric#0.0 bits#${TARGET_BITS}"
@@ -70,7 +70,8 @@ MAX_BITS=$(echo "scale=3; $TARGET_BITS + $THRESHOLD" | bc)
 # EXPR_FILE=quant/2501231756_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_300.stats
 
 ## 13B 234
-EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
+# EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
+EXPR_FILE=quant/2502101708_Llama-2-7b-hf_bits_loss_hqq_iter_200_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_128sample_pop_200_100_rbf/iter_200.stats
 
 ## 13B outlier
 # EXPR_FILE=quant/2501231758_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_400.stats
@@ -100,11 +101,11 @@ OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${M
 # EXPR_FILE=quant/2501231756_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_300.stats
 # OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}_owq.csv
 
-DEVICES=2
-MODEL_NAME=Llama-2-13b-hf
-OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
-EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
-OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}.csv
+# DEVICES=2
+# MODEL_NAME=Llama-2-13b-hf
+# OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+# EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
+# OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/post_search_awq/${MODEL_NAME}-${METHOD}.csv
 
 # DEVICES=3
 # MODEL_NAME=Llama-2-13b-hf

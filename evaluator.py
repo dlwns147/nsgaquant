@@ -39,7 +39,8 @@ class LlamaEvaluator:
                  cache_dir=None,
                  loss_func='cross_entropy',
                  latency_table=None,
-                 inference=False):
+                 inference=False,
+                 **kwargs):
         
         # model_id = os.path.join(model_path, model_name)
         self.method = method

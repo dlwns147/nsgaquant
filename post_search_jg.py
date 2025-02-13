@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 from utils.func import init_accelerator, get_net_info
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
-from quant.model import get_quantized_model
+from quant.model_jg import get_quantized_model
 import gc
 
 import datasets
@@ -240,6 +240,7 @@ def main(args):
             model = get_quantized_model(method, arch, model_id, device_map, config=config, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path)
         else:
             model = evaluator.sample(arch)
+        import code; code.interact('before evaluator.eval', local=dict(globals(), **locals()))
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
         latency = measure_latency(model, generation=True, device=model.device) if args.latency else 0
         # arch_list.append(arch)

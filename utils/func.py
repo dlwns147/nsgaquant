@@ -51,6 +51,25 @@ def compute_bits(arch, config):
                 memory_usage += int(out_dim) * int(in_dim) * bit * (arch['layer'][config['hierarchy'][linear]][blk] if 'layer' in arch else 1)
     return memory_usage / config['model_numel']
 
+
+def compute_2_bits(arch, config):
+    memory_usage = 0
+    for linear_group, bits in arch['linear'].items():
+        for blk, bit in enumerate(bits):
+            if bit != 2 : continue
+            for linear in linear_group.split(','):
+                out_dim, in_dim = config['linear_shape'][linear]
+                memory_usage += int(out_dim) * int(in_dim) * bit * (arch['layer'][config['hierarchy'][linear]][blk] if 'layer' in arch else 1)
+    return memory_usage / config['model_numel']
+
+
+def compute_2_bits_ratio(arch):
+    concat = np.concatenate(list(arch['linear'].values()))
+    int2_cnt = np.count_nonzero(concat == 2)
+
+    return int2_cnt / len(concat)
+
+
 def compute_sparsity(arch):
     return np.concatenate([v for v in arch['layer'].values()]).mean()
 
@@ -70,6 +89,8 @@ def get_net_info(arch, config, latency_table=None):
     net_info['sparsity'] = compute_sparsity(arch) if 'layer' in arch else 0
     net_info['params'] = compute_params(arch, config) if 'layer' in arch else 0
     net_info['latency'] = compute_latency(arch, config, latency_table)
+    net_info['2bits'] = compute_2_bits(arch, config) if 'linear' in arch else 0
+    net_info['2bits_ratio'] = compute_2_bits_ratio(arch) if 'linear' in arch else 0    
     
     return net_info
 
