@@ -111,6 +111,39 @@ def main(args):
     else:
         pf = F
         ps = np.array(subnets)[sort_idx]
+
+    min_num_2bits = 100000
+    min_num_2ibts_idx = 0
+    min_num_2bits_ratio = 100000
+    min_num_2bits_ratio_idx = 0
+
+    # for p in ps:
+    if len(ps) == 0:
+        print(f'length of ps : {len(ps)}')    
+        return
+    for i, p in enumerate(ps):
+        net_info_p = get_net_info(p, config, latency_table)
+        num_2bits = net_info_p['2bits']
+        num_2bits_ratio = net_info_p['2bits_ratio']
+
+        if num_2bits < min_num_2bits:
+            min_num_2bits = num_2bits
+            min_num_2bits_idx = i
+
+        if num_2bits_ratio < min_num_2bits_ratio:
+            min_num_2bits_ratio = num_2bits_ratio
+            min_num_2bits_ratio_idx = i
+
+        I = ASF().do(pf, weights).argsort()[:args.n]
+
+    with open('benchmark/2bit.txt', 'a') as f:
+        f.write(f'length of ps : {len(ps)}, bits : {args.sec_obj_range}\n')
+        f.write(f'min_num_2bits : {min_num_2bits}, min_num_2bits_idx : {min_num_2bits_idx}\n')
+        f.write(f'min_num_2bits_ratio : {min_num_2bits_ratio}, min_num_2bits_ratio_idx : {min_num_2bits_ratio_idx}\n')
+        f.write(f'choosed idx : {I}\n')
+        f.write(f'arch : {ps[I]}\n')
+
+        return
         
     if args.prefer:
         # choose the architectures thats closest to the preferences
@@ -387,8 +420,10 @@ if __name__ == '__main__':
         writer.writeheader()
 
 
-    target_bit = [3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9]
+    # target_bit = [3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9]
     # target_bit = [2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9]
+    # target_bit = [2.0, 2.05, 2.1, 2.15, 2.2, 2.25, 2.3, 2.35, 2.4, 2.45, 2.5, 2.55, 2.6, 2.65, 2.7, 2.75, 2.8, 2.85, 2.9, 2.95, 3.0, 3.05, 3.1, 3.15, 3.2, 3.25, 3.3, 3.35, 3.4, 3.45, 3.5, 3.55, 3.6, 3.65, 3.7, 3.75, 3.8, 3.85, 3.9, 3.95, 4.0]
+    target_bit = [2.2, 2.5 , 2.75, 3, 3.5, 3.75]
     THRESHOLD = 0.005
     for i in target_bit:
         cfgs.sec_obj_range[0] = i - THRESHOLD

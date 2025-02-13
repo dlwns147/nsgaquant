@@ -65,7 +65,7 @@ def get_gptq_calib_dataset(data = "c4", tokenizer = None, n_samples = 128, seed 
 
 
 class BASE:
-    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None):
+    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None, **kwargs):
         self.model_name = model_name
         self.config = config
         self.dev = dev
@@ -80,7 +80,7 @@ class BASE:
             else:
                 self.owq = owq
 
-        self.config = AutoConfig.from_pretrained(model_name, trust_remote_code = True)
+        self.config = AutoConfig.from_pretrained(model_name, trust_remote_code = True, use_cache = False, **kwargs)
         self.config.use_cache = False
         self.model = LlamaForCausalLM.from_pretrained(model_name, config = self.config, trust_remote_code = True, torch_dtype = torch.float16)
         self.model.seqlen = 2048

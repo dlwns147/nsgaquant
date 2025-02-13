@@ -268,6 +268,7 @@ class AWQ(BASE):
             awq_results["scale"] += self.append_str_prefix(
                 scales_list, self.get_op_name(self.model, layer) + "."
             )
+            # import pdb; pdb.set_trace()
 
             # Clear GPU memory
             torch.cuda.empty_cache()
@@ -277,7 +278,7 @@ class AWQ(BASE):
                     layer,
                     input_feat=input_feat,
                     module_bit={proj : int(self.arch['linear'][proj][i]) for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']},
-                    owq_layer=owq_layer,
+                    # owq_layer=owq_layer,
                 )
                 self.apply_clip_asym(layer, clip_list, owq_layer=owq_layer)
             else:
@@ -338,12 +339,16 @@ class AWQ(BASE):
             n_grid = 20
             history = []
 
+
             if self.do_owq:
+                # import pdb; pdb.set_trace()
                 original = dict()
                 for fc_name, fc in linears2scale.items():
-                    if fc_name != 'self_attn.o_proj':
-                        assert owq_layer is not None, "if fc is not self_attn.o_proj, owq_layer should be provided"
-                        original[fc_name] = deepcopy(fc.weight[:, owq_layer[fc_name]])
+                    if fc_name in owq_layer:
+                    # if fc_name != 'self_attn.o_proj':
+                        # assert owq_layer is not None, "if fc is not self_attn.o_proj, owq_layer should be provided"
+                        # original[fc_name] = deepcopy(fc.weight[:, owq_layer[fc_name]])
+                        original[fc_name] = fc.weight.data[:, owq_layer[fc_name]].detach().clone()
 
             org_sd = {k: v.cpu() for k, v in block.state_dict().items()}
             for ratio in range(n_grid):
@@ -354,7 +359,7 @@ class AWQ(BASE):
                     if self.do_owq and self.is_owq(module_bit[fc_name]):
                         # if fc_name != 'self_attn.o_proj':
                         if fc_name in owq_layer:
-                            fc.weight[:, owq_layer[fc_name]] = 0
+                            fc.weight.data[:, owq_layer[fc_name]] = 0
                         fc.weight.mul_(scales.view(1, -1).to(fc.weight.device))
                         fc.weight.data = w_quantize_func(fc.weight.data, bit=int(module_bit[fc_name])) / (scales.view(1, -1))
                         # if fc_name != 'self_attn.o_proj':
@@ -525,8 +530,6 @@ class AWQ(BASE):
         named_linears = {
             name: m for name, m in module.named_modules() if isinstance(m, nn.Linear)
         }
-        # max_clip_list = []
-        # min_clip_list = []
         clip_list = []
         for name in named_linears:
             # due to qk bmm, it is hard to clip precisely
@@ -541,12 +544,9 @@ class AWQ(BASE):
                 ## customizing
                 owq_column = owq_layer[name] if owq_layer is not None and name in owq_layer else None
             )
-            # max_clip_list.append((name, max_val))
-            # min_clip_list.append((name, min_val))
             clip_list.append((name, max_val, min_val))
             
             named_linears[name].cpu()
-        # return max_clip_list, min_clip_list
         return clip_list
 
 
@@ -566,6 +566,7 @@ class AWQ(BASE):
         input_feat = input_feat.view(-1, input_feat.shape[-1])
         input_feat = input_feat.reshape(1, input_feat.shape[0], -1, group_size)
         input_feat = input_feat[:, 0 :: input_feat.shape[1] // n_sample_token]
+        input_feat = input_feat.to(w.device)
         w = w.reshape(w.shape[0], 1, -1, group_size)
 
         oc_batch_size = 256 if w.shape[0] % 256 == 0 else 64  # prevent OOM
@@ -576,21 +577,22 @@ class AWQ(BASE):
 
         for i_b in range(w.shape[0] // oc_batch_size):
             w = w_all[i_b * oc_batch_size : (i_b + 1) * oc_batch_size]
-
-            input_feat = input_feat.to(w.device)
-            
             org_out = (input_feat * w).sum(dim=-1)  # co, n_token, n_group
+            
             if owq_column is not None:
-                # original = w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]].detach().clone()
-                # w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = 0
-                
-                import pdb; pdb.set_trace()
-                original = w[:, :, [x // group_size for x in owq_column], [x % group_size for x in owq_column]].detach().clone()
-                w[:, :, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = 0
-
-            # org_max_val = w.abs().amax(dim=-1, keepdim=True)  # co, 1, n_group, 1
+                w = w.reshape(oc_batch_size, -1)
+                original = w[:, owq_column].detach().clone()
+                w[:, owq_column] = float("-inf")
+                w = w.reshape(oc_batch_size, 1, -1, group_size)
             org_max_val = w.amax(dim=-1, keepdim=True)
+
+            if owq_column is not None:
+                w = w.reshape(oc_batch_size, -1)
+                w[:, owq_column] = float('inf')
+                w = w.reshape(oc_batch_size, 1, -1, group_size)
             org_min_val = w.amin(dim=-1, keepdim=True)
+            assert torch.isinf(org_max_val).sum() == 0, org_max_val
+            assert torch.isinf(org_min_val).sum() == 0, org_min_val
 
             best_max_val = org_max_val.clone()
             best_min_val = org_min_val.clone()
@@ -602,17 +604,14 @@ class AWQ(BASE):
                 cur_w = torch.clamp(w, min_val, max_val)
                 q_w = pseudo_quantize_tensor(cur_w, n_bit=n_bit, **q_config)
                 if owq_column is not None:
-                    # q_w = q_w.reshape(oc_batch_size, -1)
-                    # q_w[:, owq_column] = original
-                    # q_w = q_w.reshape(oc_batch_size, 1, -1, group_size)
-                    q_w[:, :, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = original
-                    # q_w[:, 0, [x // group_size for x in owq_column], [x % group_size for x in owq_column]] = original
+                    q_w = q_w.reshape(oc_batch_size, -1)
+                    q_w[:, owq_column] = original
+                    q_w = q_w.reshape(oc_batch_size, 1, -1, group_size)
                 cur_out = (input_feat * q_w).sum(dim=-1)
 
                 # co, 1, n_group, 1
                 err = (cur_out - org_out).pow(2).mean(dim=1).view(min_errs.shape)
-                del cur_w
-                del cur_out
+                del cur_w, cur_out
                 cur_best_idx = err < min_errs
                 min_errs[cur_best_idx] = err[cur_best_idx]
                 best_max_val[cur_best_idx] = max_val[cur_best_idx]
@@ -650,6 +649,7 @@ class AWQ(BASE):
             layer.weight.data = layer.weight.data.reshape(org_shape)
             if self.do_owq and owq_layer is not None and name in owq_layer:
                 layer.weight.data[:, owq_layer[name]] = orig
+                del orig
                 torch.cuda.empty_cache()
                 gc.collect()
             # layer.cpu()
@@ -760,13 +760,11 @@ class AWQ(BASE):
                 if self.do_owq and self.is_owq(self.arch['linear'][n][i]):
                     assert self.owq is not None, "owq is not provided"
                     original = {}
-                    for linear in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']:
-                        module, proj = linear.split('.')
-                        key = f'model.layers.{i}.{linear}'
+                    key = f'model.layers.{i}.{n}'
+                    if key in self.owq:
                         # original[key] = deepcopy(getattr(getattr(layers[i], module), proj).weight[:, self.owq[key]])
-                        original[key] = getattr(getattr(layers[i], module), proj).weight[:, self.owq[key]].detach().clone()
-
-                        getattr(getattr(layers[i], module), proj).weight[:, self.owq[key]] = 0
+                        original[key] = m.weight[:, self.owq[key]].detach().clone()
+                        m.weight[:, self.owq[key]] = 0
 
                     # m.to(self.dev)
                     m.weight.data = pseudo_quantize_tensor(
@@ -775,13 +773,10 @@ class AWQ(BASE):
                     )
                     # m.cpu()
 
-                    for linear in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']:
-                        module, proj = linear.split('.')
-                        key = f'model.layers.{i}.{linear}'
+                    if key in self.owq:
+                        m.weight[:, self.owq[key]] = original[key]
 
-                        getattr(getattr(layers[i], module), proj).weight[:, self.owq[key]] = original[key]
-
-                        # del original[key]
+                    # del original[key]
                     del original
                     torch.cuda.empty_cache()
                     gc.collect()

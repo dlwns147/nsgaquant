@@ -41,15 +41,14 @@ COMP_OBJ_TEXT=bits
 # COMP_OBJ="bits latency"
 # COMP_OBJ_TEXT=bits_latency
 
-TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa"
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
 # BATCH_SIZE=32
 BATCH_SIZE=64
 
 EXPR_FOLDER=save/search/quant
 
 # EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
-EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
-# EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
+EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
 # EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
 # EXPR_FILE=2502091342_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_200.stats
 # EXPR_FILE=2502061619_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_400.stats
@@ -117,7 +116,7 @@ do
 
     N_PROC=1
 
-    CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} post_search.py \
+    CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} post_search_jg.py \
     --gpu_id ${DEVICES} \
     --model_path ${MODEL_PATH} \
     --model_name ${MODEL_NAME} \

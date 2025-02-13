@@ -22,7 +22,7 @@ def quantize(x, scale, zero, maxq):
 
 class GPTQ(BASE):
     def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None, **kwargs):
-        super().__init__(model_name, config, dev, arch, do_prune, do_owq, owq)
+        super().__init__(model_name, config, dev, arch, do_prune, do_owq, owq, **kwargs)
         self.method = 'gptq'
 
         if do_owq:

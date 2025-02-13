@@ -52,6 +52,13 @@ total_blk_idx = list(range(n_block))
 # axes[1].legend()
 # axes[1].set_title("Wikitext2 Perplexity")
 
+f = plt.figure(figsize=(10, 7))
+ax1 = f.subplots(ncols=1, nrows=1)
+
+font = {'size'   : 15}
+plt.rc('font', **font)
+plt.rc('axes', axisbelow=True)
+
 colors = [
     '#FF6663',
     '#939393',
@@ -63,22 +70,22 @@ colors = [
 ]
 
 fig, ax1 = plt.subplots()
-ax1.plot(total_blk_idx, ppl[:, 0], label='q_proj',zorder=1, c=colors[0], linewidth=2)
-ax1.plot(total_blk_idx, ppl[:, 1], label='k_proj',zorder=1, c=colors[1], linewidth=2)
-ax1.plot(total_blk_idx, ppl[:, 2], label='v_proj',zorder=1, c=colors[2], linewidth=2)
-ax1.plot(total_blk_idx, ppl[:, 3], label='o_proj',zorder=1, c=colors[3], linewidth=2)
-ax1.plot(total_blk_idx, ppl[:, 4], label='gate_proj',zorder=1, c=colors[4], linewidth=2)
-ax1.plot(total_blk_idx, ppl[:, 5], label='up_proj',zorder=1, c=colors[5], linewidth=2)
-ax1.plot(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c=colors[6], linewidth=2)
+ax1.plot(total_blk_idx, ppl[:, 0], label='self_attn.q_proj',zorder=1, c=colors[0], linewidth=2)
+ax1.plot(total_blk_idx, ppl[:, 1], label='self_attn.k_proj',zorder=1, c=colors[1], linewidth=2)
+ax1.plot(total_blk_idx, ppl[:, 2], label='self_attn.v_proj',zorder=1, c=colors[2], linewidth=2)
+ax1.plot(total_blk_idx, ppl[:, 3], label='self_attn.o_proj',zorder=1, c=colors[3], linewidth=2)
+ax1.plot(total_blk_idx, ppl[:, 4], label='mlp.gate_proj',zorder=1, c=colors[4], linewidth=2)
+ax1.plot(total_blk_idx, ppl[:, 5], label='mlp.up_proj',zorder=1, c=colors[5], linewidth=2)
+ax1.plot(total_blk_idx, ppl[:, 6], label='mlp.down_proj',zorder=1, c=colors[6], linewidth=2)
 ax1.set_yscale('log', base=2)
-ax1.set_xlabel('Block')
-ax1.set_ylabel('Wikitext2 Perplexity')
+# ax1.set_xlabel('Block')
+# ax1.set_ylabel('Wikitext2 Perplexity')
 ax1.grid(c='0.8') # axis='y',
 # for blk_idx, linear_idx in outlier:
     # ax1.scatter(blk_idx, ppl[blk_idx, linear_idx], s=50, facecolors='none', edgecolors='r', zorder=2)
 ax1.legend()
 
-
+ax1.tick_params(axis='both', which='major', labelsize=10)
 # plt.plot(total_blk_idx, ppl[:, 0], label='q_proj',zorder=1)
 # plt.plot(total_blk_idx, ppl[:, 1], label='k_proj',zorder=1)
 # plt.plot(total_blk_idx, ppl[:, 2], label='v_proj',zorder=1)
@@ -102,6 +109,4 @@ ax1.legend()
 # plt.xlabel('Linear')
 # plt.ylabel('Wikitext2 PPL')
 # plt.legend()
-plt.show()
-
 plt.savefig(fig_path, dpi=300)
