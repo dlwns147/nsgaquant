@@ -4,11 +4,11 @@ import numpy as np
 
 # awq_7b = '/NAS/SJ/nsgaquant/acl/method/figure_4/awq_random_sample/Llama-2-7b-hf-awq.csv'
 # awq_13b = '/NAS/SJ/nsgaquant/acl/method/figure_4/awq_random_sample/Llama-2-13b-hf-awq.csv'
-awq_7b = '/NAS/Woo/Automation/autoopt/result/awq_random_sample/n_samples_128/Llama-2-7b-hf-awq.csv'
-awq_7b_half = '/NAS/Woo/Automation/autoopt/result/awq_random_sample/n_samples_128/Llama-2-7b-hf-awq_half.csv'
+awq_7b = '/NAS/Woo/Automation/autoopt/result/awq_final_search_sample/n_samples_128/Llama-2-7b-hf-awq.csv'
+awq_7b_half = '/NAS/Woo/Automation/autoopt/result/awq_final_search_sample/n_samples_128/Llama-2-7b-hf-awq_half.csv'
 awq_13b = '/NAS/Woo/Automation/autoopt/result/awq_random_sample/Llama-2-13b-hf-awq.csv'
 
-hqq_7b = '/NAS/SJ/nsgaquant/acl/method/figure_4/hqq_ramdon_sample/replace_Llama-2-7b-hf_wikitext2_ppl.json'
+hqq_7b = '/NAS/Woo/Automation/autoopt/result/hqq_final_sample/replace_Llama-2-7b-hf_wikitext2_ppl.json'
 hqq_13b = '/NAS/SJ/nsgaquant/acl/method/figure_4/hqq_ramdon_sample/replace_Llama-2-13b-hf_wikitext2_ppl.json'
 
 awq_7b_data = []
@@ -47,7 +47,7 @@ hqq_7b_bits = []; hqq_7b_ppl = []; hqq_13b_bits = []; hqq_13b_ppl = []
 
 threshold = 15
 
-for i in range(len(awq_7b_data)):
+for i in range(min(len(awq_7b_data), len(hqq_7b_data))):
     if (awq_7b_data[i][1] < threshold) and (hqq_7b_data[i][1] < threshold):
         awq_7b_bits.append(awq_7b_data[i][0])
         awq_7b_ppl.append(awq_7b_data[i][1])
@@ -55,11 +55,11 @@ for i in range(len(awq_7b_data)):
         hqq_7b_ppl.append(hqq_7b_data[i][1])
 
 for i in range(len(awq_7b_half_data)):
-    if (awq_7b_half_data[i][1] < threshold) and (hqq_7b_data[i + 500][1] < threshold):
+    if (awq_7b_half_data[i][1] < threshold) and (hqq_7b_data[i + 25][1] < threshold):
         awq_7b_bits.append(awq_7b_half_data[i][0])
         awq_7b_ppl.append(awq_7b_half_data[i][1])
-        hqq_7b_bits.append(hqq_7b_data[i + 500][0])
-        hqq_7b_ppl.append(hqq_7b_data[i + 500][1])
+        hqq_7b_bits.append(hqq_7b_data[i + 25][0])
+        hqq_7b_ppl.append(hqq_7b_data[i + 25][1])
 
 # for i in range(len(awq_13b_data)):
 #     if (awq_13b_data[i][1] < threshold) and (hqq_13b_data[i][1] < threshold):
@@ -110,4 +110,4 @@ plt.tick_params(axis='both', which='major', labelsize=15)
 
 # plt.xlabel('HQQ')
 # plt.ylabel('AWQ')
-plt.savefig('source_4.png')
+plt.savefig('source_5.png')

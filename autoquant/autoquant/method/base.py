@@ -2,11 +2,47 @@ import random
 
 import torch
 import torch.nn as nn
-from transformers import AutoConfig, AutoModel, AutoTokenizer
-from transformers.models.llama.modeling_llama import LlamaForCausalLM
+from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
 from datasets import load_dataset
 
 from autoquant.autoquant.model import skip_llama
+
+def get_hfmodel(model_name_or_path: str,
+                device_map='auto',
+                dtype='auto',
+                trust_remote_code=False,
+                use_cache=False,
+                **kwargs
+                ):
+
+    org_kaiming_uniform = torch.nn.init.kaiming_uniform_
+    org_uniform = torch.nn.init.uniform_
+    org_normal = torch.nn.init.normal_
+
+    def skip(*args, **kwargs):
+        pass
+
+    torch.nn.init.kaiming_uniform_ = skip
+    torch.nn.init.uniform_ = skip
+    torch.nn.init.normal_ = skip
+    
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name_or_path, 
+        torch_dtype=dtype,
+        device_map=device_map, 
+        trust_remote_code=trust_remote_code,
+        low_cpu_mem_usage=True,
+        use_cache=use_cache,
+        **kwargs
+    )
+    model.config.use_cache = use_cache
+
+    torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
+    torch.nn.init.uniform_ = org_uniform
+    torch.nn.init.normal_ = org_normal
+    
+    return model
+
 
 def get_awq_calib_dataset(data="pileval", tokenizer=None, n_samples=128, block_size=512):
     if data == "pileval":
@@ -65,9 +101,8 @@ def get_gptq_calib_dataset(data = "c4", tokenizer = None, n_samples = 128, seed 
 
 
 class BASE:
-    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None, **kwargs):
+    def __init__(self, model_name, dev, arch, do_prune = False, do_owq = False, owq = None, dtype = 'auto', device_map = 'auto', **kwargs):
         self.model_name = model_name
-        self.config = config
         self.dev = dev
         self.arch = arch
 
@@ -80,12 +115,10 @@ class BASE:
             else:
                 self.owq = owq
 
-        self.config = AutoConfig.from_pretrained(model_name, trust_remote_code = True, use_cache = False, **kwargs)
-        self.config.use_cache = False
-        self.model = LlamaForCausalLM.from_pretrained(model_name, config = self.config, trust_remote_code = True, torch_dtype = torch.float16)
-        self.model.seqlen = 2048
+        self.model = get_hfmodel(model_name, dtype = dtype, device_map = device_map, **kwargs)
         self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code = True, use_fast=False)
+        self.model.use_cache = False
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False, cache_dir=kwargs.get('cache_dir', None))
 
         self.group_size = self.set_group_size(128)
 
@@ -125,7 +158,8 @@ class BASE:
         return samples
         
 
-    def get_awq_calib_dataset(self, calib_data = 'pileval', n_samples = 512):
+    def get_awq_calib_dataset(self, calib_data = 'pileval', n_samples = 128):
+        assert n_samples == 128, "n_samples must be 128"
         samples = get_awq_calib_dataset(
             data=calib_data, tokenizer=self.tokenizer, n_samples=n_samples, block_size=512
         )

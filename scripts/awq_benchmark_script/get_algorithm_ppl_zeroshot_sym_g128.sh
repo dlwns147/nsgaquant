@@ -1,4 +1,4 @@
-DEVICES=0
+DEVICES=1
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
@@ -31,7 +31,28 @@ TARGET_BITS=( 2 3 4 )
 
 # OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}.csv
 # OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/awq_random_sample/${MODEL_NAME}-${METHOD}.csv
-OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/n_samples_128/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}_asym.csv
+# OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/n_samples_128/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}_sym.csv
+
+# N_PROC=1
+# CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} get_algorithm_ppl_zeroshot.py \
+# --model_path ${MODEL_PATH} \
+# --model_name ${MODEL_NAME} \
+# --config ${CONFIG} \
+# --gpu_id ${DEVICES} \
+# --method ${METHOD} \
+# --seqlen ${SEQLEN} \
+# --n_sample ${N_SAMPLE} \
+# --eval_datasets ${DATASETS[@]} \
+# --output_path ${OUTPUT_PATH} \
+# --target_bits ${TARGET_BITS[@]} \
+# --group_size ${GROUP_SIZE} \
+# --zeroshot \
+# --do_clip_sym
+
+# --arch_path ${ARCH_PATH}
+
+MODEL_NAME=Llama-2-13b-hf
+OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/n_samples_128/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}_sym.csv
 
 N_PROC=1
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} get_algorithm_ppl_zeroshot.py \
@@ -46,8 +67,5 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --output_path ${OUTPUT_PATH} \
 --target_bits ${TARGET_BITS[@]} \
 --group_size ${GROUP_SIZE} \
---zeroshot
-
-# --arch_path ${ARCH_PATH}
-# --do_clip_sym
-
+--zeroshot \
+--do_clip_sym

@@ -9,7 +9,8 @@ from transformers.activations import GELUActivation
 # sys.path.append('..')
 from .base import BASE, get_awq_calib_dataset
 from model.skip_llama import LlamaDecoderSkipLayer
-from utils.dispatch import simple_dispatch_model
+# from utils.dispatch import simple_dispatch_model
+from accelerate import dispatch_model
 
 import gc
 from tqdm import tqdm
@@ -227,8 +228,6 @@ class AWQ(BASE):
             layer = layer.to(self.dev)
             named_linears = self.get_named_linears(layer)
 
-            # import code; code.interact(local=locals())
-
             # firstly, get input features of all linear layers
             def cache_input_hook(m, x, y, name, feat_dict):
                 x = x[0]
@@ -254,7 +253,6 @@ class AWQ(BASE):
 
             # Clear GPU memory
             torch.cuda.empty_cache()
-            # import pdb; pdb.set_trace()
 
             owq_layer = {proj : self.owq[f'model.layers.{i}.{proj}'] for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']} if self.do_owq else None
             scales_list = self.auto_scale_block_bit_adjust_per_linear_owq(
@@ -268,7 +266,6 @@ class AWQ(BASE):
             awq_results["scale"] += self.append_str_prefix(
                 scales_list, self.get_op_name(self.model, layer) + "."
             )
-            # import pdb; pdb.set_trace()
 
             # Clear GPU memory
             torch.cuda.empty_cache()
@@ -278,7 +275,7 @@ class AWQ(BASE):
                     layer,
                     input_feat=input_feat,
                     module_bit={proj : int(self.arch['linear'][proj][i]) for proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']},
-                    # owq_layer=owq_layer,
+                    owq_layer=owq_layer,
                 )
                 self.apply_clip_asym(layer, clip_list, owq_layer=owq_layer)
             else:
@@ -338,7 +335,6 @@ class AWQ(BASE):
 
             n_grid = 20
             history = []
-
 
             if self.do_owq:
                 # import pdb; pdb.set_trace()
@@ -594,6 +590,11 @@ class AWQ(BASE):
             assert torch.isinf(org_max_val).sum() == 0, org_max_val
             assert torch.isinf(org_min_val).sum() == 0, org_min_val
 
+            if owq_column is not None:
+                w = w.reshape(oc_batch_size, -1)
+                w[:, owq_column] = 0
+                w = w.reshape(oc_batch_size, 1, -1, group_size)
+
             best_max_val = org_max_val.clone()
             best_min_val = org_min_val.clone()
             min_errs = torch.ones_like(org_max_val) * 1e9
@@ -622,8 +623,7 @@ class AWQ(BASE):
         best_max_val = torch.cat(best_max_val_all, dim=0)
         best_min_val = torch.cat(best_min_val_all, dim=0)
 
-        del input_feat
-        del org_out
+        del input_feat, org_out
         gc.collect()
         torch.cuda.empty_cache()
         return best_max_val.squeeze(1), best_min_val.squeeze(1)
@@ -635,7 +635,7 @@ class AWQ(BASE):
             if self.do_owq and owq_layer is None:
                 i, proj = name.lstrip('model.layers').split('.', maxsplit=1)
                 if proj in ['self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'mlp.up_proj', 'mlp.gate_proj', 'mlp.down_proj']:
-                    owq_layer = {proj : self.owq[f'model.layers.{i}.{proj}'] }
+                    owq_layer = {proj : self.owq[name]}
             layer = self.get_op_by_name(module, name)
             # layer.to(self.dev)
             max_val = max_val.to(layer.weight.device)
@@ -792,5 +792,8 @@ class AWQ(BASE):
     # def run(self, nsamples=8, seqlen=32):
         awq_results = self.run_awq(n_samples=nsamples, seqlen=seqlen)
         self.load_model(device_map='cpu')
-        self.model = simple_dispatch_model(self.model, self.device_map)
+        # self.model = simple_dispatch_model(self.model, self.device_map)
+        self.model = dispatch_model(self.model, self.device_map)
         self.apply_awq(awq_results)
+        torch.cuda.empty_cache()
+        gc.collect()

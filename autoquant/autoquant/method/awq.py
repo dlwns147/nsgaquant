@@ -135,11 +135,12 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
 
 
 class AWQ(BASE):
-    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None, **kwargs):
-        super().__init__(model_name, config, dev, arch, do_prune, do_owq, owq, **kwargs)
+    def __init__(self, model_name, dev, arch, do_prune = False, do_owq = False, owq = None, dtype = 'auto', device_map = 'auto', **kwargs):
+        self.do_clip_asym = kwargs.pop('do_clip_asym', True)
+
+        super().__init__(model_name, dev, arch, do_prune, do_owq, owq, dtype = dtype, device_map = device_map, **kwargs)
         self.method = 'awq'
 
-        self.do_clip_asym = kwargs.get('do_clip_asym', True)
         if self.do_clip_asym:
             print("Clipping asymmetrically")
         else:

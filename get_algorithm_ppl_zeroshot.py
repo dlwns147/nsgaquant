@@ -18,56 +18,8 @@ from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
 from transformers import AutoModelForCausalLM
 
-
-def get_hfmodel(model_name_or_path: str,
-                device_map='auto',
-                dtype=torch.float16,
-                trust_remote_code=False,
-                use_cache=False,
-                **kwargs
-                ):
-
-    # assert kwargs.get('attn_implementation') in ['hf', 'ft']        ## hf : huggingface, ft : faster transformer
-    
-    # for fast model loading
-    org_kaiming_uniform = torch.nn.init.kaiming_uniform_
-    org_uniform = torch.nn.init.uniform_
-    org_normal = torch.nn.init.normal_
-
-    def skip(*args, **kwargs):
-        pass
-
-    torch.nn.init.kaiming_uniform_ = skip
-    torch.nn.init.uniform_ = skip
-    torch.nn.init.normal_ = skip
-    
-    # ft = False
-    # if kwargs.get('attn_implementation') == 'ft':
-    #     assert 'llama' in model_name_or_path.lower() or 'vicuna' in model_name_or_path.lower()
-    #     ft = True
-    
-    # print('attention implementaion is :', kwargs.pop('attn_implementation'))
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name_or_path, 
-        torch_dtype=dtype,
-        device_map=device_map, 
-        trust_remote_code=trust_remote_code,
-        low_cpu_mem_usage=True,
-        use_cache=use_cache,
-        **kwargs
-    )
-    model.config.use_cache = use_cache
-    
-    # if ft:
-    #     convert_model_to_ft(model)
-    #     replace_generate_functions()
-
-    torch.nn.init.kaiming_uniform_ = org_kaiming_uniform
-    torch.nn.init.uniform_ = org_uniform
-    torch.nn.init.normal_ = org_normal
-    
-    return model
-
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = True
 
 def main(args, arch):
     print(args)
@@ -116,7 +68,7 @@ def main(args, arch):
     # for multi gpu
     # max_memory={0: "40GB", 1: "40GB", 2: "40GB", 3: "40GB"},
 
-    method = get_quantized_model(args.method, arch, model_id, 'cuda:0', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None, 
+    method = get_quantized_model(args.method, arch, model_id, 'cuda', do_prune = args.do_prune, do_owq = args.do_owq, owq_path = torch.load(args.outlier_path) if args.do_owq else None, 
                                  group_size = args.group_size, do_clip_asym = args.do_clip_asym)
     model = method.model
     model = model.to('cuda')
@@ -138,7 +90,7 @@ def main(args, arch):
     
     if args.zeroshot:
         print("Evaluate zeroshot")
-        results = eval_zeroshot(model, tokenizer=tokenizer, batch_size='auto', task_list=['boolq', 'piqa','winogrande','hellaswag','arc_challenge','arc_easy'])
+        results = eval_zeroshot(model, tokenizer=tokenizer, batch_size=32, task_list=['arc_easy', 'arc_challenge', 'piqa', 'hellaswag', 'winogrande', 'boolq'])
         avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
         print(f'avg_acc : {avg_acc}, results : {results}')
         for task, task_result in results.items():
@@ -197,6 +149,7 @@ if __name__ == '__main__':
     parser.set_defaults(do_clip_asym=True)
 
     parser.add_argument('--do_clip_sym', action='store_true', help='Whether to clip sym')
+    parser.add_argument('--half', action='store_true', help='test arch half')
     
     parser.add_argument('--outlier_path', type=str, default='',
                         help='')
@@ -210,7 +163,7 @@ if __name__ == '__main__':
     global field
     
     if cfgs.zeroshot:
-        field = ['algorithm', 'bits', *cfgs.eval_datasets, 'boolq', 'piqa', 'winogrande', 'hellaswag', 'arc_challenge', 'arc_easy', 'avg']
+        field = ['algorithm', 'bits', *cfgs.eval_datasets, 'arc_easy', 'arc_challenge', 'piqa', 'hellaswag', 'winogrande', 'boolq', 'avg']
     else:
         field = ['algorithm', 'bits', *cfgs.eval_datasets]
 
@@ -238,9 +191,12 @@ if __name__ == '__main__':
         with open(cfgs.arch_path, 'r') as f:
             archs = json.load(f)['archive']
 
+            len_archs = len(archs)
+
             for i, arch in enumerate(archs):
-                if i < 300:
-                    continue
+                if cfgs.half:
+                    if i < len_archs // 2:
+                        continue
 
                 arch = {'linear' : arch['arch'] if type(arch) == dict else arch[0]['linear'], 
                         'layer' : {'self_attn' : [1] * layer_len, 'mlp' : [1] * layer_len}}
@@ -251,23 +207,6 @@ if __name__ == '__main__':
     else:
         for target_bit in cfgs.target_bits:
             arch = {'linear' : {linear : [target_bit] * layer_len for linear in linears},
-                    'layer' : {'self_attn' : [1] * layer_len, 'mlp' : [1] * layer_len}}
-            
-            # 3.0
-            # temp = {'self_attn.q_proj': [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0], 'self_attn.k_proj': [3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0], 'self_attn.v_proj': [4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0, 4.0, 3.0, 3.0, 4.0, 3.0, 3.0, 4.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0], 'self_attn.o_proj': [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0], 'mlp.gate_proj': [2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0], 'mlp.up_proj': [2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0], 'mlp.down_proj': [2.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0]}
-            # 2.75
-            # temp = {'self_attn.q_proj': [2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 2.0], 'self_attn.k_proj': [3.0, 4.0, 2.0, 4.0, 4.0, 3.0, 3.0, 2.0, 2.0, 2.0, 4.0, 2.0, 2.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 3.0, 2.0, 3.0, 2.0, 2.0, 3.0, 3.0], 'self_attn.v_proj': [4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 4.0, 3.0, 4.0, 3.0, 3.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 3.0], 'self_attn.o_proj': [2.0, 3.0, 3.0, 3.0, 4.0, 4.0, 2.0, 2.0, 3.0, 3.0, 2.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0, 2.0, 2.0, 3.0, 2.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0], 'mlp.gate_proj': [2.0, 2.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0], 'mlp.up_proj': [2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0, 3.0, 3.0, 2.0, 3.0, 2.0, 2.0, 3.0], 'mlp.down_proj': [2.0, 4.0, 3.0, 3.0, 4.0, 3.0, 4.0, 3.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 2.0, 3.0, 4.0, 2.0, 4.0, 2.0, 2.0, 3.0, 3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0, 4.0]}
-            # 3.75
-            # temp = {'self_attn.q_proj': [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 3.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0], 'self_attn.k_proj': [3.0, 3.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 3.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 3.0, 3.0], 'self_attn.v_proj': [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0], 'self_attn.o_proj': [4.0, 3.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0], 'mlp.gate_proj': [3.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], 'mlp.up_proj': [3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0], 'mlp.down_proj': [4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0]}
-
-            # 3
-            if target_bit == 1:
-                temp = {'self_attn.q_proj': [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0], 'self_attn.k_proj': [3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 2.0, 3.0, 2.0], 'self_attn.v_proj': [4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 3.0, 4.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0], 'self_attn.o_proj': [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0], 'mlp.gate_proj': [2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0], 'mlp.up_proj': [2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0], 'mlp.down_proj': [2.0, 4.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0]}
-            # 3.75
-            if target_bit == 2:
-                temp = {'self_attn.q_proj': [3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0], 'self_attn.k_proj': [2.0, 3.0, 3.0, 3.0, 2.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 2.0, 3.0, 4.0, 3.0, 3.0, 3.0], 'self_attn.v_proj': [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 4.0, 3.0], 'self_attn.o_proj': [4.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0], 'mlp.gate_proj': [2.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 4.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0], 'mlp.up_proj': [2.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 3.0, 3.0, 4.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0], 'mlp.down_proj': [3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]}
-            
-            arch = {'linear' : temp,
                     'layer' : {'self_attn' : [1] * layer_len, 'mlp' : [1] * layer_len}}
             
             print(arch)

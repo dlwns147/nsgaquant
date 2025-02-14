@@ -43,9 +43,15 @@ def get_args():
     return parser.parse_args()
 
 
-def get_quantized_model(method, arch, model_name, dev, do_prune = False, do_owq = False, owq_path = None, **kwargs):
-    method = args2method[method](model_name = model_name, config = None, dev = dev, arch = arch, do_prune = do_prune, do_owq = do_owq, owq = owq_path, **kwargs)
-    group_size = kwargs.get('group_size', 128)
+def get_quantized_model(method, arch, model_name, dev, **kwargs):
+    group_size = kwargs.pop('group_size', 128)
+    do_prune = kwargs.pop('do_prune', False)
+    do_owq = kwargs.pop('do_owq', False)
+    owq_path = kwargs.pop('owq_path', False)
+    dtype = kwargs.pop('dtype', 'auto')
+    device_map = kwargs.pop('device_map', 'auto')
+
+    method = args2method[method](model_name = model_name, dev = dev, arch = arch, do_prune = do_prune, do_owq = do_owq, owq = owq_path, dtype = dtype, device_map = device_map, **kwargs)
     method.set_group_size(group_size)
 
     if do_prune:
