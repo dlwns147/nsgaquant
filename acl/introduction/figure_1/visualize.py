@@ -25,7 +25,7 @@ memory = [2315, 2392, 2469, 2546, 2623, 2701, 2778, 2855, 2932, 3009, 3087, 3164
 f = plt.figure(figsize=(10, 7))
 ax1 = f.subplots(ncols=1, nrows=2)
 
-font = {'size'   : 15}
+font = {'size'   : 20}
 plt.rc('font', **font)
 plt.rc('axes', axisbelow=True)
 
@@ -50,15 +50,15 @@ awq_13b_memory = [bit * one_bit_memory + scale_zero_memory + embed_head_memory f
 gptq_13b_memory = [bit * one_bit_memory + scale_zero_memory + embed_head_memory for bit in gptq_13b_bit]
 
 
-ax1[0].plot(quantSEA_13b_memory, quantSEA_13b_avg, label='QuantSEA', marker='o', markersize=8, color='r', linewidth=4, zorder=2)
-ax1[0].plot(owq_13b_memory, owq_13b_avg, label='OWQ', marker='o', markersize=8, color=colors[1], linewidth=4, zorder=1)
+ax1[0].plot(quantSEA_13b_memory, quantSEA_13b_avg, label='AutoLLMQuant', marker='o', markersize=8, color='r', linewidth=4, zorder=10)
+# ax1[0].plot(owq_13b_memory, owq_13b_avg, label='OWQ', marker='o', markersize=8, color=colors[1], linewidth=4, zorder=1)
 ax1[0].plot(pb_llm_13b_memory, pb_llm_13b_avg, label='PB-LLM', marker='o', markersize=8, color=colors[2], linewidth=4)
-ax1[0].plot(bitstack_13b_memory, bitstack_13b_avg, label='BitStack', marker='o', markersize=8, color='orange', linewidth=4)
+ax1[0].plot(bitstack_13b_memory, bitstack_13b_avg, label='BitStack', marker='o', markersize=8, color='orange', linewidth=4, zorder = 1)
 
-ax1[1].plot(quantSEA_13b_memory, quantSEA_13b_avg, label='QuantSEA', marker='o', markersize=8, color='r', linewidth=4, zorder=2)
-ax1[1].plot(owq_13b_memory, owq_13b_avg, label='OWQ', marker='o', markersize=8, color=colors[1], linewidth=4, zorder=1)
+ax1[1].plot(quantSEA_13b_memory, quantSEA_13b_avg, label='AutoLLMQuant', marker='o', markersize=8, color='r', linewidth=4, zorder=10)
+# ax1[1].plot(owq_13b_memory, owq_13b_avg, label='OWQ', marker='o', markersize=8, color=colors[1], linewidth=4, zorder=1)
 ax1[1].plot(pb_llm_13b_memory, pb_llm_13b_avg, label='PB-LLM', marker='o', markersize=8, color=colors[2], linewidth=4)
-ax1[1].plot(bitstack_13b_memory, bitstack_13b_avg, label='BitStack', marker='o', markersize=8, color='orange', linewidth=4)
+ax1[1].plot(bitstack_13b_memory, bitstack_13b_avg, label='BitStack', marker='o', markersize=8, color='orange', linewidth=4, zorder=1)
 
 ax1[0].scatter(awq_13b_memory, awq_13b_avg, label='AWQ', s=60, color=colors[5], marker='o', zorder=3)
 ax1[0].scatter(gptq_13b_memory, gptq_13b_avg, label='GPTQ', s=60, color=colors[4], marker='o', zorder=3)
@@ -75,11 +75,12 @@ ax1[0].set_yticks(np.arange(63, 76, 2))
 ax1[1].set_yticks(np.arange(36, 49, 2))
 
 # yticks, xticks 크기 늘리기
-ax1[0].tick_params(axis='both', which='major', labelsize=15)
-ax1[1].tick_params(axis='both', which='major', labelsize=15)
+ax1[0].tick_params(axis='both', which='major', labelsize=20)
+ax1[1].tick_params(axis='both', which='major', labelsize=20)
 
 # plt.tight_layout()
-ax1[1].legend(['QuantSEA', 'OWQ', 'PB-LLM', 'BitStack', 'AWQ', 'GPTQ'], loc='lower right')
+# ax1[1].legend(['QuantSEA', 'OWQ', 'PB-LLM', 'BitStack', 'AWQ', 'GPTQ'], loc='lower right')
+ax1[1].legend(['AutoLLMQuant', 'PB-LLM', 'BitStack', 'AWQ', 'GPTQ'], loc='lower right')
 ax1[0].grid()
 ax1[1].grid()
-plt.savefig('figure_1.png')
+plt.savefig('source_1.png')

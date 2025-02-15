@@ -149,7 +149,8 @@ if __name__ == '__main__':
     parser.set_defaults(do_clip_asym=True)
 
     parser.add_argument('--do_clip_sym', action='store_true', help='Whether to clip sym')
-    parser.add_argument('--half', action='store_true', help='test arch half')
+    parser.add_argument('--distribute_cnt', type=int, default=1, help='')
+    parser.add_argument('--distribute_num', type=int, default=1, help='')
     
     parser.add_argument('--outlier_path', type=str, default='',
                         help='')
@@ -190,14 +191,13 @@ if __name__ == '__main__':
     if cfgs.arch_path is not None:
         with open(cfgs.arch_path, 'r') as f:
             archs = json.load(f)['archive']
+            archs = archs[:560]
 
             len_archs = len(archs)
+            len_cnt_per_arch = len_archs // cfgs.distribute_cnt
+            archs = archs[len_cnt_per_arch * cfgs.distribute_num : len_cnt_per_arch * (cfgs.distribute_num + 1)]
 
             for i, arch in enumerate(archs):
-                if cfgs.half:
-                    if i < len_archs // 2:
-                        continue
-
                 arch = {'linear' : arch['arch'] if type(arch) == dict else arch[0]['linear'], 
                         'layer' : {'self_attn' : [1] * layer_len, 'mlp' : [1] * layer_len}}
 

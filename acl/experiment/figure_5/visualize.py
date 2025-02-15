@@ -21,13 +21,13 @@ with open(awq_7b, 'r') as f:
 awq_7b_data = awq_7b_data[1:]
 awq_7b_data = [[float(x[1]), float(x[2])] for x in awq_7b_data]
 
-awq_7b_half_data = []
-with open(awq_7b_half, 'r') as f:
-    reader = csv.reader(f)
-    for row in reader:
-        awq_7b_half_data.append(row)
-awq_7b_half_data = awq_7b_half_data[1:]
-awq_7b_half_data = [[float(x[1]), float(x[2])] for x in awq_7b_half_data]
+# awq_7b_half_data = []
+# with open(awq_7b_half, 'r') as f:
+#     reader = csv.reader(f)
+#     for row in reader:
+#         awq_7b_half_data.append(row)
+# awq_7b_half_data = awq_7b_half_data[1:]
+# awq_7b_half_data = [[float(x[1]), float(x[2])] for x in awq_7b_half_data]
 
 # with open(awq_13b, 'r') as f:
 #     reader = csv.reader(f)
@@ -45,7 +45,7 @@ with open(hqq_7b, 'r') as f:
 awq_7b_bits = []; awq_7b_ppl = []; awq_13b_bits = []; awq_13b_ppl = []
 hqq_7b_bits = []; hqq_7b_ppl = []; hqq_13b_bits = []; hqq_13b_ppl = []
 
-threshold = 15
+threshold = float('inf')
 
 for i in range(min(len(awq_7b_data), len(hqq_7b_data))):
     if (awq_7b_data[i][1] < threshold) and (hqq_7b_data[i][1] < threshold):
@@ -54,12 +54,14 @@ for i in range(min(len(awq_7b_data), len(hqq_7b_data))):
         hqq_7b_bits.append(hqq_7b_data[i][0])
         hqq_7b_ppl.append(hqq_7b_data[i][1])
 
-for i in range(len(awq_7b_half_data)):
-    if (awq_7b_half_data[i][1] < threshold) and (hqq_7b_data[i + 25][1] < threshold):
-        awq_7b_bits.append(awq_7b_half_data[i][0])
-        awq_7b_ppl.append(awq_7b_half_data[i][1])
-        hqq_7b_bits.append(hqq_7b_data[i + 25][0])
-        hqq_7b_ppl.append(hqq_7b_data[i + 25][1])
+print(len(awq_7b_bits), len(hqq_7b_bits))
+
+# for i in range(len(awq_7b_half_data)):
+#     if (awq_7b_half_data[i][1] < threshold) and (hqq_7b_data[i + 25][1] < threshold):
+#         awq_7b_bits.append(awq_7b_half_data[i][0])
+#         awq_7b_ppl.append(awq_7b_half_data[i][1])
+#         hqq_7b_bits.append(hqq_7b_data[i + 25][0])
+#         hqq_7b_ppl.append(hqq_7b_data[i + 25][1])
 
 # for i in range(len(awq_13b_data)):
 #     if (awq_13b_data[i][1] < threshold) and (hqq_13b_data[i][1] < threshold):
@@ -80,10 +82,13 @@ minimum = min(min(hqq_7b_ppl), min(awq_7b_ppl))
 maximum = max(max(hqq_7b_ppl), max(awq_7b_ppl))
 # ax1.plot([minimum, maximum], [minimum, maximum], 'r-', label='y=x')
 
-x = np.linspace(minimum, maximum, 100)
-y = np.emath.logn(1.5, x)
-y += minimum - min(y)
-plt.plot(x, y, 'r--', label='y=x')
+# x = np.linspace(minimum, maximum, 100)
+# y = np.emath.logn(1.5, x)
+# y += minimum - min(y)
+# plt.plot(x, y, 'r--', label='y=x')
+
+plt.ylim(minimum, 9)
+plt.xlim(minimum, 100)
 
 plt.xscale('log')
 

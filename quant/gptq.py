@@ -1,12 +1,13 @@
 import math
 import time
 
-from .base import BASE
+from .base import BASE, get_gptq_calib_dataset
 
 import torch
 import torch.nn as nn
 import numpy as np
 import transformers
+from accelerate import dispatch_model
 
 DEBUG = False
 
@@ -21,8 +22,8 @@ def quantize(x, scale, zero, maxq):
 
 
 class GPTQ(BASE):
-    def __init__(self, model_name, config, dev, arch, do_prune = False, do_owq = False, owq = None):
-        super().__init__(model_name, config, dev, arch, do_prune, do_owq, owq)
+    def __init__(self, model_name, config, arch, device_map, dev='cuda', prune=False, do_owq=False, owq=None, **kwargs):
+        super().__init__(model_name, config, arch, device_map=device_map, dev=dev, prune=prune, do_owq=do_owq, owq=owq)
         self.method = 'gptq'
 
         if do_owq:
@@ -32,19 +33,21 @@ class GPTQ(BASE):
     @torch.no_grad
     def run(
         self,
-        samples,
-        sym = False,
-        n_samples = 128,
-        true_sequential = False,
-        percdamp = .01,
-        act_order = False,
-        static_groups = False, 
+        samples=None,
+        sym=False,
+        nsamples=128,
+        true_sequential=False,
+        percdamp=.01,
+        act_order=False,
+        static_groups=False,
+        seqlen=2048
     ):
         
         assert self.arch is not None, "arch is not provided"
+        
 
         if samples is None:
-            samples = self.get_gptq_calib_dataset()
+            samples = get_gptq_calib_dataset(tokenizer=self.tokenizer, n_samples=nsamples, seqlen=seqlen)
 
         print('Starting ...')
 
@@ -59,7 +62,7 @@ class GPTQ(BASE):
 
         dtype = next(iter(self.model.parameters())).dtype
         inps = torch.zeros(
-            (n_samples, self.model.seqlen, self.model.config.hidden_size), dtype=dtype, device=self.dev
+            (nsamples, seqlen, self.model.config.hidden_size), dtype=dtype, device=self.dev
         )
         cache = {'i': 0, 'attention_mask': None}
 
@@ -129,7 +132,7 @@ class GPTQ(BASE):
                 handles = []
                 for name in subset:
                     handles.append(subset[name].register_forward_hook(add_batch(name)))
-                for j in range(n_samples):
+                for j in range(nsamples):
                     outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
                 for h in handles:
                     h.remove()
@@ -141,13 +144,13 @@ class GPTQ(BASE):
                     #     percdamp=args.percdamp, groupsize=args.groupsize, actorder=args.act_order, static_groups=args.static_groups
                     # )
                     gptq[name].fasterquant(
-                        percdamp=percdamp, groupsize=128, actorder=act_order, static_groups=static_groups
+                        percdamp=percdamp, groupsize=self.group_size, actorder=act_order, static_groups=static_groups
                     )
                     quantizers['self.model.layers.%d.%s' % (i, name)] = gptq[name].quantizer
                     gptq[name].free()
 
             # import code; code.interact('llama_bit_..., line 133', local=locals())
-            for j in range(n_samples):
+            for j in range(nsamples):
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
             # outs = layer(inps, attention_mask=attention_mask, position_ids=position_ids)[0]
 
@@ -159,6 +162,7 @@ class GPTQ(BASE):
             inps, outs = outs, inps
 
         self.model.config.use_cache = use_cache
+        dispatch_model(self.model, self.device_map)
         
         return quantizers
 
@@ -209,7 +213,7 @@ class GPTQ_METHOD:
         self, blocksize=128, percdamp=.01, groupsize=-1, actorder=False, static_groups=False
     ):
         assert groupsize != 0, 'Groupsize must be non-zero'
-        # print(groupsize)
+        print(f'gptq groupsize : {groupsize}')
 
         W = self.layer.weight.data.clone()
         if isinstance(self.layer, nn.Conv2d):

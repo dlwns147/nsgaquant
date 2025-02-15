@@ -43,7 +43,7 @@ def get_awq_calib_dataset(data="pileval", tokenizer=None, n_samples=512, block_s
     ]
 
 
-def get_gptq_calib_dataset(data="c4", tokenizer=None, n_samples = 128, seed = 0, seqlen = 2048):
+def get_gptq_calib_dataset(data="c4", tokenizer=None, n_samples=128, seed=0, seqlen=2048):
     if data == "c4":
         traindata = load_dataset(
         # 'allenai/c4', 'allenai--c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train'
@@ -70,7 +70,7 @@ def get_gptq_calib_dataset(data="c4", tokenizer=None, n_samples = 128, seed = 0,
 
 
 class BASE:
-    def __init__(self, model_name, config, arch, device_map, dev='cuda', prune=False, do_owq=False, owq=None, use_cache=False):
+    def __init__(self, model_name, config, arch, device_map, dev='cuda', group_size=128, prune=False, do_owq=False, owq=None):
         self.model_name = model_name
         self.config = config
         self.dev = dev
@@ -80,12 +80,14 @@ class BASE:
         self.prune = prune
         self.do_owq = do_owq
         self.owq = None
+        self.group_size = group_size
         if do_owq:
             if isinstance(owq, str):
                 self.owq = torch.load(owq)
             else:
                 self.owq = owq
         self.load_model(device_map='cpu')
+        print(f'groupsize : {group_size}')
         
     def load_model(self, device_map='auto', use_cache=False):
         if hasattr(self, 'model'):
