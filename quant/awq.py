@@ -154,8 +154,8 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
 
 
 class AWQ(BASE):
-    def __init__(self, model_name, config, arch, device_map, dev='cuda', prune=False, do_owq=False, owq=None, **kwargs):
-        super().__init__(model_name, config, arch, device_map=device_map, dev=dev, prune=prune, do_owq=do_owq, owq=owq)
+    def __init__(self, model_name, config, arch, device_map, group_size=128, dev='cuda', prune=False, do_owq=False, owq=None, **kwargs):
+        super().__init__(model_name, config, arch, device_map=device_map, group_size=group_size, dev=dev, prune=prune, do_owq=do_owq, owq=owq)
         self.method = 'awq'
 
         self.clip_asym = kwargs.get('clip_asym', True)

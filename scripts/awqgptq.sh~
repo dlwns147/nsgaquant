@@ -10,8 +10,8 @@ CONFIG=config/llama.json
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
-METHOD=awq
-# METHOD=gptq
+# METHOD=awq
+METHOD=gptq
 
 GROUP_SIZE=128
 
