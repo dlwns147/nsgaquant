@@ -22,18 +22,6 @@ from transformers import AutoModelForCausalLM
 
 def linear_sensitivity(args):
 
-
-    model = AutoModelForCausalLM.from_pretrained(
-        f'{args.model_path}/{args.model_name}', 
-        torch_dtype='auto',
-        device_map='auto', 
-        trust_remote_code=True,
-        low_cpu_mem_usage=True,
-        use_cache=False
-    )
-    import pdb; pdb.set_trace()
-
-
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
     accelerator, device_map = init_accelerator(args.gpu_id, config)
@@ -62,7 +50,8 @@ def linear_sensitivity(args):
     ppl = 0
     loss_list = dict()
     ppl_list = dict()
-    arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    # arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}}
     
     for linear_group in config['linear']:
         for block_idx in range(n_block):
@@ -117,28 +106,28 @@ def linear_sensitivity(args):
     #     datasets=['wikitext2', 'c4']
     # )
 
-    ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl', loss_func=args.loss_func)
-    print(f'ppl :{ppl}, bits : {complexity["bits"]}')
+    # ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl', loss_func=args.loss_func)
+    # print(f'ppl :{ppl}, bits : {complexity["bits"]}')
 
-    model = evaluator.sample(arch)
-    del evaluator
-    gc.collect()
-    torch.cuda.empty_cache()
-    print(f'memory : {torch.cuda.memory_allocated()}')
+    # model = evaluator.sample(arch)
+    # del evaluator
+    # gc.collect()
+    # torch.cuda.empty_cache()
+    # print(f'memory : {torch.cuda.memory_allocated()}')
     
-    from transformers import AutoTokenizer
-    model_id = f'{args.model_path}/{args.model_name}'
-    tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
+    # from transformers import AutoTokenizer
+    # model_id = f'{args.model_path}/{args.model_name}'
+    # tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
 
-    results = eval_zeroshot(model, tokenizer,batch_size=64)
-    avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
-    print(f'avg_acc : {avg_acc}, results : {results}')
-    for task, task_result in results.items():
-        if 'acc_norm,none' in task_result:
-            print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
-        else:
-            print(f'{task} acc : {task_result["acc,none"]}')
-    exit()
+    # results = eval_zeroshot(model, tokenizer,batch_size=64)
+    # avg_acc = np.mean([task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()])
+    # print(f'avg_acc : {avg_acc}, results : {results}')
+    # for task, task_result in results.items():
+    #     if 'acc_norm,none' in task_result:
+    #         print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
+    #     else:
+    #         print(f'{task} acc : {task_result["acc,none"]}')
+    # exit()
 
     
 
