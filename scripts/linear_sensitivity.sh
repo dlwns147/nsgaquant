@@ -2,10 +2,11 @@ DEVICES=${1}
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-7b-hf
 # MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Meta-Llama-3-8B
 # MODEL=meta-llama/Llama-2-70b-hf
+MODEL_NAME=Llama-3.1-8B-Instruct
 
 # MODEL=facebook/opt-6.7b
 # MODEL=facebook/opt-13b

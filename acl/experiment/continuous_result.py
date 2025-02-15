@@ -171,23 +171,25 @@ owq_7b_acc = np.array([0.60127132, 0.609347297, 0.611218543, 0.616280351, 0.6902
 discrete_memory = [2238, 2822, 3010, 3594, 3782]
 awq_7b_w2 = [222695.0469, 15.44975281, 6.245078087, 5.832165241, 5.598873138]
 awq_7b_c4 = [168670.7188, 17.44231033, 8.3010149, 7.720488548, 7.441966534]
-awq_7b_acc = [36.11638305, 54.67185085, 67.62783576, 69.09897888, 69.90155773]
+awq_7b_acc = np.array([36.11638305, 54.67185085, 67.62783576, 69.09897888, 69.90155773])
 
 gptq_7b_w2 = [61.76620483, 9.274932861, 6.446384907, 6.093852997, 5.642832279]
 gptq_7b_c4 = [44.10067749, 11.81025696, 8.531720161, 7.857592583, 7.523168087]
-gptq_7b_acc = [43.19096879, 60.69622798, 67.22225115, 68.55015288, 69.04313609]
+gptq_7b_acc = np.array([43.19096879, 60.69622798, 67.22225115, 68.55015288, 69.04313609])
 
 axes[0].plot(pbllm_7b_bits, pbllm_7b_c4, label='PB-LLM', marker='o', markersize=markersize, linewidth=linewidth, c = colors[2])
 axes[0].plot(bitstack_7b_bits, bitstack_7b_c4, label='BitStack', marker='o', markersize=markersize, linewidth=linewidth, c = colors[5])
 axes[0].plot(our_7b_bits, our_7b_c4, label='AutoLLMQuant', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
-axes[0].scatter(discrete_memory[1:], awq_7b_c4[1:], label='AWQ', s=20, c=colors[4])
-axes[0].scatter(discrete_memory[1:], gptq_7b_c4[1:], label='GPTQ', s=20, c=colors[3])
+axes[0].scatter(discrete_memory[1:], awq_7b_c4[1:], label='AWQ', s=40, c=colors[4])
+axes[0].scatter(discrete_memory[1:], gptq_7b_c4[1:], label='GPTQ', s=40, c=colors[3])
 axes[0].grid(c='0.8')
 
 ax = axes[0].twinx()
 ax.plot(pbllm_7b_bits, 100 * pbllm_7b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = colors[2])
 ax.plot(bitstack_7b_bits, 100 * bitstack_7b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = colors[5])
 ax.plot(our_7b_bits, 100 * our_7b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
+ax.scatter(discrete_memory[1:], awq_7b_acc[1:], s=40, c=colors[4], marker='x')
+ax.scatter(discrete_memory[1:], gptq_7b_acc[1:], s=40, c=colors[3], marker='x')
 ax.grid(c='0.8')
 ax.tick_params(axis='both', which='major', labelsize=15)
 axes[0].tick_params(axis='both', which='major', labelsize=15)
