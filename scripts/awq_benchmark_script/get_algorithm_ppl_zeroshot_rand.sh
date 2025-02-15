@@ -6,8 +6,8 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # MODEL_PATH=/SSD/.cache/
 # MODEL_NAME=Llama-2-7b-hf
 MODEL_PATH=meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 METHOD=awq
@@ -24,14 +24,18 @@ DATASETS=( "wikitext2" )
 GROUP_SIZE=128
 TARGET_BITS=( 2 3 4 )
 
-ARCH_PATH=/NAS/Woo/Automation/autoopt/archs/HQQ_woPrior_random_linear_wINT3_meta-llama_Llama-2-7b-hf.json
+# ARCH_PATH=/NAS/Woo/Automation/autoopt/archs/HQQ_woPrior_random_linear_wINT3_meta-llama_Llama-2-7b-hf.json
 # ARCH_PATH=/NAS/Woo/Automation/autoopt/archs/HQQ_woPrior_random_linear_wINT3_meta-llama_Llama-2-13b-hf.json
+ARCH_PATH=/NAS/Woo/Automation/autoopt/archs/HQQ_wPrior4_random_linear_wINT3_meta-llama_Llama-2-13b-hf.json
 # ARCH_PATH=/NAS/Woo/Automation/autoopt/archs/final_search_7b_candidate.json
 # ARCH_PATH=/NAS/Woo/Automation/autoopt/archs/final_search_13b_candidate.json
 
 # OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/get_algorithm_ppl_zeroshot/group_size_${GROUP_SIZE}/${MODEL_NAME}-${METHOD}.csv
-OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/awq_random_sample/n_samples_128/${MODEL_NAME}-${METHOD}.csv
+OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/awq_random_wPrior_sample/n_samples_128/${MODEL_NAME}-${METHOD}_0.csv
 # OUTPUT_PATH=/NAS/Woo/Automation/autoopt/result/awq_final_search_sample/${MODEL_NAME}-${METHOD}.csv
+
+DISTRIBUTE_CNT=14
+DISTRIBUTE_NUM=0
 
 N_PROC=1
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} get_algorithm_ppl_zeroshot.py \
@@ -46,8 +50,10 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --output_path ${OUTPUT_PATH} \
 --target_bits ${TARGET_BITS[@]} \
 --group_size ${GROUP_SIZE} \
---arch_path ${ARCH_PATH}
-# --half
+--arch_path ${ARCH_PATH} \
+--distribute_cnt ${DISTRIBUTE_CNT} \
+--distribute_num ${DISTRIBUTE_NUM}
+
 # --do_clip_sym
 
 # --zeroshot \

@@ -60,6 +60,8 @@ embed_head_size = 2 * hidden_size * vocab_size * model_bit / 8 / 1024 / 1024
 # Mega Bytes
 norm_size = (2 * hidden_size * num_layers + hidden_size) * model_bit / 8 / 1024 / 1024
 
+print(one_bit_size, one_group_zero_size, embed_head_size, norm_size)
+
 if args.bit <= 4:
     for bit in np.linspace(2, 4, 21):
         expected_size = one_bit_size * bit + one_group_zero_size + embed_head_size + norm_size
