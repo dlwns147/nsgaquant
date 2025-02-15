@@ -22,18 +22,6 @@ from transformers import AutoModelForCausalLM
 
 def linear_sensitivity(args):
 
-
-    model = AutoModelForCausalLM.from_pretrained(
-        f'{args.model_path}/{args.model_name}', 
-        torch_dtype='auto',
-        device_map='auto', 
-        trust_remote_code=True,
-        low_cpu_mem_usage=True,
-        use_cache=False
-    )
-    import pdb; pdb.set_trace()
-
-
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
     accelerator, device_map = init_accelerator(args.gpu_id, config)
@@ -62,7 +50,8 @@ def linear_sensitivity(args):
     ppl = 0
     loss_list = dict()
     ppl_list = dict()
-    arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    # arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}}
     
     for linear_group in config['linear']:
         for block_idx in range(n_block):

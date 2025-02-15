@@ -97,6 +97,8 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
     if q_group_size > 0:
         assert org_w_shape[-1] % q_group_size == 0
         w = w.reshape(-1, q_group_size)
+    elif q_group_size == -1:
+        w = w.reshape(-1, w.shape[-1])
     assert w.dim() == 2
     if zero_point:
         max_val = w.amax(dim=1, keepdim=True)
@@ -154,8 +156,8 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
 
 
 class AWQ(BASE):
-    def __init__(self, model_name, config, arch, device_map, dev='cuda', prune=False, do_owq=False, owq=None, **kwargs):
-        super().__init__(model_name, config, arch, device_map=device_map, dev=dev, prune=prune, do_owq=do_owq, owq=owq)
+    def __init__(self, model_name, config, arch, device_map, group_size=128, dev='cuda', prune=False, do_owq=False, owq=None, **kwargs):
+        super().__init__(model_name, config, arch, device_map=device_map, group_size=group_size, dev=dev, prune=prune, do_owq=do_owq, owq=owq)
         self.method = 'awq'
 
         self.clip_asym = kwargs.get('clip_asym', True)
@@ -668,6 +670,7 @@ class AWQ(BASE):
             q_config = {}
 
             q_config['q_group_size'] = self.group_size
+            # print(f'name : {name}, named_linears[name].weight : {named_linears[name].weight.shape}, q_config : {q_config}')
             max_val = self.auto_clip_layer_sym(
                 named_linears[name].weight, input_feat[name], n_bit=module_bit[name], q_config=q_config
             )
@@ -680,6 +683,7 @@ class AWQ(BASE):
     def auto_clip_layer_sym(
         self, w, input_feat, n_bit, q_config, n_grid=20, max_shrink=0.5, n_sample_token=512
     ):
+        # import pdb; pdb.set_trace()
         assert w.dim() == 2
         org_w_shape = w.shape
         # w           [co, ci]      -> [co, 1, n_group, group size]

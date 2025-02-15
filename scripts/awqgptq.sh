@@ -10,8 +10,8 @@ CONFIG=config/llama.json
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
-# METHOD=awq
-METHOD=gptq
+METHOD=awq
+# METHOD=gptq
 
 GROUP_SIZE=128
 
@@ -25,6 +25,9 @@ BATCH_SIZE=64
 
 N=1
 DATASETS="wikitext2 c4"
+
+# GROUP_SIZE=128
+GROUP_SIZE=-1
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${METHOD}_${BITS}
 
@@ -45,4 +48,5 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --method ${METHOD} \
 --zeroshot \
 --tasks ${TASKS} \
---zeroshot_batch_size ${BATCH_SIZE}
+--zeroshot_batch_size ${BATCH_SIZE} \
+--group_size ${GROUP_SIZE}

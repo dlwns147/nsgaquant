@@ -106,7 +106,7 @@ def main(args):
     do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)
     print(f'do_owq : {do_owq}, use_awq_or_gptq : {use_awq_or_gptq}')
     if use_awq_or_gptq:
-        model = get_quantized_model(method, arch, model_id, device_map, config=config, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path, clip_asym=args.clip_asym)
+        model = get_quantized_model(method, arch, model_id, device_map, config=config, group_size=args.group_size, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path, clip_asym=args.clip_asym)
     else:
         model = evaluator.sample(arch)
     metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
@@ -171,6 +171,8 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=str, default='config/llama.json',
                         help='')
     parser.add_argument('--bits', type=int, default=2,
+                        help='')
+    parser.add_argument('--group_size', type=int, default=128,
                         help='')
     parser.add_argument('--clip_asym', action='store_true', help='')
     parser.add_argument('--comp_obj', type=str, nargs='+', default=['bits'], 

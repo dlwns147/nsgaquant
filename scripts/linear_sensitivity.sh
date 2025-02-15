@@ -24,16 +24,18 @@ Q_BITS_TEXT="24"
 AXIS=1
 GROUP_SIZE=128
 
-# QMODEL_PATHS=()
-# for B in ${Q_BITS}
-# do
-#     QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_false_qzero_false" )
-# done
-QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_false_qzero_false" "/SSD/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_false_qzero_false" )
-# LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
-# PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
-LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_${DATASET}_loss_${Q_BITS_TEXT}_64_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
-PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_${DATASET}_ppl_${Q_BITS_TEXT}_64_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
+QMODEL_PATHS_LIST=()
+for B in ${Q_BITS}
+do
+    # QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
+    QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_bfloat16" )
+done
+
+QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
+LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
+PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz.csv
+# LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_${DATASET}_loss_${Q_BITS_TEXT}_64_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
+# PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_${DATASET}_ppl_${Q_BITS_TEXT}_64_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
 
 N_PROC=2
 
@@ -52,21 +54,22 @@ DATASET=wikitext2
 
 CONFIG=config/llama.json
 
-# CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} linear_sensitivity.py \
-CUDA_VISIBLE_DEVICES=${DEVICES} python linear_sensitivity.py \
+N_PROC=2
+# CUDA_VISIBLE_DEVICES=${DEVICES} python linear_sensitivity.py \
+CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} linear_sensitivity.py \
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
 --method ${METHOD} \
---quant_model_paths "${QMODEL_PATHS[@]}" \
+--quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
 --n_sample ${N_SAMPLE} \
 --loss_csv_file ${LOSS_CSV_FILE} \
 --ppl_csv_file ${PPL_CSV_FILE} \
 --config ${CONFIG} \
 --loss_func ${LOSS_FUNC} \
---dataset ${DATASET} \
---eval_ppl
+--dataset ${DATASET}
+# --eval_ppl
 # --outlier_bits ${OUTLIER_BITS} \
 # --outlier_path ${OUTLIER_PATH} \
 
