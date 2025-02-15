@@ -125,6 +125,8 @@ def main():
 
     args = parser.parse_args()
 
+    args.use_arch = True
+
     global model_name
     model_name = args.model_name_or_path
     model_path, model_id = model_name.split('/')
@@ -208,76 +210,79 @@ def main():
     print(f"Get Speed...")
     result['fp16'] = {}
 
-    # if args.tps:
-    #     token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
-    #     result['fp16'].update(token_per_second)
-    #     print('Token per second : ', token_per_second)
+    if args.tps:
+        token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
+        result['fp16'].update(token_per_second)
+        print('Token per second : ', token_per_second)
 
-    # if args.gemm:
-    #     gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
-    #     result['fp16'].update(gemm)
-    #     print('GeMM : ', gemm)
+    if args.gemm:
+        gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+        result['fp16'].update(gemm)
+        print('GeMM : ', gemm)
 
-    # if args.gemv:
-    #     gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
-    #     result['fp16'].update(gemv)
-    #     print('GeMV : ', gemv)
+    if args.gemv:
+        gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+        result['fp16'].update(gemv)
+        print('GeMV : ', gemv)
 
-    # if args.ttft:
-    #     ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
-    #     result['fp16'].update(ttft)
-    #     print('TTFT : ', ttft)
+    if args.ttft:
+        ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+        result['fp16'].update(ttft)
+        print('TTFT : ', ttft)
 
-    # if args.memory:
-    #     memory = get_memory_footprint(base_model) / 1024 ** 3
-    #     result['fp16'].update({'memory' : memory})
-    #     print(f"Base Model Memory : {memory} GB")
+    if args.memory:
+        memory = get_memory_footprint(base_model) / 1024 ** 3
+        result['fp16'].update({'memory' : memory})
+        print(f"Base Model Memory : {memory} GB")
 
-    # if args.file_name:
-    #     result_dir = f'benchmark/outputs'
-    #     if not os.path.exists(result_dir):
-    #         os.makedirs(result_dir, exist_ok=True)
-    #     result_path = os.path.join(result_dir, args.file_name)        
+    if args.file_name:
+        result_dir = f'benchmark/outputs'
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir, exist_ok=True)
+        result_path = os.path.join(result_dir, args.file_name)        
                        
     base_model = base_model.to('cpu')
     base_layers_length = len(base_layers)
     linears = list(get_named_linears(base_layers[0]).keys())
 
-    arch_7b = '/NAS/SJ/nsgaquant/save/search/quant/2501231719_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_300.stats'
-    arch_13b = '/NAS/SJ/nsgaquant/save/search/quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats'
+    if args.use_arch:
+        arch_7b = '/NAS/SJ/nsgaquant/save/search/quant/2502101708_Llama-2-7b-hf_bits_loss_hqq_iter_200_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_128sample_pop_200_100_rbf/iter_200.stats'
+        arch_13b = '/NAS/SJ/nsgaquant/save/search/quant/2502101858_Llama-2-13b-hf_bits_loss_hqq_iter_250_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_128sample_pop_200_100_rbf/iter_200.stats'
 
-    with open(arch_7b, 'r') as f:
-        arch_7b = json.load(f)
-        candidate_7b = arch_7b['candidates']
-    
-    with open(arch_13b, 'r') as f:
-        arch_13b = json.load(f)
-        candidate_13b = arch_13b['candidates']
+        with open(arch_7b, 'r') as f:
+            arch_7b = json.load(f)
+            candidate_7b = arch_7b['candidates']
+        
+        with open(arch_13b, 'r') as f:
+            arch_13b = json.load(f)
+            candidate_13b = arch_13b['candidates']
 
-    candidates_7b = []
-    for candidate in candidate_7b:
-        if abs(candidate[-1] - 3.5) < 0.05:
-            candidates_7b.append(candidate)
+        candidates_7b = []
+        for candidate in candidate_7b:
+            if abs(candidate[-1] - 2.5) < 0.05:
+                candidates_7b.append(candidate)
 
-    candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_7b]
-    count_4bit = [(bits == 4.0).sum() for bits in candidates_bits]
-    candidate_7b = candidates_7b[np.argmax(count_4bit)]
+        candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_7b]
+        count_4bit = [(bits == 4.0).sum() for bits in candidates_bits]
+        candidate_7b = candidates_7b[np.argmax(count_4bit)]
 
-    candidates_13b = []
-    for candidate in candidate_13b:
-        if abs(candidate[-1] - 3.5) < 0.05:
-            candidates_13b.append(candidate)
+        candidates_13b = []
+        for candidate in candidate_13b:
+            if abs(candidate[-1] - 2.5) < 0.05:
+                candidates_13b.append(candidate)
 
-    candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_13b]
-    count_4bit = [(bits == 4.0).sum() for bits in candidates_bits]
-    candidate_13b = candidates_13b[np.argmax(count_4bit)]
+        candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_13b]
+        count_4bit = [(bits == 4.0).sum() for bits in candidates_bits]
+        candidate_13b = candidates_13b[np.argmax(count_4bit)]
         
     for bit in [2, 3, 4]:
-        # arch = {linear : [bit] * base_layers_length for linear in linears}
-        if '7b' in args.model_name_or_path.lower():
-            arch = candidate_7b[0]['linear']
-        elif '13b' in args.model_name_or_path.lower():
-            arch = candidate_13b[0]['linear']
+        arch = {linear : [bit] * base_layers_length for linear in linears}
+
+        if args.use_arch:
+            if '7b' in args.model_name_or_path.lower():
+                arch = candidate_7b[0]['linear']
+            elif '13b' in args.model_name_or_path.lower():
+                arch = candidate_13b[0]['linear']
 
         model = deepcopy(base_model)
 

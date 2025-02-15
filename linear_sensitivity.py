@@ -15,9 +15,24 @@ from accelerate import Accelerator
 from evaluator import LlamaEvaluator
 from utils.func import init_accelerator
 from utils.eval import load_and_eval_ppl, eval_zeroshot
+from transformers import AutoModelForCausalLM
+
+
 
 
 def linear_sensitivity(args):
+
+
+    model = AutoModelForCausalLM.from_pretrained(
+        f'{args.model_path}/{args.model_name}', 
+        torch_dtype='auto',
+        device_map='auto', 
+        trust_remote_code=True,
+        low_cpu_mem_usage=True,
+        use_cache=False
+    )
+    import pdb; pdb.set_trace()
+
 
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]

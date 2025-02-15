@@ -65,7 +65,7 @@ awq_7b_bits = []; awq_7b_ppl = []; awq_13b_bits = []; awq_13b_ppl = []
 hqq_7b_bits = []; hqq_7b_ppl = []; hqq_13b_bits = []; hqq_13b_ppl = []
 
 min_threshold = 0
-threshold = 8
+threshold = float('inf')
 
 # for i in range(len(awq_7b_data)):
 #     if (awq_7b_data[i][1] < threshold) and (hqq_7b_data[i][1] < threshold):

@@ -3,8 +3,9 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-7b-hf
 # MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-3.1-8B-Instruct
 CONFIG=config/llama.json
 
 # METHOD="hqq layer_prune"
