@@ -1,0 +1,90 @@
+{
+    "fp16": {
+        "tps": 0,
+        "gemm": 0,
+        "gemv": 0,
+        "ttft": 0,
+        "peak_memory": 0,
+        "memory": 0
+    },
+    "2bit": {
+        "tps": {
+            "1.64.128": 39.94093313840223
+        },
+        "peak_memory": {
+            "1.64.128": 8.986666202545166
+        },
+        "gemm": {
+            "1.64.128": 2.5879539841599173
+        },
+        "gemv": {
+            "1.64.128": 46.04201959630811
+        },
+        "ttft": {
+            "1.64.128": 388.42598447808996
+        },
+        "memory": 8.885669946670532
+    },
+    "3bit": {
+        "tps": {
+            "1.64.128": 39.336910061697814
+        },
+        "peak_memory": {
+            "1.64.128": 8.985750675201416
+        },
+        "gemm": {
+            "1.64.128": 2.584731615643198
+        },
+        "gemv": {
+            "1.64.128": 46.03867146003454
+        },
+        "ttft": {
+            "1.64.128": 388.17270001163706
+        },
+        "memory": 8.885669946670532
+    },
+    "4bit": {
+        "tps": {
+            "1.64.128": 39.341809390214564
+        },
+        "peak_memory": {
+            "1.64.128": 8.985750675201416
+        },
+        "gemm": {
+            "1.64.128": 2.582973253307512
+        },
+        "gemv": {
+            "1.64.128": 46.02390184620421
+        },
+        "ttft": {
+            "1.64.128": 387.6902845222503
+        },
+        "memory": 8.885669946670532
+    },
+    "args": {
+        "model_name_or_path": "meta-llama/Llama-2-13b-hf",
+        "use_ft": true,
+        "use_owq": false,
+        "backend_2bit": "gptq",
+        "backend_3bit": "gptq",
+        "backend_4bit": "qeft",
+        "batch_size": 1,
+        "seq_length": 64,
+        "gen_length": 128,
+        "tps": true,
+        "gemm": true,
+        "gemv": true,
+        "ttft": true,
+        "memory": true,
+        "peak_memory": true,
+        "file_name": "3090/LLama-2-13b-hf/nsgaquant_benchmark_speed_1_64_128_qeft_30.json",
+        "use_arch": true
+    },
+    "unit": {
+        "tps": "tokens/second",
+        "gemm": "tokens/second",
+        "gemv": "tokens/second",
+        "ttft": "latency(ms)",
+        "peak_memory": "GB"
+    }
+}

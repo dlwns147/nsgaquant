@@ -6,8 +6,8 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # MODEL_PATH=/SSD/.cache/
 # MODEL_NAME=Llama-2-7b-hf
 MODEL_PATH=meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
 
 Q_BITS="2 3 4"
@@ -71,7 +71,8 @@ MAX_BITS=$(echo "scale=3; $TARGET_BITS + $THRESHOLD" | bc)
 
 ## 13B 234
 # EXPR_FILE=quant/2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
-EXPR_FILE=quant/2502101708_Llama-2-7b-hf_bits_loss_hqq_iter_200_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_128sample_pop_200_100_rbf/iter_200.stats
+# EXPR_FILE=quant/2502101708_Llama-2-7b-hf_bits_loss_hqq_iter_200_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_128sample_pop_200_100_rbf/iter_200.stats
+EXPR_FILE=quant/2502101858_Llama-2-13b-hf_bits_loss_hqq_iter_250_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_128sample_pop_200_100_rbf/iter_200.stats
 
 ## 13B outlier
 # EXPR_FILE=quant/2501231758_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample_outlier/iter_400.stats

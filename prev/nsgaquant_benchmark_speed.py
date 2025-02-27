@@ -132,13 +132,16 @@ def main():
     model_path, model_id = model_name.split('/')
     result = {}
 
-    int2_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_2bit_128gs_1axis')
-    int3_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_3bit_128gs_1axis')
-    int4_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_4bit_128gs_1axis')
+    int2_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_2bit_128gs_1axis', device = 'cpu')
+    int3_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_3bit_128gs_1axis', device = 'cpu')
+    int4_model = AutoHQQHFModel.from_quantized(f'/SSD/Woo/hqq/{model_id}_4bit_128gs_1axis', device = 'cpu')
 
-    int2_model = int2_model.to(default_device)
-    int3_model = int3_model.to(default_device)
-    int4_model = int4_model.to(default_device)
+    # int2_model = int2_model.to(default_device)
+    # int3_model = int3_model.to(default_device)
+    # int4_model = int4_model.to(default_device)
+    int2_model = int2_model.to('cpu')
+    int3_model = int3_model.to('cpu')
+    int4_model = int4_model.to('cpu')
 
     prepare_for_inference(int2_model, backend = args.backend_2bit, load_path = f"/SSD/Woo/hqq/{model_id}_2bit_128gs_1axis_{args.backend_2bit.upper()}Linear.pt")
     prepare_for_inference(int3_model, backend = args.backend_3bit, load_path = f"/SSD/Woo/hqq/{model_id}_3bit_128gs_1axis_{args.backend_3bit.upper()}Linear.pt")
@@ -188,11 +191,12 @@ def main():
 
     cleanup()
 
-    base_model = get_hfmodel(model_name, dtype='float16', attn_implementation='ft' if args.use_ft else 'hf')
+    base_model = get_hfmodel(model_name, device_map='cpu', dtype='float16', attn_implementation='ft' if args.use_ft else 'hf')
     base_layers = base_model.model.layers
 
     base_model.eval()
-    base_model = base_model.to('cuda')
+    # base_model = base_model.to('cuda')
+    base_model = base_model.to('cpu')
 
     tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path=model_name,
@@ -207,33 +211,40 @@ def main():
     gemm_iteration = 20
     gemv_iteration = 5 if args.gen_length < 1024 else 2
 
-    print(f"Get Speed...")
+    # print(f"Get Speed...")
+    # result['fp16'] = {}
+
+    # if args.tps:
+    #     token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
+    #     result['fp16'].update(token_per_second)
+    #     print('Token per second : ', token_per_second)
+
+    # if args.gemm:
+    #     gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+    #     result['fp16'].update(gemm)
+    #     print('GeMM : ', gemm)
+
+    # if args.gemv:
+    #     gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+    #     result['fp16'].update(gemv)
+    #     print('GeMV : ', gemv)
+
+    # if args.ttft:
+    #     ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+    #     result['fp16'].update(ttft)
+    #     print('TTFT : ', ttft)
+
+    # if args.memory:
+    #     memory = get_memory_footprint(base_model) / 1024 ** 3
+    #     result['fp16'].update({'memory' : memory})
+    #     print(f"Base Model Memory : {memory} GB")
     result['fp16'] = {}
-
-    if args.tps:
-        token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
-        result['fp16'].update(token_per_second)
-        print('Token per second : ', token_per_second)
-
-    if args.gemm:
-        gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
-        result['fp16'].update(gemm)
-        print('GeMM : ', gemm)
-
-    if args.gemv:
-        gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
-        result['fp16'].update(gemv)
-        print('GeMV : ', gemv)
-
-    if args.ttft:
-        ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
-        result['fp16'].update(ttft)
-        print('TTFT : ', ttft)
-
-    if args.memory:
-        memory = get_memory_footprint(base_model) / 1024 ** 3
-        result['fp16'].update({'memory' : memory})
-        print(f"Base Model Memory : {memory} GB")
+    result['fp16'].update({'tps' : 0})
+    result['fp16'].update({'peak_memory' : 0})
+    result['fp16'].update({'gemm' : 0})
+    result['fp16'].update({'gemv' : 0})
+    result['fp16'].update({'ttft' : 0})
+    result['fp16'].update({'memory' : 0})
 
     if args.file_name:
         result_dir = f'benchmark/outputs'
@@ -259,7 +270,7 @@ def main():
 
         candidates_7b = []
         for candidate in candidate_7b:
-            if abs(candidate[-1] - 2.5) < 0.05:
+            if abs(candidate[-1] - 3.25) < 0.05:
                 candidates_7b.append(candidate)
 
         candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_7b]
@@ -268,7 +279,7 @@ def main():
 
         candidates_13b = []
         for candidate in candidate_13b:
-            if abs(candidate[-1] - 2.5) < 0.05:
+            if abs(candidate[-1] - 3.25) < 0.05:
                 candidates_13b.append(candidate)
 
         candidates_bits = [np.concatenate([bit for bit in candidate[0]['linear'].values()]) for candidate in candidates_13b]

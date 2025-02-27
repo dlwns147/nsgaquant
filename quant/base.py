@@ -46,7 +46,6 @@ def get_awq_calib_dataset(data="pileval", tokenizer=None, n_samples=512, block_s
 def get_gptq_calib_dataset(data="c4", tokenizer=None, n_samples=128, seed=0, seqlen=2048):
     if data == "c4":
         traindata = load_dataset(
-        # 'allenai/c4', 'allenai--c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train'
         'allenai/c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train')
     else:
         raise NotImplementedError
@@ -68,6 +67,43 @@ def get_gptq_calib_dataset(data="c4", tokenizer=None, n_samples=128, seed=0, seq
 
     return trainloader
 
+def get_owq_calib_dataset(data="c4", tokenizer=None, n_samples=128, seed=0, seqlen=2048):
+    
+    random.seed(seed)
+    if 'wikitext2' in data:
+        traindata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='train')
+        trainenc = tokenizer("\n\n".join(traindata['text']), return_tensors='pt')
+        
+        trainloader = []
+        for _ in range(n_samples):
+            i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
+            j = i + seqlen
+            inp = trainenc.input_ids[:, i:j]
+            tar = inp.clone()
+            tar[:, :-1] = -100
+            trainloader.append((inp, tar))
+            
+    elif 'c4' in data:
+        traindata = load_dataset(
+            'allenai/c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train'
+        )
+        trainloader = []
+        for _ in range(n_samples):
+            while True:
+                i = random.randint(0, len(traindata) - 1)
+                trainenc = tokenizer(traindata[i]['text'], return_tensors='pt')
+                if trainenc.input_ids.shape[1] > seqlen:
+                    break
+            i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
+            j = i + seqlen
+            inp = trainenc.input_ids[:, i:j]
+            tar = inp.clone()
+            tar[:, :-1] = -100
+            trainloader.append((inp, tar))
+    else:
+        raise NotImplementedError(data)
+    
+    return trainloader
 
 class BASE:
     def __init__(self, model_name, config, arch, device_map, dev='cuda', group_size=128, prune=False, do_owq=False, owq=None):
@@ -106,7 +142,7 @@ class BASE:
                                                 )
         self.model.use_cache = False
         self.model.eval()        
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code = True, use_fast=False)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True, use_fast=False)
         
         gc.collect()
         torch.cuda.empty_cache()

@@ -44,8 +44,7 @@ class GPTQ(BASE):
     ):
         
         assert self.arch is not None, "arch is not provided"
-        
-
+       
         if samples is None:
             samples = get_gptq_calib_dataset(tokenizer=self.tokenizer, n_samples=nsamples, seqlen=seqlen)
 
@@ -58,7 +57,8 @@ class GPTQ(BASE):
         layers[0] = layers[0].to(self.dev)
         self.model.model.embed_tokens = self.model.model.embed_tokens.to(self.dev)
         self.model.model.norm = self.model.model.norm.to(self.dev)
-        self.model.model.rotary_emb = self.model.model.rotary_emb.to(self.dev)
+        if hasattr(self.model.model, 'rotary_emb'):
+            self.model.model.rotary_emb = self.model.model.rotary_emb.to(self.dev)
 
         dtype = next(iter(self.model.parameters())).dtype
         inps = torch.zeros(
@@ -87,7 +87,8 @@ class GPTQ(BASE):
         layers[0] = layers[0].cpu()
         self.model.model.embed_tokens = self.model.model.embed_tokens.cpu()
         self.model.model.norm = self.model.model.norm.cpu()
-        self.model.model.rotary_emb = self.model.model.rotary_emb.cpu()
+        if hasattr(self.model.model, 'rotary_emb'):
+            self.model.model.rotary_emb = self.model.model.rotary_emb.cpu()
         torch.cuda.empty_cache()
 
         outs = torch.zeros_like(inps)
@@ -149,7 +150,6 @@ class GPTQ(BASE):
                     quantizers['self.model.layers.%d.%s' % (i, name)] = gptq[name].quantizer
                     gptq[name].free()
 
-            # import code; code.interact('llama_bit_..., line 133', local=locals())
             for j in range(nsamples):
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
             # outs = layer(inps, attention_mask=attention_mask, position_ids=position_ids)[0]
@@ -162,7 +162,6 @@ class GPTQ(BASE):
             inps, outs = outs, inps
 
         self.model.config.use_cache = use_cache
-        dispatch_model(self.model, self.device_map)
         
         return quantizers
 
