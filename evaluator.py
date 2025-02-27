@@ -82,7 +82,7 @@ class LlamaEvaluator:
                 self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
 
-        elif 'awq' in method or 'gptq' in method:
+        elif 'awq' in method or 'gptq' in method or 'owq' in method:
             pass
 
         else:

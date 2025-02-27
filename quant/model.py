@@ -1,11 +1,15 @@
 import torch
 from .awq import AWQ
 from .gptq import GPTQ
+from .qeft import OWQ
 import gc
+
+from accelerate import dispatch_model
 
 METHOD = {
     'gptq': GPTQ,
-    'awq': AWQ
+    'awq': AWQ,
+    'owq': OWQ
 }
 
 def get_quantized_model(method, arch, model_name, device_map, group_size=128, config=None, dev='cuda', prune=False, do_owq=False, owq_path=None, **kwargs):
@@ -15,8 +19,8 @@ def get_quantized_model(method, arch, model_name, device_map, group_size=128, co
         print('Pruning the model')
         method.prune_model()
         
-    method.run()
-    model = method.model
+    method.run()    
+    model = dispatch_model(method.model, method.device_map)
     del method
     torch.cuda.empty_cache
     gc.collect()

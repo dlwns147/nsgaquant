@@ -25,6 +25,7 @@ QZERO=false
 # PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
 # PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
 PASS_LINEAR_LIST="1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
+# PASS_LINEAR_LIST="0.self_attn.q_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
 
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"

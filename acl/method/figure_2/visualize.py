@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.gridspec as gridspec
 
 fig_path = 'sensitivity.png'
 n_block = 32
@@ -11,7 +12,7 @@ ppl = [5.739490032196045,5.741342067718506,5.737436771392822,5.745964527130127,5
 ppl = np.array(ppl).reshape(n_layer, n_block).T
 
 
-# 0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj
+# 0.v 1.v 1.down_proj 31.down_proj
 outlier=[[0, 2], [1, 2], [1, 6], [31, 6]]
 
 total_blk_idx = list(range(n_block))
@@ -52,8 +53,16 @@ total_blk_idx = list(range(n_block))
 # axes[1].legend()
 # axes[1].set_title("Wikitext2 Perplexity")
 
-f = plt.figure(figsize=(10, 7))
-ax1 = f.subplots(nrows=2, ncols=1)
+f = plt.figure(figsize=(10, 5))
+gs = gridspec.GridSpec(nrows=2, # row 몇 개 
+                       ncols=1, # col 몇 개 
+                       height_ratios=[2, 3]
+                      )
+
+ax0 = plt.subplot(gs[0])
+ax1 = plt.subplot(gs[1])
+
+# ax1 = f.subplots(nrows=2, ncols=1)
 
 font = {'size'   : 20}
 plt.rc('font', **font)
@@ -70,32 +79,50 @@ colors = [
 ]
 
 
-ax1[0].plot(total_blk_idx, ppl[:, 0], label='self_attn.q_proj',zorder=1, c='black', linewidth=4)
-ax1[0].plot(total_blk_idx, ppl[:, 1], label='self_attn.k_proj',zorder=1, c=colors[1], linewidth=4)
-# ax1[0].plot(total_blk_idx, ppl[:, 2], label='self_attn.v_proj',zorder=2, c=colors[5], linewidth=4)
-ax1[0].plot(total_blk_idx, ppl[:, 2], label='self_attn.v_proj',zorder=2, c='red', linewidth=4)
-ax1[0].plot(total_blk_idx, ppl[:, 3], label='self_attn.o_proj',zorder=1, c=colors[6], linewidth=4)
-ax1[0].plot(total_blk_idx, ppl[:, 4], label='mlp.gate_proj',zorder=1, c=colors[4], linewidth=4)
-ax1[0].plot(total_blk_idx, ppl[:, 5], label='mlp.up_proj',zorder=1, c=colors[2], linewidth=4)
-# ax1[0].plot(total_blk_idx, ppl[:, 6], label='mlp.down_proj',zorder=1, c=colors[3], linewidth=4)
-ax1[0].plot(total_blk_idx, ppl[:, 6], label='mlp.down_proj',zorder=1, c='green', linewidth=4)
-ax1[0].grid(c='0.8') # axis='y',
-ax1[0].tick_params(axis='both', which='major', labelsize=20)
+# ax1[0].plot(total_blk_idx, ppl[:, 0], label='q',zorder=1, c='black', linewidth=4)
+# ax1[0].plot(total_blk_idx, ppl[:, 1], label='k',zorder=1, c=colors[1], linewidth=4)
+# # ax1[0].plot(total_blk_idx, ppl[:, 2], label='v',zorder=2, c=colors[5], linewidth=4)
+# ax1[0].plot(total_blk_idx, ppl[:, 2], label='v',zorder=2, c='red', linewidth=4)
+# ax1[0].plot(total_blk_idx, ppl[:, 3], label='o',zorder=1, c=colors[6], linewidth=4)
+# ax1[0].plot(total_blk_idx, ppl[:, 4], label='gate_proj',zorder=1, c=colors[4], linewidth=4)
+# ax1[0].plot(total_blk_idx, ppl[:, 5], label='up_proj',zorder=1, c=colors[2], linewidth=4)
+# # ax1[0].plot(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c=colors[3], linewidth=4)
+# ax1[0].plot(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c='green', linewidth=4)
+# ax1[0].grid(c='0.8') # axis='y',
+# ax1[0].tick_params(axis='both', which='major', labelsize=20)
+ax0.bar(total_blk_idx, ppl[:, 0], label='q',zorder=1, color='black', linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 1], label='k',zorder=1, color=colors[1], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 2], label='v',zorder=2, color='red', linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 3], label='o',zorder=1, color=colors[6], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 4], label='gate',zorder=1, color=colors[4], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 5], label='up',zorder=1, color=colors[2], linewidth=4)
+# 10].bar(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c=colors[3], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 6], label='down',zorder=1, color='green', linewidth=4)
+ax0.grid(c='0.8') # axis='y',
+ax0.tick_params(axis='both', which='major', labelsize=20)
 
 
-ax1[1].plot(total_blk_idx, ppl[:, 0], label='self_attn.q_proj',zorder=1, c='black', linewidth=4)
-ax1[1].plot(total_blk_idx, ppl[:, 1], label='self_attn.k_proj',zorder=1, c=colors[1], linewidth=4)
-ax1[1].plot(total_blk_idx, ppl[:, 2], label='self_attn.v_proj',zorder=2, c='red', linewidth=4)
-ax1[1].plot(total_blk_idx, ppl[:, 3], label='self_attn.o_proj',zorder=1, c=colors[6], linewidth=4)
-ax1[1].plot(total_blk_idx, ppl[:, 4], label='mlp.gate_proj',zorder=1, c=colors[4], linewidth=4)
-ax1[1].plot(total_blk_idx, ppl[:, 5], label='mlp.up_proj',zorder=1, c=colors[2], linewidth=4)
-# ax1[1].plot(total_blk_idx, ppl[:, 6], label='mlp.down_proj',zorder=1, c=colors[3], linewidth=4)
-ax1[1].plot(total_blk_idx, ppl[:, 6], label='mlp.down_proj',zorder=1, c='green', linewidth=4)
-ax1[1].grid(c='0.8') # axis='y',
-ax1[1].tick_params(axis='both', which='major', labelsize=20)
-
-ax1[0].legend(ncol=2)
-ax1[0].set_ylim(50, 100)
-ax1[1].set_ylim(5.7, 6)
+# ax1[1].plot(total_blk_idx, ppl[:, 0], label='q',zorder=1, c='black', linewidth=4)
+# ax1[1].plot(total_blk_idx, ppl[:, 1], label='k',zorder=1, c=colors[1], linewidth=4)
+# ax1[1].plot(total_blk_idx, ppl[:, 2], label='v',zorder=2, c='red', linewidth=4)
+# ax1[1].plot(total_blk_idx, ppl[:, 3], label='o',zorder=1, c=colors[6], linewidth=4)
+# ax1[1].plot(total_blk_idx, ppl[:, 4], label='gate_proj',zorder=1, c=colors[4], linewidth=4)
+# ax1[1].plot(total_blk_idx, ppl[:, 5], label='up_proj',zorder=1, c=colors[2], linewidth=4)
+# ax1[1].plot(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c=colors[3], linewidth=4)
+# ax1[1].plot(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c='green', linewidth=4)
+# ax1[1].grid(c='0.8') # axis='y',
+# ax1[1].tick_params(axis='both', which='major', labelsize=20)
+ax1.bar(total_blk_idx, ppl[:, 0], label='q',zorder=1, color='black', linewidth=4)
+ax1.bar(total_blk_idx, ppl[:, 1], label='k',zorder=1, color=colors[1], linewidth=4)
+ax1.bar(total_blk_idx, ppl[:, 2], label='v',zorder=2, color='red', linewidth=4)
+ax1.bar(total_blk_idx, ppl[:, 3], label='o',zorder=1, color=colors[6], linewidth=4)
+ax1.bar(total_blk_idx, ppl[:, 4], label='gate',zorder=1, color=colors[4], linewidth=4)
+ax1.bar(total_blk_idx, ppl[:, 5], label='up',zorder=1, color=colors[2], linewidth=4)
+ax1.bar(total_blk_idx, ppl[:, 6], label='down',zorder=1, color='green', linewidth=4)
+ax1.grid(c='0.8') # axis='y',
+ax1.tick_params(axis='both', which='major', labelsize= 20)
+ax0.legend(ncol=4, loc = 'upper right')
+ax0.set_ylim(80, 90)
+ax1.set_ylim(5.7, 6)
 
 plt.savefig(fig_path, dpi=300)

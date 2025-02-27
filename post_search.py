@@ -151,29 +151,11 @@ def main(args):
 
         # choose the architectures thats closest to the preferences
         I = ASF().do(pf, weights).argsort()[:args.n].reshape(args.n)
-
-        # import matplotlib.pyplot as plt
-        # plt.scatter(pf[:, 1], pf[:, 0], c='b', s=5, alpha=0.8, facecolor=None, label='candidates')
-        # plt.scatter(pf[I, 1], pf[I, 0], c='r', s=5, label='selected points')
-        # plt.ylim([None, 0.1])
-        # # plt.scatter(temp_norm[:, 1], temp_norm[:, 0], c='b', s=5, alpha=0.8, facecolor=None, label='candidates')
-        # # plt.scatter(temp_norm[I, 1], temp_norm[I, 0], c='r', s=5, label='selected points')
-        # plt.xlabel('latency')
-        # plt.ylabel('metric')
-        # plt.grid()
-        # plt.legend()
-        # plt.savefig('fig/quant/test.png')
-        # exit()
-
     else:
         I = range(len(pf))
 
     # always add most accurate architectures
     # I = np.append(I, 0)
-
-    # with open('/NAS/Woo/Automation/autoopt/archs/post_search/7b_owq/results_arch.json', 'r') as f:
-    #     data = json.load(f)
-    #     archs = data['archive']
 
     for idx in I:
         # print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, arch: {ps[idx]}')
@@ -181,24 +163,16 @@ def main(args):
         n_mlp = int(sum(ps[idx]["layer"]["mlp"])) if "layer" in ps[idx] else 0
         # print(f'arch : {ps[idx]}')
         print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:].tolist()}, metric: {pf[idx, 0].item():.4f}, attns : {n_attn}, mlps : {n_mlp}')
-    # exit()
-        
-        # archs.append([ps[idx], pf[idx, 1]])
-        
-    # with open('/NAS/Woo/Automation/autoopt/archs/post_search/7b_owq/results_arch.json', 'w') as f:
-    #     json.dump({'archive': archs}, f, ensure_ascii=False, indent=4)
-
+                
     latency_table = None
     if args.latency_table_file:
         with open(args.latency_table_file, 'r') as f:
             latency_table = json.load(f)
 
     model_id = f'{args.model_path}/{args.model_name}'
-
-    use_awq_or_gptq = 'awq' in args.method or 'gptq' in args.method
-    method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else None
+    awq_gptq_owq = 'awq' in args.method or 'gptq' in args.method or 'owq' in args.method
     
-    if use_awq_or_gptq:
+    if awq_gptq_owq:
         args.quant_model_bits = []
         args.quant_model_paths = []
 
@@ -217,15 +191,6 @@ def main(args):
         latency_table=latency_table
     )
 
-    # ppl_list = {dataset: [] for dataset in args.datasets}
-    # arch_list = []
-    # ppl_list = []
-    # bits_list = []
-    # param_list = []
-    # sparsity_list = []
-    # metric_list = []
-    # latency_list = []
-    # complexity_list = []
     for idx in tqdm(I):
 
         arch = ps[idx]
@@ -235,8 +200,9 @@ def main(args):
         
         linear_bits = np.concatenate(list(arch['linear'].values()))
         do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)
-        print(f'do_owq : {do_owq}, use_awq_or_gptq : {use_awq_or_gptq}')
-        if use_awq_or_gptq:
+        print(f'do_owq : {do_owq}, awq_gptq_owq : {awq_gptq_owq}')
+        if awq_gptq_owq:
+            method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else 'owq' if 'owq' in args.method else None
             model = get_quantized_model(method, arch, model_id, device_map, config=config, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path)
         else:
             model = evaluator.sample(arch)
@@ -275,7 +241,7 @@ def main(args):
             #         print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
             #     else:
             #         print(f'{task} acc : {task_result["acc,none"]}')
-        if use_awq_or_gptq:
+        if awq_gptq_owq:
             del model
             torch.cuda.empty_cache()
             gc.collect()
