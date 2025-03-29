@@ -2,11 +2,19 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# # MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
+# # MODEL_NAME=Llama-3.1-8B-Instruct
+# CONFIG=config/llama.json
+# DTYPE=float16
+
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-3.1-8B
+MODEL_NAME=Llama-3.1-70B
 # MODEL_NAME=Llama-3.1-8B-Instruct
 CONFIG=config/llama.json
+DTYPE=bfloat16
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
@@ -26,6 +34,7 @@ QZERO=false
 # PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
 # PASS_LINEAR_LIST="1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
 # PASS_LINEAR_LIST="0.self_attn.q_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
+PASS_LINEAR_LISt="0.self_attn.q_proj 0.self_attn.v_proj 0.mlp.gate_proj 0.mlp.up_proj 0.mlp.down_proj 1.self_attn.v_proj 1.self_attn.o_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 79.mlp.down_proj"
 
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
@@ -34,8 +43,9 @@ QMODEL_PATHS_LIST=()
 for B in ${Q_BITS}
 do
     # QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
-    QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_float16" )
+    # QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_float16" )
     # QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_bfloat16" )
+    QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_${DTYPE}" )
 done
 # QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}")
 QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
@@ -61,14 +71,14 @@ DATASET=wikitext2
 
 # N_SAMPLE=8
 # N_SAMPLE=16
-N_SAMPLE=32
+# N_SAMPLE=32
 # N_SAMPLE=64
-# N_SAMPLE=128
+N_SAMPLE=128
 
 OBJ=bits
 SEC_OBJ_RANGE_SMALL=${Q_BITS:0:1}
-# SEC_OBJ_RANGE_LARGE=${Q_BITS:(-1)}
-SEC_OBJ_RANGE_LARGE=4.1
+SEC_OBJ_RANGE_LARGE=${Q_BITS:(-1)}
+# SEC_OBJ_RANGE_LARGE=4.1
 
 # OBJ=latency
 # SEC_OBJ_RANGE_SMALL=1
@@ -84,7 +94,10 @@ SEC_OBJ_RANGE_LARGE=4.1
 # N_DOE=250
 # ITER=200
 
-N_DOE=300
+# N_DOE=300
+# ITER=250
+
+N_DOE=600
 ITER=250
 
 N_ITER=50
@@ -108,7 +121,7 @@ SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_it
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${DATASET}_${N_SAMPLE}sample
 # SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${GA_ALGORITHM}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_linear_group
 
-N_PROC=1
+N_PROC=2
 
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} search.py \
 --gpu_id ${DEVICES} \
@@ -135,8 +148,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --loss_func ${LOSS_FUNC} \
 --n_sample ${N_SAMPLE} \
 --dataset ${DATASET} \
---save_iter ${SAVE_ITER}
-# --pass_linear_list ${PASS_LINEAR_LIST} \
+--save_iter ${SAVE_ITER} \
+--pass_linear_list ${PASS_LINEAR_LIST}
 # --only_outlier_bits
 # --base_outlier_bits ${OUTLIER_BITS} \
 # --outlier_path ${OUTLIER_PATH} \
