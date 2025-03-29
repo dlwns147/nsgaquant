@@ -16,13 +16,14 @@ from quant.qeft_utils.misc import *
 from quant.qeft_utils.reorder import *
 from quant.base import get_owq_calib_dataset
 from transformers import AutoModelForCausalLM
+from utils.data import get_tokenizer
 
 @torch.no_grad()
 def extract_outlieridx(model, dataloader, dev, args):
     if args.perhead is not None:
         args.target_rank = args.perhead * model.config.num_attention_heads
         
-    dirname = os.path.join(args.output_dir, f"w{args.wbits}_r{args.target_rank}")
+    dirname = os.path.join(args.output_dir, f"w{args.wbits}_r{args.target_rank}_{args.dataset}")
     if not os.path.exists(dirname):
         os.makedirs(dirname, exist_ok=True)
         
@@ -361,6 +362,7 @@ if __name__ == '__main__':
         device_map='cpu', 
         trust_remote_code=True
     )
+    tokenizer = get_tokenizer(args.model)
     
     if getattr(model.config, 'max_position_embeddings', None):
         args.seqlen = model.config.max_position_embeddings
@@ -369,7 +371,7 @@ if __name__ == '__main__':
     else:
         args.seqlen = 2048
     
-    dataloader = get_owq_calib_dataset(args.dataset, nsamples=args.nsamples, seed=args.seed, seqlen=args.seqlen)
+    dataloader = get_owq_calib_dataset(args.dataset, tokenizer=tokenizer, n_samples=args.nsamples, seed=args.seed, seqlen=args.seqlen)
     # dataloader = get_loaders(
     #     args.dataset, nsamples=args.nsamples, seed=args.seed, model=args.model, seqlen=args.seqlen, train=True
     # )
