@@ -13,8 +13,6 @@ Q_BITS_TEXT="234"
 METHOD=awq
 # METHOD=gptq
 
-GROUP_SIZE=128
-
 COMP_OBJ="bits"
 COMP_OBJ_TEXT=bits
 
@@ -33,7 +31,7 @@ SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${METHOD}_${BITS}
 
 TARGET_COMP_OBJ=bits
 # TARGET_BITS_LIST=(2 3 4)
-BITS=1
+BITS=3
 N_PROC=1
 
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} awqgptq.py \
@@ -46,8 +44,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --save ${SAVE} \
 --datasets ${DATASETS} \
 --method ${METHOD} \
---zeroshot \
---tasks ${TASKS} \
---zeroshot_batch_size ${BATCH_SIZE} \
 --group_size ${GROUP_SIZE} \
 --clip_asym
+# --zeroshot \
+# --tasks ${TASKS} \
+# --zeroshot_batch_size ${BATCH_SIZE} \

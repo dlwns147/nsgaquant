@@ -10,10 +10,10 @@ CONFIG=config/llama.json
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
-# METHOD=awq
-# METHOD_TEXT=awq
-METHOD=owq
-METHOD_TEXT=owq
+METHOD=awq
+METHOD_TEXT=awq
+# METHOD=owq
+# METHOD_TEXT=owq
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
@@ -36,7 +36,7 @@ done
 QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 
 N_OUTLIER=32
-OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}_wikitext2/outlier.pth
 
 COMP_OBJ="bits"
 COMP_OBJ_TEXT=bits
@@ -50,9 +50,10 @@ BATCH_SIZE=64
 EXPR_FOLDER=save/search/quant
 
 # EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
-# EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
-# EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
 EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
+# EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
+# EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
+
 # EXPR_FILE=2502091342_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_200.stats
 # EXPR_FILE=2502061619_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_400.stats
 # EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_300.stats
@@ -136,10 +137,10 @@ do
     --datasets ${DATASETS} \
     --method ${METHOD} \
     --outlier_path ${OUTLIER_PATH} \
-    --prefer ${PREFER} \
-    --zeroshot \
-    --tasks ${TASKS} \
-    --zeroshot_batch_size ${BATCH_SIZE}
+    --prefer ${PREFER}
+    # --zeroshot \
+    # --tasks ${TASKS} \
+    # --zeroshot_batch_size ${BATCH_SIZE}
 
     # --high_tradeoff
     # --outlier_path ${OUTLIER_PATH} \
