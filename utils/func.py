@@ -176,8 +176,8 @@ def load_hqq_model(model_id, device_map, use_cache=False, inference=False):
 
     if model_id is not None:
         model = AutoHQQHFModel.from_quantized(model_id, device_map='cpu')
-        # model = simple_dispatch_model(model, device_map)
-        model = dispatch_model(model, device_map)
+        model = simple_dispatch_model(model, device_map)
+        # model = dispatch_model(model, device_map)
         model.use_cache = use_cache
         model.config.use_cache = use_cache
         torch.cuda.empty_cache()

@@ -56,6 +56,11 @@ def simple_dispatch_model(model, device_map):
                     # print(f'{n} : {submodule}')
                     submodule.meta['scale'] = submodule.meta['scale'].to(d)
                     submodule.meta['zero'] = submodule.meta['zero'].to(d)
+                if hasattr(submodule, 'bias'):
+                    if isinstance(submodule.bias, torch.nn.Parameter):
+                        submodule.bias.data = submodule.bias.data.to(d)
+                    if isinstance(submodule.bias, torch.Tensor):
+                        submodule.bias = submodule.bias.to(d)
                     # print(f"d : {d}, meta['scale'] : {submodule.meta['scale'].device}, meta['zero'] : {submodule.meta['zero'].device}")
             add_hook_to_module(m, hook)
     gc.collect()
