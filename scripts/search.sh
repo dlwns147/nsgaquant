@@ -9,12 +9,20 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # CONFIG=config/llama.json
 # DTYPE=float16
 
-MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-3.1-8B
-MODEL_NAME=Llama-3.1-70B
-# MODEL_NAME=Llama-3.1-8B-Instruct
-CONFIG=config/llama.json
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# # MODEL_NAME=Llama-3.1-8B
+# MODEL_NAME=Llama-3.1-70B
+# # MODEL_NAME=Llama-3.1-8B-Instruct
+# CONFIG=config/llama.json
+# DTYPE=bfloat16
+
+MODEL_PATH=/SSD/huggingface/Qwen
+# MODEL_NAME=Qwen2.5-7B
+# MODEL_NAME=Qwen2.5-14B
+# MODEL_NAME=Qwen2.5-32B
+MODEL_NAME=Qwen2.5-72B
 DTYPE=bfloat16
+CONFIG=config/qwen2.json
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
@@ -34,7 +42,12 @@ QZERO=false
 # PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
 # PASS_LINEAR_LIST="1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
 # PASS_LINEAR_LIST="0.self_attn.q_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
-PASS_LINEAR_LISt="0.self_attn.q_proj 0.self_attn.v_proj 0.mlp.gate_proj 0.mlp.up_proj 0.mlp.down_proj 1.self_attn.v_proj 1.self_attn.o_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 79.mlp.down_proj"
+
+# PASS_LINEAR_LIST="0.self_attn.q_proj 0.self_attn.v_proj 0.mlp.gate_proj 0.mlp.up_proj 0.mlp.down_proj 1.self_attn.v_proj 1.self_attn.o_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 79.mlp.down_proj" # Llama-3.1-70B
+
+# PASS_LINEAR_LIST="1.mlp.gate_proj 62.mlp.down_proj 63.mlp.up_proj 63.mlp.down_proj" # Qwen2.5-32B
+PASS_LINEAR_LIST="1.mlp.down_proj 3.self_attn.v_proj 79.mlp.up_proj 79.mlp.down_proj" # Qwen2.5-72B
+
 
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
