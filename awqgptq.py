@@ -104,11 +104,13 @@ def main(args):
     
     linear_bits = np.concatenate(list(arch['linear'].values()))
     do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)
-    print(f'do_owq : {do_owq}, use_awq_or_gptq : {use_awq_or_gptq}')
-    if use_awq_or_gptq:
-        model = get_quantized_model(method, arch, model_id, device_map, config=config, group_size=args.group_size, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path, clip_asym=args.clip_asym)
-    else:
-        model = evaluator.sample(arch)
+    # print(f'do_owq : {do_owq}, use_awq_or_gptq : {use_awq_or_gptq}')
+    # if use_awq_or_gptq:
+    #     model = get_quantized_model(method, arch, model_id, device_map, config=config, group_size=args.group_size, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path, clip_asym=args.clip_asym)
+    # else:
+    #     model = evaluator.sample(arch)
+    from utils.func import get_hfmodel
+    model = get_hfmodel(model_id, dtype='auto', device_map=device_map)
     metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
     accelerator.print(arch)
     print(f'ppl: {[p for p in metric.values()]}\n')

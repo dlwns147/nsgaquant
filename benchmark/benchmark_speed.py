@@ -106,7 +106,7 @@ def benchmark_gemv_gemm(model, input_ids, gen_seq_len, mode = 'gemv'):
 
             logits, last_key_values = out.logits, out.past_key_values
             max_logit = logits[:, -1].max(1)[1].unsqueeze(1)
-            gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
+            gemv_input_ids = torch.as_tensor([[max_logit]], device=device)z
 
             if mode.lower() == 'gemv':
                 for _ in range(gen_seq_len):
