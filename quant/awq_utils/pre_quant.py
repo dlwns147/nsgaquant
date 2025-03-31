@@ -230,9 +230,9 @@ def run_awq(
         gc.collect()
         torch.cuda.empty_cache()
     
-        # layer = layer.cpu()
-        # gc.collect()
-        # torch.cuda.empty_cache()
+        layer = layer.cpu()
+        gc.collect()
+        torch.cuda.empty_cache()
 
     return awq_results
 
