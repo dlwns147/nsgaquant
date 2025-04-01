@@ -2,16 +2,26 @@ DEVICES=${1}
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
-
-# MODEL=facebook/opt-6.7b
-# MODEL=facebook/opt-13b
-# MODEL=facebook/opt-30b
-# MODEL=facebook/opt-66b
-
 CONFIG=config/llama.json
+DTYPE=float16
+
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# MODEL_NAME=Llama-3.1-8B
+# # MODEL_NAME=Llama-3.1-70B
+# CONFIG=config/llama.json
+# DTYPE=bfloat16
+
+# MODEL_PATH=/SSD/huggingface/Qwen
+# # MODEL_NAME=Qwen2.5-7B
+# MODEL_NAME=Qwen2.5-14B
+# # MODEL_NAME=Qwen2.5-32B
+# # MODEL_NAME=Qwen2.5-72B
+# DTYPE=bfloat16
+# CONFIG=config/qwen2.json
+
 N_SAMPLE=128
 
 # LOSS_FUNC=cross_entropy
@@ -22,19 +32,25 @@ METHOD_TEXT="hqq"
 
 Q_BITS="3 4"
 Q_BITS_TEXT=34
+
+# Q_BITS="2 3"
+# Q_BITS_TEXT=23
 AXIS=1
 GROUP_SIZE=128
 
-QMODEL_PATHS=()
+QMODEL_PATHS_LIST=()
 for B in ${Q_BITS}
 do
-    QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_false_qzero_false" )
+    # QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
+    QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_${DTYPE}" )
 done
-# QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_false_qzero_false" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_false_qzero_false" )
+# QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}")
+QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 
-
-LOSS_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${METHOD_TEXT}_${Q_BITS_TEXT}bits_loss_desc_1axis_64_128gs_${LOSS_FUNC}.csv
-PPL_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${METHOD_TEXT}_${Q_BITS_TEXT}bits_ppl_desc_1axis_64_128gs_${LOSS_FUNC}.csv
+LOSS_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${METHOD_TEXT}_${Q_BITS_TEXT}bits_loss_desc_${AXIS}axis_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
+PPL_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${METHOD_TEXT}_${Q_BITS_TEXT}bits_ppl_desc_${AXIS}axis_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
+# LOSS_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${METHOD_TEXT}_${Q_BITS_TEXT}bits_loss_desc_1axis_64_128gs_${LOSS_FUNC}.csv
+# PPL_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${METHOD_TEXT}_${Q_BITS_TEXT}bits_ppl_desc_1axis_64_128gs_${LOSS_FUNC}.csv
 # LOSS_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${QUANT_METHOD}_loss_asc_axis_${SMALL_AXIS}_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_lqs_${LARGE_QSCALE}_lqz_${LARGE_QZERO}_sb_${SMALL_WBITS}_sgs_${SMALL_GROUP_SIZE}_sqs_${SMALL_QSCALE}_sqz_${SMALL_QZERO}.csv
 # PPL_CSV_FILE=csv/greedy_search/${MODEL_NAME}_${QUANT_METHOD}_ppl_asc_axis_${SMALL_AXIS}_lb_${LARGE_WBITS}_lgs_${LARGE_GROUP_SIZE}_lqs_${LARGE_QSCALE}_lqz_${LARGE_QZERO}_sb_${SMALL_WBITS}_sgs_${SMALL_GROUP_SIZE}_sqs_${SMALL_QSCALE}_sqz_${SMALL_QZERO}.csv
 
@@ -48,7 +64,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
 --method ${METHOD} \
---quant_model_paths "${QMODEL_PATHS[@]}" \
+--quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
 --target_bit ${TARGET_BIT} \
 --n_sample ${N_SAMPLE} \
@@ -56,8 +72,9 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --ppl_csv_file ${PPL_CSV_FILE} \
 --config ${CONFIG} \
 --loss_func ${LOSS_FUNC} \
---eval_ppl_iter \
 --descending
+# --eval_ppl_iter \
+
 # --eval_ppl \
 # --eval_zeroshot \
 
