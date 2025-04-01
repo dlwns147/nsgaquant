@@ -39,7 +39,7 @@ def greedy_search_linear(args):
     
     loss_list = dict()
     ppl_list = list()
-    arch = {'linear': {l: [] for lg in config['linear'] for l in lg.split(',')}, 'layer': {l: [1]* n_block for l in config['layer']}}
+    arch = {'linear': {l: [] for lg in config['linear'] for l in lg.split(',')}}
     
     for blk_idx in range(n_block):
         for linear in config['linear']:

@@ -22,7 +22,8 @@ def auto_clip_block_asym(module, input_feat, q_config, module_bit=None, outlier=
         max_val, min_val = auto_clip_layer_asym(
             named_linears[name].weight, input_feat[name], n_bit=module_bit[name], q_config=q_config,
             ## customizing
-            outlier = outlier[name] if outlier is not None and name in outlier else None
+            outlier = outlier[name] if outlier is not None and name in outlier else None,
+            bias=named_linears[name].bias if hasattr(named_linears[name], 'bias') else None
         )
         clip_list.append((name, max_val, min_val))
         
@@ -32,7 +33,7 @@ def auto_clip_block_asym(module, input_feat, q_config, module_bit=None, outlier=
 
 @torch.no_grad()
 def auto_clip_layer_asym(
-    w, input_feat, n_bit, q_config, n_grid=20, max_shrink=0.5, n_sample_token=512, outlier=None
+    w, input_feat, n_bit, q_config, n_grid=20, max_shrink=0.5, n_sample_token=512, outlier=None, bias=None
 ):
     assert n_bit == int(n_bit), "bit should be integer"
     assert w.dim() == 2
@@ -55,6 +56,8 @@ def auto_clip_layer_asym(
 
     for i_b in range(w.shape[0] // oc_batch_size):
         w = w_all[i_b * oc_batch_size : (i_b + 1) * oc_batch_size]
+        # if bias is not None:
+        #     b = bias[i_b * oc_batch_size : (i_b + 1) * oc_batch_size]
         org_out = (input_feat * w).sum(dim=-1)  # co, n_token, n_group
         
         if outlier is not None:
@@ -90,6 +93,7 @@ def auto_clip_layer_asym(
                 q_w = q_w.reshape(oc_batch_size, -1)
                 q_w[:, outlier] = original
                 q_w = q_w.reshape(oc_batch_size, 1, -1, group_size)
+            # import pdb; pdb.set_trace()
             cur_out = (input_feat * q_w).sum(dim=-1)
 
             # co, 1, n_group, 1

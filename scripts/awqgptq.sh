@@ -2,21 +2,21 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
-# MODEL=meta-llama/Llama-2-70b-hf
-CONFIG=config/llama.json
-
 # MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-3.1-8B
-# # MODEL_NAME=Llama-3.1-70B
-# # MODEL_NAME=Llama-3.1-8B-Instruct
+# MODEL_NAME=Llama-2-7b-hf
+# # MODEL_NAME=Llama-2-13b-hf
+# # MODEL=meta-llama/Llama-2-70b-hf
 # CONFIG=config/llama.json
 
+MODEL_PATH=/SSD/huggingface/meta-llama
+MODEL_NAME=Llama-3.1-8B
+# MODEL_NAME=Llama-3.1-70B
+# MODEL_NAME=Llama-3.1-8B-Instruct
+CONFIG=config/llama.json
+
 # MODEL_PATH=/SSD/huggingface/Qwen
-# MODEL_NAME=Qwen2.5-7B
-# # MODEL_NAME=Qwen2.5-14B
+# # MODEL_NAME=Qwen2.5-7B
+# MODEL_NAME=Qwen2.5-14B
 # # MODEL_NAME=Qwen2.5-32B
 # # MODEL_NAME=Qwen2.5-70B
 # CONFIG=config/qwen2.json
@@ -32,21 +32,23 @@ COMP_OBJ="bits"
 COMP_OBJ_TEXT=bits
 
 
-TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa"
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
+BATCH_SIZE=16
 # BATCH_SIZE=32
-BATCH_SIZE=64
+# BATCH_SIZE=64
 
 N=1
 DATASETS="wikitext2 c4"
 
-# GROUP_SIZE=128
-GROUP_SIZE=-1
+GROUP_SIZE=128
+# GROUP_SIZE=-1
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${METHOD}_${BITS}
 
 TARGET_COMP_OBJ=bits
 # TARGET_BITS_LIST=(2 3 4)
 BITS=3
+# BITS=16
 N_PROC=1
 
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} awqgptq.py \
@@ -59,8 +61,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --save ${SAVE} \
 --datasets ${DATASETS} \
 --method ${METHOD} \
---group_size ${GROUP_SIZE}
-# --clip_asym
-# --zeroshot \
-# --tasks ${TASKS} \
-# --zeroshot_batch_size ${BATCH_SIZE} \
+--group_size ${GROUP_SIZE} \
+--zeroshot \
+--tasks ${TASKS} \
+--zeroshot_batch_size ${BATCH_SIZE}
+# --clip_asym \

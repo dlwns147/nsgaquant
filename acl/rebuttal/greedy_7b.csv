@@ -1,0 +1,7 @@
+algorithm,bits,wikitext2,c4,arc_easy,arc_challenge,piqa,hellaswag,winogrande,boolq,avg
+algorithm,bits,wikitext2,c4,arc_easy,arc_challenge,piqa,hellaswag,winogrande,boolq,avg
+awq,3.244818652849741,6.729697227478027,8.936347007751465,0.6776094276094277,0.4180887372013652,0.7687704026115343,0.7070304720175263,0.6629834254143646,0.6868501529051988,0.6535554362932362
+algorithm,bits,wikitext2,c4,arc_easy,arc_challenge,piqa,hellaswag,winogrande,boolq,avg
+algorithm,bits,wikitext2,c4,arc_easy,arc_challenge,piqa,hellaswag,winogrande,boolq,avg
+awq,2.7545336787564767,7.643172740936279,10.27608871459961,0.6376262626262627,0.37542662116040953,0.7627856365614799,0.6773551085441147,0.6345698500394633,0.6648318042813456,0.6254325472021793
+algorithm,bits,wikitext2,c4,arc_easy,arc_challenge,piqa,hellaswag,winogrande,boolq,avg
