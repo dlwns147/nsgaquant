@@ -1,15 +1,18 @@
 DEVICES=${1}
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
 # MODEL_NAME=Meta-Llama-3-8B
-# DATASET=wikitext2
-DATASET=c4
+DATASET=wikitext2
+# DATASET=c4
 
 OUTPUT_DIR=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}
-TARGET_RANK=32
+# TARGET_RANK=16
+# TARGET_RANK=32
+# TARGET_RANK=64
+TARGET_RANK=128
 WBITS=16
 
 

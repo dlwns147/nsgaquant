@@ -2,8 +2,8 @@ DEVICES=${1}
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
 CONFIG=config/llama.json
 DTYPE=float16
@@ -35,6 +35,10 @@ Q_BITS_TEXT=34
 
 # Q_BITS="2 3"
 # Q_BITS_TEXT=23
+
+# Q_BITS="2 4"
+# Q_BITS_TEXT=24
+
 AXIS=1
 GROUP_SIZE=128
 

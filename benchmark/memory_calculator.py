@@ -63,7 +63,7 @@ norm_size = (2 * hidden_size * num_layers + hidden_size) * model_bit / 8 / 1024 
 print(one_bit_size, one_group_zero_size, embed_head_size, norm_size)
 
 if args.bit <= 4:
-    for bit in np.linspace(2, 4, 21):
+    for bit in np.linspace(2, 4, 41):
         expected_size = one_bit_size * bit + one_group_zero_size + embed_head_size + norm_size
     
         print(bit, math.ceil(expected_size))

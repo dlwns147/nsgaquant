@@ -1,5 +1,6 @@
 hqq==0.2.2
 pymoo==0.6.1.3
+pySOT
 tqdm
 transformers==4.45.2
 datasets

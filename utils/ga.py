@@ -53,6 +53,17 @@ class IntegerFromFloatMutation(Mutation):
         return apply_float_operation(problem, fun)
 
 
+class IntMutation(Mutation):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def _do(self, problem, X, **kwargs):
+        # import pdb; pdb.set_trace()
+        xl, xu = problem.xl, problem.xu
+        B = X.shape[0]
+        mut = np.random.randint(xl, xu + 1, (B, problem.n_var)).astype(int)
+        mask = np.random.binomial(1, self.prob.value, (B, problem.n_var))
+        return mask * mut + (1 - mask) * X
 
 class IntPolynomialMutation(PolynomialMutation):
 

@@ -277,8 +277,8 @@ class LlamaQuantSearchSpace:
         self.pass_linear_list = pass_linear_list
         self.config = config
         self.latency_table = latency_table
-        self.linear_group = config['linear']
-        self.n_linear = len(self.linear_group)
+        self.linear = config['linear']
+        self.n_linear = len(self.linear)
         
         self.sec_obj = sec_obj
         self.sec_obj_range = sec_obj_range
@@ -387,28 +387,49 @@ class LlamaQuantSearchSpace:
 
     def encode(self, arch):
         # encode arch ({'q': [0, 2, 4], 'k: , etc}) to integer bit-string [1, 0, 2, 1, ...]
-        q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']]).reshape(-1, 1)
-        k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']]).reshape(-1, 1)
-        v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']]).reshape(-1, 1)
-        o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']]).reshape(-1, 1)
-        gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']]).reshape(-1, 1)
-        up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']]).reshape(-1, 1)
-        down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']]).reshape(-1, 1)
+        # q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']]).reshape(-1, 1)
+        # k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']]).reshape(-1, 1)
+        # v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']]).reshape(-1, 1)
+        # o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']]).reshape(-1, 1)
+        # gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']]).reshape(-1, 1)
+        # up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']]).reshape(-1, 1)
+        # down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']]).reshape(-1, 1)
 
-        return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
+        # return np.stack((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode), axis=-1).flatten()
+        q_encode = np.array([np.argwhere(_x == np.array(self.q_proj_option))[0, 0] for _x in arch['linear']['self_attn.q_proj']])
+        k_encode = np.array([np.argwhere(_x == np.array(self.k_proj_option))[0, 0] for _x in arch['linear']['self_attn.k_proj']])
+        v_encode = np.array([np.argwhere(_x == np.array(self.v_proj_option))[0, 0] for _x in arch['linear']['self_attn.v_proj']])
+        o_encode = np.array([np.argwhere(_x == np.array(self.o_proj_option))[0, 0] for _x in arch['linear']['self_attn.o_proj']])
+        gate_encode = np.array([np.argwhere(_x == np.array(self.gate_proj_option))[0, 0] for _x in arch['linear']['mlp.gate_proj']])
+        up_encode = np.array([np.argwhere(_x == np.array(self.up_proj_option))[0, 0] for _x in arch['linear']['mlp.up_proj']])
+        down_encode = np.array([np.argwhere(_x == np.array(self.down_proj_option))[0, 0] for _x in arch['linear']['mlp.down_proj']])
+
+        return np.concatenate((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode))
     
     def decode(self, x):
         # decode integer bit-string [1, 0, 2, 1, ...] to arch ({'q': [0, 2, 4], 'k: , etc})
-        x_reshape = x.reshape(self.n_block, self.n_linear)
+        # x_reshape = x.reshape(self.n_block, self.n_linear)
+        # return {
+        #             'linear': {
+        #                 'self_attn.q_proj': np.array(self.q_proj_option)[x_reshape[:, 0]].tolist(),
+        #                 'self_attn.k_proj': np.array(self.k_proj_option)[x_reshape[:, 1]].tolist(),
+        #                 'self_attn.v_proj': np.array(self.v_proj_option)[x_reshape[:, 2]].tolist(),
+        #                 'self_attn.o_proj': np.array(self.o_proj_option)[x_reshape[:, 3]].tolist(),
+        #                 'mlp.gate_proj': np.array(self.gate_proj_option)[x_reshape[:, 4]].tolist(),
+        #                 'mlp.up_proj': np.array(self.up_proj_option)[x_reshape[:, 5]].tolist(),
+        #                 'mlp.down_proj': np.array(self.down_proj_option)[x_reshape[:, 6]].tolist(),
+        #             },
+        #         }
+        x_reshape = x.reshape(self.n_linear, self.n_block)
         return {
                     'linear': {
-                        'self_attn.q_proj': np.array(self.q_proj_option)[x_reshape[:, 0]].tolist(),
-                        'self_attn.k_proj': np.array(self.k_proj_option)[x_reshape[:, 1]].tolist(),
-                        'self_attn.v_proj': np.array(self.v_proj_option)[x_reshape[:, 2]].tolist(),
-                        'self_attn.o_proj': np.array(self.o_proj_option)[x_reshape[:, 3]].tolist(),
-                        'mlp.gate_proj': np.array(self.gate_proj_option)[x_reshape[:, 4]].tolist(),
-                        'mlp.up_proj': np.array(self.up_proj_option)[x_reshape[:, 5]].tolist(),
-                        'mlp.down_proj': np.array(self.down_proj_option)[x_reshape[:, 6]].tolist(),
+                        'self_attn.q_proj': np.array(self.q_proj_option)[x_reshape[0]].tolist(),
+                        'self_attn.k_proj': np.array(self.k_proj_option)[x_reshape[1]].tolist(),
+                        'self_attn.v_proj': np.array(self.v_proj_option)[x_reshape[2]].tolist(),
+                        'self_attn.o_proj': np.array(self.o_proj_option)[x_reshape[3]].tolist(),
+                        'mlp.gate_proj': np.array(self.gate_proj_option)[x_reshape[4]].tolist(),
+                        'mlp.up_proj': np.array(self.up_proj_option)[x_reshape[5]].tolist(),
+                        'mlp.down_proj': np.array(self.down_proj_option)[x_reshape[6]].tolist(),
                     },
                 }
     
@@ -424,12 +445,9 @@ class LlamaQuantSearchSpace:
         return np.concatenate((q_encode, k_encode, v_encode, o_encode, gate_encode, up_encode, down_encode))
     
     def decode_encode_predictor(self, x): # x : (batch_size, dim)
-        B = x.shape[0]
-        x = x.reshape(B, self.n_block, self.n_linear).transpose(0, 2, 1).reshape(B, -1)
+        # B = x.shape[0]
+        # x = x.reshape(B, self.n_block, self.n_linear).transpose(0, 2, 1).reshape(B, -1)
         return np.delete(x, self.pass_linear_idx_list, axis=-1)
-        # import pdb; pdb.set_trace()
-        # return np.stack([self.encode_predictor(self.decode(_x)) for _x in x])
-        # return np.delete(x, self.pass_linear_idx_list, axis=-1)
     
 
 class LlamaQuantMultiObjSearchSpace:

@@ -2,12 +2,12 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-# MODEL_PATH=/SSD/huggingface/meta-llama
-# # MODEL_NAME=Llama-2-7b-hf
+MODEL_PATH=/SSD/huggingface/meta-llama
+MODEL_NAME=Llama-2-7b-hf
 # MODEL_NAME=Llama-2-13b-hf
-# # MODEL_NAME=Llama-3.1-8B-Instruct
-# CONFIG=config/llama.json
-# DTYPE=float16
+# MODEL_NAME=Llama-3.1-8B-Instruct
+CONFIG=config/llama.json
+DTYPE=float16
 
 # MODEL_PATH=/SSD/huggingface/meta-llama
 # # MODEL_NAME=Llama-3.1-8B
@@ -16,13 +16,13 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # CONFIG=config/llama.json
 # DTYPE=bfloat16
 
-MODEL_PATH=/SSD/huggingface/Qwen
-# MODEL_NAME=Qwen2.5-7B
-# MODEL_NAME=Qwen2.5-14B
-# MODEL_NAME=Qwen2.5-32B
-MODEL_NAME=Qwen2.5-72B
-DTYPE=bfloat16
-CONFIG=config/qwen2.json
+# MODEL_PATH=/SSD/huggingface/Qwen
+# # MODEL_NAME=Qwen2.5-7B
+# # MODEL_NAME=Qwen2.5-14B
+# # MODEL_NAME=Qwen2.5-32B
+# MODEL_NAME=Qwen2.5-72B
+# DTYPE=bfloat16
+# CONFIG=config/qwen2.json
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
@@ -38,7 +38,7 @@ GROUP_SIZE=128
 QSCALE=false
 QZERO=false
 
-# PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
+PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
 # PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
 # PASS_LINEAR_LIST="1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
 # PASS_LINEAR_LIST="0.self_attn.q_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
@@ -46,7 +46,7 @@ QZERO=false
 # PASS_LINEAR_LIST="0.self_attn.q_proj 0.self_attn.v_proj 0.mlp.gate_proj 0.mlp.up_proj 0.mlp.down_proj 1.self_attn.v_proj 1.self_attn.o_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 79.mlp.down_proj" # Llama-3.1-70B
 
 # PASS_LINEAR_LIST="1.mlp.gate_proj 62.mlp.down_proj 63.mlp.up_proj 63.mlp.down_proj" # Qwen2.5-32B
-PASS_LINEAR_LIST="1.mlp.down_proj 3.self_attn.v_proj 79.mlp.up_proj 79.mlp.down_proj" # Qwen2.5-72B
+# PASS_LINEAR_LIST="1.mlp.down_proj 3.self_attn.v_proj 79.mlp.up_proj 79.mlp.down_proj" # Qwen2.5-72B
 
 
 
@@ -84,9 +84,9 @@ DATASET=wikitext2
 
 # N_SAMPLE=8
 # N_SAMPLE=16
-# N_SAMPLE=32
+N_SAMPLE=32
 # N_SAMPLE=64
-N_SAMPLE=128
+# N_SAMPLE=128
 
 OBJ=bits
 SEC_OBJ_RANGE_SMALL=${Q_BITS:0:1}
@@ -104,14 +104,14 @@ SEC_OBJ_RANGE_LARGE=${Q_BITS:(-1)}
 # # LAYER_PRUNE_RANGE_SMALL=1.0
 # LAYER_PRUNE_RANGE_LARGE=1.0
 
-# N_DOE=250
-# ITER=200
+N_DOE=250
+ITER=100
 
 # N_DOE=300
 # ITER=250
 
-N_DOE=600
-ITER=250
+# N_DOE=600
+# ITER=250
 
 N_ITER=50
 GA_POP_SIZE=200
@@ -119,16 +119,18 @@ GA_POP_SIZE=200
 METRIC=loss
 
 MAX_VALUE=5
-MUT_PROB=0.1
+# MUT_PROB=0.1
+MUT_PROB=0.2
 CROSSOVER_PROB=0.9
 
+# SAVE_ITER=1
 SAVE_ITER=10
 
 # LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit_iter10000.json
 # LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_13b_lpe_24bit_iter10000.json
 
-# SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}
-SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}_outlier_${OUTLIER_TEXT}
+SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}
+# SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}_outlier_${OUTLIER_TEXT}
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}_outlier_${OUTLIER_TEXT}_mixed
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${DATASET}_${N_SAMPLE}sample_2_64
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${DATASET}_${N_SAMPLE}sample

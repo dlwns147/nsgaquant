@@ -46,6 +46,7 @@ def auto_clip_layer_asym(
     input_feat = input_feat.reshape(1, input_feat.shape[0], -1, group_size)
     input_feat = input_feat[:, 0 :: input_feat.shape[1] // n_sample_token]
     input_feat = input_feat.to(w.device)
+    # input_feat = input_feat.flatten(-2).squeeze(0)
     w = w.reshape(w.shape[0], 1, -1, group_size)
 
     oc_batch_size = 256 if w.shape[0] % 256 == 0 else 64  # prevent OOM

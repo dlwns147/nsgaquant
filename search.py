@@ -24,7 +24,7 @@ from pymoo.operators.mutation.pm import PolynomialMutation
 from search_space.llama import LlamaQuantSearchSpace, LlamaSearchSpace #, LlamaLinearGroupSearchSpace
 from predictor.factory import get_predictor
 from utils.func import get_net_info, init_accelerator
-from utils.ga import MySampling, BinaryCrossover, MyMutation, IntPolynomialMutation, MyTwoPointCrossover, MyUniformCrossover, IntegerFromFloatMutation
+from utils.ga import MySampling, BinaryCrossover, MyMutation, IntegerFromFloatMutation, IntMutation
 
 class Search:
     def __init__(self, config, accelerator, device_map, kwargs):
@@ -288,16 +288,22 @@ class Search:
         if self.predictor == 'rbf':
             n_block = self.config['n_block']
             n_linear = self.config['n_linear']
-            lb = np.zeros((n_block, n_linear))
-            ub = np.ones((n_block, n_linear))
+            # lb = np.zeros((n_block, n_linear))
+            # ub = np.ones((n_block, n_linear))
+            lb = np.zeros((n_linear, n_block))
+            ub = np.ones((n_linear, n_block))
             
             for linear_idx, linear in enumerate(self.config['linear']):
-                ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+                # ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
+                ub[linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
 
-            lb, ub = lb.transpose(0, 1).flatten(), ub.transpose(0, 1).flatten()
+            # lb, ub = lb.transpose(0, 1).flatten(), ub.transpose(0, 1).flatten()
 
-            lb = np.delete(lb, self.search_space.pass_linear_idx_list, axis=-1)
-            ub = np.delete(ub, self.search_space.pass_linear_idx_list, axis=-1)
+            # lb = np.delete(lb, self.search_space.pass_linear_idx_list, axis=-1)
+            # ub = np.delete(ub, self.search_space.pass_linear_idx_list, axis=-1)
+            
+            lb = np.delete(lb.flatten(), self.search_space.pass_linear_idx_list, axis=-1)
+            ub = np.delete(ub.flatten(), self.search_space.pass_linear_idx_list, axis=-1)
 
             kwargs = {'lb': lb, 'ub': ub}
             # print(f'lb : {lb.shape}, ub : {ub.shape}')
@@ -326,7 +332,8 @@ class Search:
             # crossover=BinomialCrossover(prob=0.9, n_offsprings=2),
             # crossover=MyTwoPointCrossover(prob=0.9, n_offsprings=1),
             # mutation=IntPolynomialMutation(eta=1.0),
-            mutation=IntegerFromFloatMutation(clazz=PolynomialMutation, eta=1.0, prob=self.mut_prob),
+            # mutation=IntegerFromFloatMutation(clazz=PolynomialMutation, eta=1.0, prob=self.mut_prob),
+            mutation=IntMutation(prob=self.mut_prob),
             # mutation=PolynomialMutation(prob=self.mut_prob, eta=1.0),
             # mutation=IntPolynomialMutation(prob=self.mut_prob, eta=1.0),
             eliminate_duplicates=True)
@@ -393,9 +400,12 @@ class AuxiliarySingleLevelProblem(Problem):
         self.predictor = predictor
         self.xl = np.zeros((n_block, n_linear))
         self.xu = np.ones((n_block, n_linear))
+        self.xl = np.zeros((n_linear, n_block))
+        self.xu = np.ones((n_linear, n_block))
         
         for linear_idx, linear in enumerate(config['linear']):
-            self.xu[:, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
+            # self.xu[:, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
+            self.xu[linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
 
         # self.xu[:, :n_linear] = search_space.n_bits - 1
         self.config = config
@@ -405,13 +415,14 @@ class AuxiliarySingleLevelProblem(Problem):
             blk, linear = pass_linear.split('.', 1)
             blk = int(blk)
 
-            linear_idx = 0.
-            for i, group in enumerate(search_space.linear_group):
-                if linear in group:
-                    linear_idx = i
-                    break
-            # linear_idx = search_space.linear_group.index(linear)
-            self.xl[blk, linear_idx] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
+            # linear_idx = 0.
+            # for i, group in enumerate(config['linear']):
+            #     if linear in group:
+            #         linear_idx = i
+            #         break
+            
+            linear_idx = config['linear'].index(linear)
+            self.xl[linear_idx, blk] = len(getattr(search_space, f"{linear.split('.')[-1]}_option")) - 1
 
         self.xl = self.xl.flatten()
         self.xu = self.xu.flatten()
