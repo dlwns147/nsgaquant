@@ -345,6 +345,7 @@ if __name__ == '__main__':
     )
     
     args = parser.parse_args()
+    print(args)
     meta = processing_arguments(args)
     args.meta = meta
     device = torch.device('cuda:0')

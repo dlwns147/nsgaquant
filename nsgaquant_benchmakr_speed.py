@@ -208,36 +208,36 @@ def main():
     print(f"Get Speed...")
     result['fp16'] = {}
 
-    # if args.tps:
-    #     token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
-    #     result['fp16'].update(token_per_second)
-    #     print('Token per second : ', token_per_second)
+    if args.tps:
+        token_per_second = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'TPS', get_peak_memory=args.peak_memory)
+        result['fp16'].update(token_per_second)
+        print('Token per second : ', token_per_second)
 
-    # if args.gemm:
-    #     gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
-    #     result['fp16'].update(gemm)
-    #     print('GeMM : ', gemm)
+    if args.gemm:
+        gemm = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'GeMM', get_peak_memory=False)
+        result['fp16'].update(gemm)
+        print('GeMM : ', gemm)
 
-    # if args.gemv:
-    #     gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
-    #     result['fp16'].update(gemv)
-    #     print('GeMV : ', gemv)
+    if args.gemv:
+        gemv = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemv_iteration, sizes = sizes, mode = 'GeMV', get_peak_memory=False)
+        result['fp16'].update(gemv)
+        print('GeMV : ', gemv)
 
-    # if args.ttft:
-    #     ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
-    #     result['fp16'].update(ttft)
-    #     print('TTFT : ', ttft)
+    if args.ttft:
+        ttft = benchmark_speed(base_model, tokenizer, use_ft = args.use_ft, iteration = gemm_iteration, sizes = sizes, mode = 'TTFT', get_peak_memory=False)
+        result['fp16'].update(ttft)
+        print('TTFT : ', ttft)
 
-    # if args.memory:
-    #     memory = get_memory_footprint(base_model) / 1024 ** 3
-    #     result['fp16'].update({'memory' : memory})
-    #     print(f"Base Model Memory : {memory} GB")
+    if args.memory:
+        memory = get_memory_footprint(base_model) / 1024 ** 3
+        result['fp16'].update({'memory' : memory})
+        print(f"Base Model Memory : {memory} GB")
 
-    # if args.file_name:
-    #     result_dir = f'benchmark/outputs'
-    #     if not os.path.exists(result_dir):
-    #         os.makedirs(result_dir, exist_ok=True)
-    #     result_path = os.path.join(result_dir, args.file_name)        
+    if args.file_name:
+        result_dir = f'benchmark/outputs'
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir, exist_ok=True)
+        result_path = os.path.join(result_dir, args.file_name)        
                        
     base_model = base_model.to('cpu')
     base_layers_length = len(base_layers)

@@ -49,8 +49,11 @@ BATCH_SIZE=64
 
 EXPR_FOLDER=save/search/quant
 
+EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_100.stats
+# EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9_mut_0.2_wikitext2_32sample_rbf/iter_100.stats
+
 # EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
-EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
+# EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
 # EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
 # EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
 
@@ -103,9 +106,9 @@ TARGET_COMP_OBJ=bits
 # TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75)
 # TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75 4.0)
 # TARGET_COMP_OBJ_VAL_LIST=(2.2 2.5 2.75 3.0 3.2 3.5 3.75 4.0)
-TARGET_COMP_OBJ_VAL_LIST=(2.2)
+# TARGET_COMP_OBJ_VAL_LIST=(2.2)
 # TARGET_COMP_OBJ_VAL_LIST=(3.0)
-# TARGET_COMP_OBJ_VAL_LIST=(2.5 3.0 3.5)
+TARGET_COMP_OBJ_VAL_LIST=(2.25 2.75 3.25 3.75)
 COMP_OBJ_THRESHOLD=0.005
 
 for TARGET_COMP_OBJ_VAL in ${TARGET_COMP_OBJ_VAL_LIST[*]}
