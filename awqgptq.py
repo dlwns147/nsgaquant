@@ -72,7 +72,6 @@ def main(args):
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
 
-    
     accelerator, device_map = init_accelerator(args.gpu_id, config)
 
     latency_table = None
@@ -95,7 +94,9 @@ def main(args):
         seqlen=args.seqlen,
         n_sample=args.n_sample,
         datasets=args.datasets,
-        latency_table=latency_table
+        # latency_table=latency_table,
+        quant_model_bits=args.quant_model_bits,
+        quant_model_paths=args.quant_model_paths,
     )
 
     arch = dict()
