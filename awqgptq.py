@@ -14,7 +14,7 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from utils.func import init_accelerator, get_net_info
+from utils.func import init_accelerator, get_net_info, cleanup
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
 from quant.model import get_quantized_model
@@ -116,10 +116,11 @@ def main(args):
     accelerator.print(arch)
     print(f'ppl: {[p for p in metric.values()]}\n')
     
-    if args.zeroshot:
-        torch.cuda.empty_cache()
-        gc.collect()
-        
+    del evaluator
+    cleanup()
+    print(f'memory : {torch.cuda.memory_allocated()}')
+    
+    if args.zeroshot:        
         results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size, task_list=args.tasks)
         acc_norm = [task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()]
         acc = [task_result['acc,none'] for task_result in results.values()]
@@ -137,28 +138,6 @@ def main(args):
         gc.collect()
 
     print(args)
-    exit()
-
-    sentences = []
-    for k, v in vars(args).items():
-        sentences.append(f"{k}: {v}\n")
-    sentences.append("\n")
-    for a, c, p in zip(arch_list, complexity_list, ppl_list):
-        sentences.append(f"arch: {a}, bits: {c:.4f}, ppl: {p}\n")
-
-    with open(os.path.join(args.save, args.results_file), 'w') as f:
-        for sentence in sentences:
-            f.write(sentence)
-
-    with open(os.path.join(args.save, args.results_csv_file), 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(['arch', 'bits', 'params', 'sparsity', 'metric', 'latency'] + args.datasets)
-        for a, b, p, s, m, l, ppl in zip(arch_list, bits_list, param_list, sparsity_list, metric_list, latency_list, ppl_list):
-            writer.writerow([a, b, p, s, m, l] + list(ppl.values()))
-
-    with open(os.path.join(args.save, args.results_arch_file), 'w') as f:
-        json.dump({'archive': [[a, c, p] for a, c, p in zip(arch_list, complexity_list, ppl_list)]}, f, ensure_ascii=False, indent=4)
-
     return
 
 
