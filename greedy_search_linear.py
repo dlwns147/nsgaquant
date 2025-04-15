@@ -103,7 +103,7 @@ def greedy_search_linear(args):
         iter_time_list.append(phase_time_elapsed)
 
         accelerator.print(f"Phase_time_elapsed (s): {phase_time_elapsed:.2f}s")
-        accelerator.print(f"[SELECTED linear: {selected_layer}, Loss={min_loss:.3f}, Bits: {cur_bit:.3f}") 
+        accelerator.print(f"SELECTED linear: {selected_layer}, Loss={min_loss:.3f}, Bits: {cur_bit:.3f}") 
 
         if args.loss_csv_file and accelerator.is_main_process:
             with open(args.loss_csv_file, 'w', newline='') as f:

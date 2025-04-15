@@ -5,7 +5,23 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 MODEL_PATH=/SSD/huggingface/meta-llama
 MODEL_NAME=Llama-2-7b-hf
 # MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-70b-hf
 CONFIG=config/llama.json
+DTYPE=float16
+
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# # MODEL_NAME=Llama-3.1-8B
+# MODEL_NAME=Llama-3.1-70B
+# CONFIG=config/llama.json
+# DTYPE=bfloat16
+
+# MODEL_PATH=/SSD/huggingface/Qwen
+# # MODEL_NAME=Qwen2.5-7B
+# # MODEL_NAME=Qwen2.5-14B
+# # MODEL_NAME=Qwen2.5-32B
+# MODEL_NAME=Qwen2.5-72B
+# DTYPE=bfloat16
+# CONFIG=config/qwen2.json
 
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
@@ -43,7 +59,7 @@ COMP_OBJ_TEXT=bits
 # COMP_OBJ="bits latency"
 # COMP_OBJ_TEXT=bits_latency
 
-TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa"
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
 # BATCH_SIZE=32
 BATCH_SIZE=64
 
@@ -107,8 +123,8 @@ TARGET_COMP_OBJ=bits
 # TARGET_COMP_OBJ_VAL_LIST=(2.25 2.5 2.75 3.0 3.25 3.5 3.75 4.0)
 # TARGET_COMP_OBJ_VAL_LIST=(2.2 2.5 2.75 3.0 3.2 3.5 3.75 4.0)
 # TARGET_COMP_OBJ_VAL_LIST=(2.2)
-# TARGET_COMP_OBJ_VAL_LIST=(3.0)
-TARGET_COMP_OBJ_VAL_LIST=(2.25 2.75 3.25 3.75)
+TARGET_COMP_OBJ_VAL_LIST=(3.0)
+# TARGET_COMP_OBJ_VAL_LIST=(2.25 2.75 3.25 3.75)
 COMP_OBJ_THRESHOLD=0.005
 
 for TARGET_COMP_OBJ_VAL in ${TARGET_COMP_OBJ_VAL_LIST[*]}
@@ -140,10 +156,10 @@ do
     --datasets ${DATASETS} \
     --method ${METHOD} \
     --outlier_path ${OUTLIER_PATH} \
-    --prefer ${PREFER}
-    # --zeroshot \
-    # --tasks ${TASKS} \
-    # --zeroshot_batch_size ${BATCH_SIZE}
+    --prefer ${PREFER} \
+    --zeroshot \
+    --tasks ${TASKS} \
+    --zeroshot_batch_size ${BATCH_SIZE}
 
     # --high_tradeoff
     # --outlier_path ${OUTLIER_PATH} \

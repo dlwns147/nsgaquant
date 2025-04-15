@@ -163,7 +163,8 @@ def init_accelerator(gpu_id, config):
     return accelerator, device_map
 
 def load_hqq_model(model_id, device_map, use_cache=False, inference=False):
-
+    
+    cleanup()
     # for fast model loading
     org_kaiming_uniform = torch.nn.init.kaiming_uniform_
     org_uniform = torch.nn.init.uniform_
@@ -270,3 +271,7 @@ def load_outlier(model, outlier, config):
             if key in outlier:
                 outlier[f'{blk_idx}.{linear}'] = [outlier[key], get_fp16_channel(getsubattr(getblock(model, config)[blk_idx], linear), outlier[key])]
     return outlier
+
+def cleanup():
+    gc.collect()
+    torch.cuda.empty_cache()
