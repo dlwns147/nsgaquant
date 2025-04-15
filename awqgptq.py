@@ -82,7 +82,7 @@ def main(args):
     use_awq_or_gptq = 'awq' in args.method or 'gptq' in args.method
     method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else None
     
-    if use_awq_or_gptq:
+    if use_awq_or_gptq or args.bits == 16:
         args.quant_model_bits = []
         args.quant_model_paths = []
 
