@@ -90,8 +90,8 @@ def get_net_info(arch, config, latency_table=None):
     net_info['sparsity'] = compute_sparsity(arch) if 'layer' in arch else 0
     net_info['params'] = compute_params(arch, config) if 'layer' in arch else 0
     net_info['latency'] = compute_latency(arch, config, latency_table)
-    net_info['2bits'] = compute_2_bits(arch, config) if 'linear' in arch else 0
-    net_info['2bits_ratio'] = compute_2_bits_ratio(arch) if 'linear' in arch else 0    
+    # net_info['2bits'] = compute_2_bits(arch, config) if 'linear' in arch else 0
+    # net_info['2bits_ratio'] = compute_2_bits_ratio(arch) if 'linear' in arch else 0    
     
     return net_info
 
