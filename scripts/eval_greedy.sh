@@ -2,18 +2,18 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-# MODEL_PATH=/SSD/huggingface/meta-llama
-# # MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
-# # MODEL_NAME=Llama-2-70b-hf
-# CONFIG=config/llama.json
-# DTYPE=float16
-
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-3.1-8B
-# MODEL_NAME=Llama-3.1-70B
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-70b-hf
 CONFIG=config/llama.json
-DTYPE=bfloat16
+DTYPE=float16
+
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# MODEL_NAME=Llama-3.1-8B
+# # MODEL_NAME=Llama-3.1-70B
+# CONFIG=config/llama.json
+# DTYPE=bfloat16
 
 # MODEL_PATH=/SSD/huggingface/Qwen
 # MODEL_NAME=Qwen2.5-7B
@@ -56,18 +56,23 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
 
-# GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-7b-hf_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
-# LAST_LINEAR=
+GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-7b-hf_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
+# GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-13b-hf_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
+# GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-3.1-8B_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
+
+TARGET_BIT=2.5
+# TARGET_BIT=3.0
+# TARGET_BIT=3.5
 
 # GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-13b-hf_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
 # LAST_LINEAR=21.self_attn.o_proj # 3.5
 # # LAST_LINEAR=22.mlp.up_proj # 3.0
 # # LAST_LINEAR=36.mlp.gate_proj # 2.5
 
-GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-3.1-8B_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
-LAST_LINEAR=7.mlp.gate_proj # 3.5
-LAST_LINEAR=8.mlp.up_proj # 3.0
-LAST_LINEAR=31.mlp.gate_proj # 2.5
+# GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-3.1-8B_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
+# LAST_LINEAR=7.mlp.gate_proj # 3.5
+# LAST_LINEAR=8.mlp.up_proj # 3.0
+# LAST_LINEAR=31.mlp.gate_proj # 2.5
 
 # GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Qwen2.5-7B_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
 # LAST_LINEAR=5.mlp.down_proj # 3.5
@@ -75,7 +80,8 @@ LAST_LINEAR=31.mlp.gate_proj # 2.5
 # LAST_LINEAR=22.mlp.gate_proj # 2.5
 
 
-DATASETS="wikitext2 c4"
+# DATASETS="wikitext2 c4"
+DATASETS="wikitext2"
 
 N_PROC=1
 # N_PROC=2
@@ -89,11 +95,11 @@ eval_greedy.py \
 --quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
 --greedy_search_result ${GREEDY_SEARCH_RESULT} \
---last_linear ${LAST_LINEAR} \
+--target_bit ${TARGET_BIT} \
 --datasets ${DATASETS} \
---method ${METHOD} \
---zeroshot \
---tasks ${TASKS}
-
+--method ${METHOD} 
+# --zeroshot \
+# --tasks ${TASKS}
+# --last_linear ${LAST_LINEAR} \
 # --outlier_path ${OUTLIER_PATH} \
 # --only_front \

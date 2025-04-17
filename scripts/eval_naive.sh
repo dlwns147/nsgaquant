@@ -58,9 +58,11 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
 
 LINEAR_SENSITIVITY=/NAS/SJ/nsgaquant/csv/sensitivity/Llama-2-7b-hf_hqq_loss_24_1axis_128gs_false_qs_false_qz_jsd.csv
+# LINEAR_SENSITIVITY=/NAS/SJ/nsgaquant/csv/sensitivity/Llama-2-13b-hf_hqq_loss_24_1axis_128gs_false_qs_false_qz_jsd.csv
+# LINEAR_SENSITIVITY=/NAS/SJ/nsgaquant/csv/sensitivity/Llama-3.1-8B_hqq_loss_24_1axis_128gs_false_qs_false_qz_jsd.csv
 
-# TARGET_BITS=2.5
-TARGET_BITS=3.0
+TARGET_BITS=2.5
+# TARGET_BITS=3.0
 # TARGET_BITS=3.5
 
 # DATASETS="wikitext2 c4"

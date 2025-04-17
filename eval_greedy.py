@@ -13,7 +13,7 @@ import time
 from accelerate import Accelerator
 
 from evaluator import LlamaEvaluator
-from utils.func import init_accelerator, cleanup
+from utils.func import init_accelerator, cleanup, get_net_info
 from utils.eval import load_and_eval_ppl, eval_zeroshot
 
 
@@ -49,15 +49,37 @@ def eval(args):
     
     # accelerator.print(f'arch : {arch}')
 
-    print(f'last_linear : {args.last_linear}, greedy_search_result : {args.greedy_search_result}')
+    # print(f'last_linear : {args.last_linear}, greedy_search_result : {args.greedy_search_result}')
     with open(args.greedy_search_result, 'r') as f:
-        selected_linears = list(csv.reader(f))[0]
-        selected_linears = selected_linears[:selected_linears.index(args.last_linear) + 1]
-    for linear in selected_linears:
+        # selected_linears = list(csv.reader(f))[0]
+        # selected_linears = selected_linears[:selected_linears.index(args.last_linear) + 1]
+        linear_list = list(csv.reader(f))[0]
+
+    # for linear in selected_linears:
+    #     blk_idx, layer, linear = linear.split('.')
+    #     blk_idx = int(blk_idx)
+
+    #     arch['linear'][f'{layer}.{linear}'][blk_idx] = min(args.quant_model_bits)
+
+    bits_list = []
+    for linear in linear_list:
+        blk_idx, layer, linear = linear.split('.')
+        blk_idx = int(blk_idx)
+        arch['linear'][f'{layer}.{linear}'][blk_idx] = min(args.quant_model_bits)
+        bits_list.append(abs(get_net_info(arch, config)['bits'] - args.target_bit))
+        
+    last_layer_idx = bits_list.index(min(bits_list))
+    last_layer = linear_list[last_layer_idx]
+
+    arch = {'linear': {l: [max(args.quant_model_bits)] * n_block for lg in config['linear'] for l in lg.split(',')}}
+    for linear in linear_list[:last_layer_idx + 1]:
         blk_idx, layer, linear = linear.split('.')
         blk_idx = int(blk_idx)
 
         arch['linear'][f'{layer}.{linear}'][blk_idx] = min(args.quant_model_bits)
+
+    print(f'target_bit : {args.target_bit}, last_layer : {last_layer}, greedy_search_result : {args.greedy_search_result}')
+
 
 
     ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl')
@@ -123,6 +145,8 @@ if __name__ == '__main__':
     parser.add_argument('--greedy_search_result', type=str, default='',
                         help='')
     parser.add_argument('--last_linear', type=str, default='',
+                        help='')
+    parser.add_argument('--target_bit', type=float, default=3,
                         help='')
 
     cfgs = parser.parse_args()
