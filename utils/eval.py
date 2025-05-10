@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from .data import *
 from .loss import JSD
-import glog
+# import glog
 from .func import cleanup
 
 
@@ -251,7 +251,7 @@ def get_graph_wrapper(cls, device=0):
                             *self.static_args, **self.static_kwargs)
 
                     self.built_graph = True
-                    glog.info("Built CUDA graph of model.")
+                    print("Built CUDA graph of model.")
 
                 # these two loops take < 1e-4 seconds for llama2
                 for i in range(len(args)):
