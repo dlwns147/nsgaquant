@@ -79,16 +79,31 @@ class Search:
                     avg_linear_bits = ((in_dim - n_outlier) * base_bits + n_outlier * 16) / (in_dim)
                     outlier_bits[linear].append(avg_linear_bits)
 
-        pass_layer_list = kwargs.pop('pass_layer_list', [])
-        layer_sensitivity_file = kwargs.pop('layer_sensitivity_file' , '')
-        if layer_sensitivity_file:
-            with open(layer_sensitivity_file, 'r') as f:
-                layer_sensitivity = list(csv.reader(f))
-            idx = np.argsort(list(map(float, layer_sensitivity[1])))
-            n_pass_layers = int(len(idx) * kwargs.pop('pass_layer_ratio', 0.2))
-            pass_layer_list = [layer_sensitivity[0][i] for i in idx[-n_pass_layers:]]
-        self.args['pass_layer_list'] = pass_layer_list
-
+        # pass_layer_list = kwargs.pop('pass_layer_list', [])
+        # layer_sensitivity_file = kwargs.pop('layer_sensitivity_file' , '')
+        # if layer_sensitivity_file:
+        #     with open(layer_sensitivity_file, 'r') as f:
+        #         layer_sensitivity = list(csv.reader(f))
+        #     idx = np.argsort(list(map(float, layer_sensitivity[1])))
+        #     n_pass_layers = int(len(idx) * kwargs.pop('pass_layer_ratio', 0.2))
+        #     pass_layer_list = [layer_sensitivity[0][i] for i in idx[-n_pass_layers:]]
+        # self.args['pass_layer_list'] = pass_layer_list        
+        
+        self.linear_sensitivity_file = kwargs.pop('linear_sensitivity_file' , '')
+        self.iqr_threshold = kwargs.pop('iqr_threshold', 10)
+        if self.linear_sensitivity_file:
+            with open(self.linear_sensitivity_file, 'r') as f:
+                linear_list, sensitivity = list(csv.reader(f))
+                sensitivity = list(map(float, sensitivity))
+            
+            q1 = np.percentile(sensitivity, 25)
+            q3 = np.percentile(sensitivity, 75)
+            iqr = q3 - q1
+            upper_bound = q3 + self.iqr_threshold * iqr
+            pass_linear_list = [linear_list[i] for i in np.where(sensitivity > upper_bound)[0]]
+            self.args['pass_linear_list'] = pass_linear_list
+            print(f'pass_linear_list: {pass_linear_list}')
+        
         self.evaluator = LlamaEvaluator(
             self.config,
             accelerator=accelerator,
@@ -108,7 +123,8 @@ class Search:
         self.search_space = LlamaQuantSearchSpace(
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
-            pass_linear_list=kwargs.pop('pass_linear_list', []),
+            pass_linear_list=pass_linear_list,
+            # pass_linear_list=kwargs.pop('pass_linear_list', []),
             # pass_layer_list=kwargs.pop('pass_layer_list', []),
             # pass_layer_list=pass_layer_list,
             sec_obj=self.sec_obj,
@@ -296,11 +312,6 @@ class Search:
             for linear_idx, linear in enumerate(self.config['linear']):
                 # ub[:, linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
                 ub[linear_idx] = len(getattr(self.search_space, f"{linear.split('.')[-1]}_option")) - 1
-
-            # lb, ub = lb.transpose(0, 1).flatten(), ub.transpose(0, 1).flatten()
-
-            # lb = np.delete(lb, self.search_space.pass_linear_idx_list, axis=-1)
-            # ub = np.delete(ub, self.search_space.pass_linear_idx_list, axis=-1)
             
             lb = np.delete(lb.flatten(), self.search_space.pass_linear_idx_list, axis=-1)
             ub = np.delete(ub.flatten(), self.search_space.pass_linear_idx_list, axis=-1)
@@ -398,8 +409,8 @@ class AuxiliarySingleLevelProblem(Problem):
 
         self.ss = search_space
         self.predictor = predictor
-        self.xl = np.zeros((n_block, n_linear))
-        self.xu = np.ones((n_block, n_linear))
+        # self.xl = np.zeros((n_block, n_linear))
+        # self.xu = np.ones((n_block, n_linear))
         self.xl = np.zeros((n_linear, n_block))
         self.xu = np.ones((n_linear, n_block))
         
@@ -560,13 +571,17 @@ if __name__ == '__main__':
     parser.add_argument('--n_outlier', type=int, default=0, 
                         help='')
     parser.add_argument('--only_outlier_bits', action='store_true', help='')
-    parser.add_argument('--latency_table_file', type=str, default=None,
-                        help='')
-    parser.add_argument('--layer_sensitivity_file', type=str, default='',
-                        help='')
-    parser.add_argument('--pass_layer_ratio', type=float, default=0.2, 
-                        help='')
+    # parser.add_argument('--latency_table_file', type=str, default=None,
+    #                     help='')
+    # parser.add_argument('--layer_sensitivity_file', type=str, default='',
+    #                     help='')
+    # parser.add_argument('--pass_layer_ratio', type=float, default=0.2, 
+    #                     help='')
     parser.add_argument('--save_iter', type=int, default=1, 
+                        help='')
+    parser.add_argument('--linear_sensitivity_file', type=str, default='',
+                        help='')
+    parser.add_argument('--iqr_threshold', type=float, default=10, 
                         help='')
     
     cfgs = parser.parse_args()

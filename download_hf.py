@@ -1,7 +1,7 @@
 from huggingface_hub import snapshot_download
-# model_path = "meta-llama"
+model_path = "meta-llama"
 # model_name = "Llama-2-7b-hf"
-# model_name = "Llama-2-13b-hf"
+model_name = "Llama-2-13b-hf"
 # model_name = "Llama-2-70b-hf"
 # model_name = "Meta-Llama-3-8B"
 # model_name = 'Llama-3.1-8B-Instruct'
@@ -11,8 +11,8 @@ from huggingface_hub import snapshot_download
 # model_path = 'mistralai'
 # model_name = 'Mixtral-8x7B-v0.1'
 
-model_path = 'Qwen'
-model_name = 'Qwen2.5-7B'
+# model_path = 'Qwen'
+# model_name = 'Qwen2.5-7B'
 # model_name = 'Qwen2.5-14B'
 # model_name = 'Qwen2.5-32B'
 # model_name = 'Qwen2.5-72B'

@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 from .data import *
 from .loss import JSD
+import glog
+from .func import cleanup
 
 
 # Function to evaluate perplexity (ppl) on a specified model and tokenizer
@@ -217,6 +219,195 @@ def eval_metric(model, accelerator, metric, loader, seqlen, loss_func='cross_ent
         return eval_loss(model, accelerator, loader, seqlen=seqlen, loss_func=loss_func, dense_logits_list=dense_logits_list)
     else:
         raise NotImplementedError(f'{metric} is not supported')
+
+
+
+def get_graph_wrapper(cls, device=0):
+
+    class GraphWrapper(cls):
+
+        def __init__(self, *args, **kwargs):
+            super(GraphWrapper, self).__init__(*args, **kwargs)
+            self.built_graph = False
+            self.graph_device = device
+
+        def forward(self, *args, **kwargs):
+            with torch.cuda.device(self.graph_device):
+                if not self.built_graph:
+                    self.static_args = args
+                    self.static_kwargs = kwargs
+
+                    s = torch.cuda.Stream(device=self.graph_device)
+                    s.wait_stream(torch.cuda.current_stream())
+                    with torch.cuda.stream(s):
+                        super(GraphWrapper,
+                              self).forward(*self.static_args,
+                                            **self.static_kwargs)
+                    torch.cuda.current_stream().wait_stream(s)
+
+                    self.graph = torch.cuda.CUDAGraph()
+                    with torch.cuda.graph(self.graph, stream=s):
+                        self.static_output = super(GraphWrapper, self).forward(
+                            *self.static_args, **self.static_kwargs)
+
+                    self.built_graph = True
+                    glog.info("Built CUDA graph of model.")
+
+                # these two loops take < 1e-4 seconds for llama2
+                for i in range(len(args)):
+                    if isinstance(args[i], torch.Tensor):
+                        self.static_args[i].copy_(args[i])
+                for kw in kwargs:
+                    if isinstance(kwargs[kw], torch.Tensor):
+                        self.static_kwargs[kw].copy_(kwargs[kw])
+
+                self.graph.replay()
+                return self.static_output
+
+        def reset(self):
+            if self.built_graph:
+                del self.static_args, self.static_kwargs
+                del self.graph
+                del self.static_output
+                self.built_graph = False
+
+    return GraphWrapper
+
+@torch.inference_mode()
+def device_warmup(device: str):
+    warm_up = torch.randn((4096, 4096)).to(device)
+    for i in range(100):
+        torch.mm(warm_up, warm_up)
+
+
+@torch.inference_mode()
+def measure_latency_v2(model, tokenizer=None, use_ft=False, use_cuda_graph=False, iteration=1, sizes=(1, 64, 128), mode='gemv', get_peak_memory=True, device='cuda'):
+
+    vocab_size = model.config.vocab_size if hasattr(model.config, "vocab_size") else 32000
+
+    ori_use_cache = model.config.use_cache
+    ori_generation_use_cache = model.generation_config.use_cache
+    ori_pad_token_id = model.generation_config.pad_token_id
+
+    wrapped_ft = use_ft
+    wrapped_cuda_graph = use_cuda_graph
+    benchmark_iteration = iteration
+
+    model.eval()
+    model = model.to('cuda')
+
+    data = {}
+    data[mode.lower()] = {}
+
+    if get_peak_memory:
+        cleanup()
+
+        torch.cuda.reset_peak_memory_stats(device = device)
+
+        data['peak_memory'] = {}
+
+    batch_size, input_seq_len, gen_seq_len = sizes
+
+    input_ids = torch.randint(0, vocab_size - 1, (batch_size, input_seq_len), dtype=torch.long).to(device)
+    attention_mask = torch.ones_like(input_ids).to(device)
+
+    device_warmup(device)
+    cleanup()
+
+    if get_peak_memory:
+        torch.cuda.reset_peak_memory_stats(device = device)
+
+    ## calculate average token per second by GeMV with prefill
+    model.config.use_cache = False
+    model.generation_config.use_cache = False
+
+    time_list = []
+
+    for _ in range(benchmark_iteration):
+        cleanup()
+
+        if wrapped_ft:
+            start_pos = 0
+
+            if mode.lower() == 'gemm':
+                torch.cuda.synchronize()
+                start = time.perf_counter()
+
+            out = model(input_ids, start_pos=start_pos, use_cache=False)
+
+            if mode.lower() == 'gemm':
+                torch.cuda.synchronize()
+                end = time.perf_counter()
+
+                time_list.append(end - start)
+
+            start_pos += out.logits.shape[1]
+            max_logit = out.logits[:, -1].max(1)[1].unsqueeze(1)
+            gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
+
+            if mode.lower() == 'gemv':
+                for _ in range(gen_seq_len):
+                    torch.cuda.synchronize()
+                    start = time.perf_counter()
+
+                    out = model(gemv_input_ids, start_pos=start_pos, use_cache=False)
+
+                    torch.cuda.synchronize()
+                    end = time.perf_counter()
+
+                    start_pos += out.logits.shape[1]
+                    max_logit = out.logits[:, -1].max(1)[1].unsqueeze(1)
+                    gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
+
+                    time_list.append(end - start)
+        else:
+            last_key_values = None
+
+            if mode.lower() == 'gemm':
+                torch.cuda.synchronize()
+                start = time.perf_counter()
+
+            if wrapped_cuda_graph:
+                model.reset()
+
+            out = model(input_ids, past_key_values=last_key_values)
+
+            if mode.lower() == 'gemm':
+                torch.cuda.synchronize()
+                end = time.perf_counter()
+
+                time_list.append(end - start)
+
+            logits, last_key_values = out.logits, out.past_key_values
+            max_logit = logits[:, -1].max(1)[1].unsqueeze(1)
+            gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
+
+            if wrapped_cuda_graph:
+                model.reset()
+                model(gemv_input_ids, past_key_values=last_key_values)
+
+            if mode.lower() == 'gemv':
+                for _ in range(gen_seq_len):
+                    torch.cuda.synchronize()
+                    start = time.perf_counter()
+
+                    # nvtx.push_range("gemv")
+
+                    out = model(gemv_input_ids, past_key_values=last_key_values)
+
+                    # nvtx.pop_range()
+
+                    torch.cuda.synchronize()
+                    end = time.perf_counter()
+
+                    logits, last_key_values = out.logits, out.past_key_values
+                    max_logit = logits[:, -1].max(1)[1].unsqueeze(1)
+                    gemv_input_ids = torch.as_tensor([[max_logit]], device=device)
+
+                    time_list.append(end - start)
+
+    return 1 / np.median(time_list)
+
 
 
 @torch.no_grad()

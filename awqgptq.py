@@ -113,6 +113,16 @@ def main(args):
         model = get_quantized_model(method, arch, model_id, device_map, config=config, group_size=args.group_size, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path, clip_asym=args.clip_asym)
     else:
         model = evaluator.sample(arch)
+
+    del evaluator
+    cleanup()
+    from hqq.utils.patching import prepare_for_inference
+    prepare_for_inference(model, backend="bitblas") 
+    
+    lat = measure_latency(model, True, 'cuda', batch_size=1)
+    print(f'lat : {lat}, token/s = {128/lat}')
+    exit()
+
     metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
     accelerator.print(arch)
     print(f'ppl: {[p for p in metric.values()]}\n')

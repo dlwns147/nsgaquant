@@ -38,7 +38,7 @@ GROUP_SIZE=128
 QSCALE=false
 QZERO=false
 
-PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
+# PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
 # PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
 # PASS_LINEAR_LIST="1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
 # PASS_LINEAR_LIST="0.self_attn.q_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
@@ -49,6 +49,8 @@ PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.d
 # PASS_LINEAR_LIST="1.mlp.down_proj 3.self_attn.v_proj 79.mlp.up_proj 79.mlp.down_proj" # Qwen2.5-72B
 
 
+LINEAR_SENSITIVITY_FILE=/NAS/SJ/nsgaquant/csv/sensitivity/${MODEL_NAME}_hqq_loss_24_1axis_128gs_jsd.csv
+IQR_THRESHOLD=10
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
 
@@ -119,8 +121,8 @@ GA_POP_SIZE=200
 METRIC=loss
 
 MAX_VALUE=5
-# MUT_PROB=0.1
-MUT_PROB=0.2
+MUT_PROB=0.1
+# MUT_PROB=0.2
 CROSSOVER_PROB=0.9
 
 # SAVE_ITER=1
@@ -164,7 +166,9 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --n_sample ${N_SAMPLE} \
 --dataset ${DATASET} \
 --save_iter ${SAVE_ITER} \
---pass_linear_list ${PASS_LINEAR_LIST}
+--linear_sensitivity_file ${LINEAR_SENSITIVITY_FILE} \
+--iqr_threshold ${IQR_THRESHOLD}
+# --pass_linear_list ${PASS_LINEAR_LIST}
 # --only_outlier_bits
 # --base_outlier_bits ${OUTLIER_BITS} \
 # --outlier_path ${OUTLIER_PATH} \
