@@ -14,7 +14,7 @@ from accelerate import Accelerator
 
 from evaluator import LlamaEvaluator
 from utils.func import init_accelerator, cleanup, get_net_info
-from utils.eval import load_and_eval_ppl, eval_zeroshot
+from utils.eval import load_and_eval_ppl, eval_zeroshot, measure_latency, get_graph_wrapper, measure_latency_v2
 
 
 def eval(args):
@@ -67,7 +67,7 @@ def eval(args):
         blk_idx = int(blk_idx)
         arch['linear'][f'{layer}.{linear}'][blk_idx] = min(args.quant_model_bits)
         bits_list.append(abs(get_net_info(arch, config)['bits'] - args.target_bit))
-        
+
     last_layer_idx = bits_list.index(min(bits_list))
     last_layer = linear_list[last_layer_idx]
 
@@ -80,7 +80,21 @@ def eval(args):
 
     print(f'target_bit : {args.target_bit}, last_layer : {last_layer}, greedy_search_result : {args.greedy_search_result}')
 
+    from copy import deepcopy
+    model = deepcopy(evaluator.sample(arch))
+    del evaluator
+    cleanup()
+    from hqq.utils.patching import prepare_for_inference
+    prepare_for_inference(model, backend="bitblas")
 
+    def maybe_wrap(use_cuda_graph):
+        return (lambda x: get_graph_wrapper(x)) if use_cuda_graph else (lambda x: x)
+    
+    model = maybe_wrap(True)(model.__class__)
+    # lat = measure_latency(model, True, 'cuda', batch_size=1)
+    tks = measure_latency_v2(model, True, 'cuda', use_cuda_graph=True)
+    print(f'token/s = {tks}')
+    exit()
 
     ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl')
     print(f'bits : {complexity["bits"]}, ppl :{list(ppl.values())}')
@@ -144,8 +158,8 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--greedy_search_result', type=str, default='',
                         help='')
-    parser.add_argument('--last_linear', type=str, default='',
-                        help='')
+    # parser.add_argument('--last_linear', type=str, default='',
+    #                     help='')
     parser.add_argument('--target_bit', type=float, default=3,
                         help='')
 

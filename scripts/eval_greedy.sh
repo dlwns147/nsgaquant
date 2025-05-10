@@ -3,8 +3,8 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
 CONFIG=config/llama.json
 DTYPE=float16
@@ -56,12 +56,10 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.p
 
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
 
-GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-7b-hf_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
-# GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-13b-hf_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
-# GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-3.1-8B_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
+GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/${MODEL_NAME}_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
 
-TARGET_BIT=2.5
-# TARGET_BIT=3.0
+# TARGET_BIT=2.5
+TARGET_BIT=3.24
 # TARGET_BIT=3.5
 
 # GREEDY_SEARCH_RESULT=/NAS/SJ/nsgaquant/csv/greedy_search/Llama-2-13b-hf_hqq_24bits_loss_desc_1axis_128gs_jsd.csv
