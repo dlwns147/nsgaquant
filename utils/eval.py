@@ -9,7 +9,7 @@ import torch.nn as nn
 from .data import *
 from .loss import JSD
 # import glog
-from .func import cleanup
+from .func import clean_up
 
 
 # Function to evaluate perplexity (ppl) on a specified model and tokenizer
@@ -300,7 +300,7 @@ def measure_latency_v2(model, tokenizer=None, use_ft=False, use_cuda_graph=False
     data[mode.lower()] = {}
 
     if get_peak_memory:
-        cleanup()
+        clean_up()
 
         torch.cuda.reset_peak_memory_stats(device = device)
 
@@ -312,7 +312,7 @@ def measure_latency_v2(model, tokenizer=None, use_ft=False, use_cuda_graph=False
     attention_mask = torch.ones_like(input_ids).to(device)
 
     device_warmup(device)
-    cleanup()
+    clean_up()
 
     if get_peak_memory:
         torch.cuda.reset_peak_memory_stats(device = device)
@@ -324,7 +324,7 @@ def measure_latency_v2(model, tokenizer=None, use_ft=False, use_cuda_graph=False
     time_list = []
 
     for _ in range(benchmark_iteration):
-        cleanup()
+        clean_up()
 
         if wrapped_ft:
             start_pos = 0

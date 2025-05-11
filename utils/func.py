@@ -11,9 +11,12 @@ import gc
 from copy import deepcopy
 # from hqq.utils.patching_woo import prepare_for_inference
 
+def clean_up():
+    torch.cuda.empty_cache()
+    gc.collect()
+    torch.cuda.empty_cache()
+
 def get_correlation(prediction, target):
-
-
     rmse = np.sqrt(((prediction - target) ** 2).mean())
     rho, _ = stats.spearmanr(prediction, target)
     tau, _ = stats.kendalltau(prediction, target)
@@ -163,8 +166,7 @@ def init_accelerator(gpu_id, config):
     return accelerator, device_map
 
 def load_hqq_model(model_id, device_map, use_cache=False, inference=False):
-    
-    cleanup()
+    clean_up()
     # for fast model loading
     org_kaiming_uniform = torch.nn.init.kaiming_uniform_
     org_uniform = torch.nn.init.uniform_
@@ -179,10 +181,10 @@ def load_hqq_model(model_id, device_map, use_cache=False, inference=False):
         model = AutoHQQHFModel.from_quantized(model_id, device_map='cpu')
         model = simple_dispatch_model(model, device_map)
         # model = dispatch_model(model, device_map)
-        model.use_cache = use_cache
         model.config.use_cache = use_cache
-        torch.cuda.empty_cache()
-        gc.collect()
+        clean_up()
+        # torch.cuda.empty_cache()
+        # gc.collect()
         print(f'{model_id} :  {torch.cuda.max_memory_reserved() / 1024 / 1024}MB')
         # if inference:
         #     prepare_for_inference(model, backend='gptq')
@@ -271,7 +273,3 @@ def load_outlier(model, outlier, config):
             if key in outlier:
                 outlier[f'{blk_idx}.{linear}'] = [outlier[key], get_fp16_channel(getsubattr(getblock(model, config)[blk_idx], linear), outlier[key])]
     return outlier
-
-def cleanup():
-    gc.collect()
-    torch.cuda.empty_cache()
