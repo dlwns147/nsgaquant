@@ -252,6 +252,7 @@ class LlamaQuantSearchSpace:
                 n_block,
                 pass_linear_list=[],
                 quant_model_bits=[],
+                group_size=-1,
                 outlier_bits=[],
                 config=None,
                 sec_obj='bits',
@@ -276,6 +277,7 @@ class LlamaQuantSearchSpace:
 
         self.pass_linear_list = pass_linear_list
         self.config = config
+        self.group_size = group_size
         self.latency_table = latency_table
         self.linear = config['linear']
         self.n_linear = len(self.linear)
@@ -359,7 +361,7 @@ class LlamaQuantSearchSpace:
 
                     
                 new_arch = {'linear': {'self_attn.q_proj': q_list, 'self_attn.k_proj': k_list, 'self_attn.v_proj': v_list, 'self_attn.o_proj': o_list, 'mlp.gate_proj': gate_list, 'mlp.up_proj': up_list, 'mlp.down_proj': down_list}}
-                complexity = get_net_info(new_arch, self.config, self.latency_table)
+                complexity = get_net_info(new_arch, self.config, self.group_size, self.latency_table)
                 # print(f'new_arch : {new_arch}')
                 # print(f'complexity : {complexity}')
                 if (new_arch not in data) and \

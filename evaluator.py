@@ -29,6 +29,7 @@ class LlamaEvaluator:
                  model_id='',
                  quant_model_paths=[],
                  quant_model_bits=[],
+                 group_size=-1,
                  outlier=None,
                  datasets=['wikitext2'],
                  seed=0,
@@ -96,6 +97,7 @@ class LlamaEvaluator:
         self.config = config
         self.latency_table = latency_table
         self.seqlen = seqlen
+        self.group_size = group_size
         
         if self.model is not None:
             self.model.eval()
@@ -179,7 +181,7 @@ class LlamaEvaluator:
         metric_list = dict()
         for dataset, loader in loaders.items():
             metric_list[dataset] = eval_metric(model=self.sample(arch) if model is None else model, accelerator=accelerator, metric=metric, loader=loader, seqlen=self.seqlen, loss_func=loss_func, dense_logits_list=self.dense_logits[dataset])
-        complexity = get_net_info(arch, self.config, self.latency_table)
+        complexity = get_net_info(arch, self.config, self.group_size, self.latency_table)
         torch.cuda.empty_cache()
         return metric_list, complexity
     

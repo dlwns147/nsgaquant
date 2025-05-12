@@ -26,16 +26,16 @@ DTYPE=float16
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
-METHOD=awq
-METHOD_TEXT=awq
+# METHOD=awq
+# METHOD_TEXT=awq
 # METHOD=owq
 # METHOD_TEXT=owq
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
 
-# METHOD=hqq
-# METHOD_TEXT=hqq
+METHOD=hqq
+METHOD_TEXT=hqq
 
 GROUP_SIZE=128
 AXIS=1
@@ -146,6 +146,7 @@ do
     --config ${CONFIG} \
     --quant_model_paths ${QMODEL_PATHS} \
     --quant_model_bits ${Q_BITS} \
+    --group_size ${GROUP_SIZE} \
     --comp_obj ${COMP_OBJ} \
     --comp_obj_min ${MIN_COMP_OBJ[*]} \
     --comp_obj_max ${MAX_COMP_OBJ[*]} \
