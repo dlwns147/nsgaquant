@@ -145,16 +145,16 @@ ax1[1].set_yticks(np.arange(36, 49, 4))
 ax1[0].tick_params(axis='both', which='major', labelsize=20)
 ax1[1].tick_params(axis='both', which='major', labelsize=20)
 
-bit = np.array([2.5])
-memory = [(bit - 0.25) * one_bit_memory + scale_zero_memory + embed_head_memory for bit in bit]
-fp16_13b_tps = 27.3062883732963
-bitstack_13b_fused_2_tps = [7.15578038, 6.273436638, 5.496908988]
-bitstack_13b_fused_3_tps = [11.89239396, 10.66521603, 9.800740556]
-amq_13b_tps = [70.42509431, 75.60473393, 82.53214564]
+# bit = np.array([2.5])
+# memory = [(bit - 0.25) * one_bit_memory + scale_zero_memory + embed_head_memory for bit in bit]
+# fp16_13b_tps = 27.3062883732963
+# bitstack_13b_fused_2_tps = [7.15578038, 6.273436638, 5.496908988]
+# bitstack_13b_fused_3_tps = [11.89239396, 10.66521603, 9.800740556]
+# amq_13b_tps = [70.42509431, 75.60473393, 82.53214564]
 
-ax2 = ax1[0].twinx()
-ax2.bar(memory, bitstack_13b_fused_2_tps, width=50, color=colors[3], label='BitStack-Fused-2', edgecolor = 'black', zorder = 1)
-ax2.bar(memory, amq_13b_tps, width=50, color=colors[2], label='AMQ', edgecolor = 'black', zorder = 1)
+# ax2 = ax1[0].twinx()
+# ax2.bar(memory, amq_13b_tps, width=50, color=colors[2], label='AMQ', edgecolor = 'black', zorder = 1)
+# ax2.bar(memory, bitstack_13b_fused_2_tps, width=50, color=colors[3], label='BitStack-Fused-2', edgecolor = 'black', zorder = 1)
 
 
 

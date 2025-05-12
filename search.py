@@ -93,6 +93,7 @@ class Search:
         
         self.linear_sensitivity_file = kwargs.pop('linear_sensitivity_file' , '')
         self.iqr_threshold = kwargs.pop('iqr_threshold', 10)
+        pass_linear_list = []
         if self.linear_sensitivity_file:
             with open(self.linear_sensitivity_file, 'r') as f:
                 linear_list, sensitivity = list(csv.reader(f))
