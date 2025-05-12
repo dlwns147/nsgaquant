@@ -14,11 +14,10 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from utils.func import init_accelerator, get_net_info
+from utils.func import init_accelerator, get_net_info, clean_up
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
 from quant.model import get_quantized_model
-import gc
 
 import datasets
 datasets.config.HF_DATASETS_TRUST_REMOTE_CODE = True 
@@ -88,7 +87,7 @@ def main(args):
     # subnets, metric, sec_obj = [v[0] for v in archive], [v[1] for v in archive], [v[2] for v in archive]
     subnets, metric = [v[0] for v in archive], [v[1] for v in archive]
     # sec_obj = [get_net_info(n, config, latency_table)[args.sec_obj] for n in subnets]
-    comp_obj = [[get_net_info(n, config, latency_table)[obj] for n in subnets] for obj in args.comp_obj]
+    comp_obj = [[get_net_info(n, config, args.group_size, latency_table)[obj] for n in subnets] for obj in args.comp_obj]
     # sec_objs = [[get_net_info(n, config, latency_table)[o] for n in subnets] for o in args.sec_obj]
     sort_idx = np.argsort(metric)
     F = np.column_stack((metric, *comp_obj))[sort_idx, :]
@@ -184,6 +183,7 @@ def main(args):
         method=args.method,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
+        group_size=args.group_size,
         outlier=torch.load(args.outlier_path) if args.outlier_path else None,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
@@ -203,7 +203,7 @@ def main(args):
         print(f'do_owq : {do_owq}, awq_gptq_owq : {awq_gptq_owq}')
         if awq_gptq_owq:
             method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else 'owq' if 'owq' in args.method else None
-            model = get_quantized_model(method, arch, model_id, device_map, config=config, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path)
+            model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path)
         else:
             model = evaluator.sample(arch)
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
@@ -219,8 +219,7 @@ def main(args):
         print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}\n')
         
         if args.zeroshot:
-            torch.cuda.empty_cache()
-            gc.collect()
+            clean_up()
             # model.use_cache = False
             model.config.use_cache = False
             
@@ -243,11 +242,10 @@ def main(args):
             #         print(f'{task} acc : {task_result["acc,none"]}')
         if awq_gptq_owq:
             del model
-            torch.cuda.empty_cache()
-            gc.collect()
+            clean_up()
 
     print(args)
-    exit()
+    return
 
     # if args.debug:
     #     # print(ps[I])
@@ -320,6 +318,8 @@ if __name__ == '__main__':
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
                         help='')
     parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
+                        help='')
+    parser.add_argument('--group_size', type=int, default=-1,
                         help='')
     parser.add_argument('--save', type=str, default='.tmp',
                         help='location of dir to save')

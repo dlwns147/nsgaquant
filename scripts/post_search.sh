@@ -13,8 +13,8 @@ Q_BITS_TEXT="234"
 
 # METHOD="hqq layer_prune"
 # METHOD=hqq
-# METHOD=awq
-METHOD=gptq
+METHOD=awq
+# METHOD=gptq
 # METHOD="awq layer_prune"
 
 GROUP_SIZE=128
@@ -62,7 +62,6 @@ EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${MIN_COMP_OBJ}_${MAX_COMP_OBJ}
 N=1
 DATASETS="wikitext2 c4"
-LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json
 
 N_PROC=1
 # N_PROC=2
@@ -76,6 +75,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --comp_obj_max ${MAX_COMP_OBJ[*]} \
 --quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
+--group_size ${GROUP_SIZE} \
 -n ${N} \
 --save ${SAVE} \
 --debug \

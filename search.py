@@ -49,6 +49,8 @@ class Search:
         self.method = kwargs.pop('method', '')
         self.quant_model_paths = kwargs.pop('quant_model_paths', [])
         self.quant_model_bits = kwargs.pop('quant_model_bits', [])
+        self.group_size = kwargs.pop('group_size', -1)
+
         self.sec_obj_range = kwargs.pop('sec_obj_range', [])
         assert len(self.sec_obj_range) == 2, "len(sec_obj_range) should be 2"
         # self.layer_prune_range = kwargs.pop('layer_prune_range', [1, 1])
@@ -111,6 +113,7 @@ class Search:
             method=self.method,
             quant_model_paths=self.quant_model_paths,
             quant_model_bits=self.quant_model_bits,
+            group_size=self.group_size,
             outlier=torch.load(outlier_path) if outlier_path else None,
             seqlen=kwargs.pop('seqlen', 2048),
             n_sample=kwargs.pop('n_sample', 128),
@@ -123,6 +126,7 @@ class Search:
         self.search_space = LlamaQuantSearchSpace(
             n_block=self.config['n_block'],
             quant_model_bits=self.quant_model_bits,
+            group_size=self.group_size,
             pass_linear_list=pass_linear_list,
             # pass_linear_list=kwargs.pop('pass_linear_list', []),
             # pass_layer_list=kwargs.pop('pass_layer_list', []),
@@ -350,7 +354,7 @@ class Search:
             eliminate_duplicates=True)
         
         # initialize the candidate finding optimization problem
-        problem = AuxiliarySingleLevelProblem(self.search_space, predictor, self.config, self.method, self.latency_table)
+        problem = AuxiliarySingleLevelProblem(self.search_space, predictor, self.config, self.group_size, self.latency_table)
         
         # kick-off the search
         res = minimize(problem, method, termination=('n_gen', 20), save_history=True, verbose=True)
@@ -403,7 +407,7 @@ class Search:
 class AuxiliarySingleLevelProblem(Problem):
     """ The optimization problem for finding the next N candidate architectures """
 
-    def __init__(self, search_space, predictor, config, method, latency_table):
+    def __init__(self, search_space, predictor, config, group_size, latency_table):
         n_block, n_linear = search_space.n_block, search_space.n_linear
         super().__init__(n_var=n_block * (n_linear), n_obj=2, n_constr=2, type_var=int)
 
@@ -420,6 +424,7 @@ class AuxiliarySingleLevelProblem(Problem):
 
         # self.xu[:, :n_linear] = search_space.n_bits - 1
         self.config = config
+        self.group_size = group_size
         self.latency_table = latency_table
 
         for pass_linear in self.ss.pass_linear_list:
@@ -447,7 +452,7 @@ class AuxiliarySingleLevelProblem(Problem):
 
         for i, (_x, metric) in enumerate(zip(x, metrics)):
             arch = self.ss.decode(_x)
-            info = get_net_info(arch, self.config, self.latency_table)
+            info = get_net_info(arch, self.config, self.group_size, self.latency_table)
             f[i, 0] = metric
             f[i, 1] = info[self.ss.sec_obj]
 
@@ -522,6 +527,8 @@ if __name__ == '__main__':
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
                         help='')
     parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
+                        help='')
+    parser.add_argument('--group_size', type=int, default=-1,
                         help='')
     
     parser.add_argument('--dataset', type=str, default='wikitext2',
