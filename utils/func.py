@@ -1,3 +1,4 @@
+import random
 import numpy as np
 from accelerate import Accelerator, InitProcessGroupKwargs
 from hqq.models.hf.base import AutoHQQHFModel
@@ -9,12 +10,22 @@ from transformers import AutoModelForCausalLM
 from datetime import timedelta
 import gc
 from copy import deepcopy
+
 # from hqq.utils.patching_woo import prepare_for_inference
 
 def clean_up():
     torch.cuda.empty_cache()
     gc.collect()
     torch.cuda.empty_cache()
+
+def set_seed(seed, deterministic=False):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    if deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 def get_correlation(prediction, target):
     rmse = np.sqrt(((prediction - target) ** 2).mean())

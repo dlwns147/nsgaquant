@@ -76,6 +76,16 @@ colors = [
     '#6699FF',
     '#FACA00',
     '#2351AB',
+    '#CAAA20',
+]
+
+colors2 = [
+    '#535353',
+    '#2351AB',
+    '#C83C04',
+    '#FACA00',
+    '#378375',
+    '#6699FF'
 ]
 
 q = ppl[:, 0]
@@ -100,12 +110,12 @@ down = ppl[:, 6]
 # ax1[0].plot(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c='green', linewidth=4)
 # ax1[0].grid(c='0.8') # axis='y',
 # ax1[0].tick_params(axis='both', which='major', labelsize=20)
-ax0.bar(total_blk_idx, ppl[:, 0], label='q',zorder=16, color='black', linewidth=4)
-ax0.bar(total_blk_idx, ppl[:, 1], label='k',zorder=17, color=colors[1], linewidth=4)
-ax0.bar(total_blk_idx, ppl[:, 2], label='v',zorder=12, color='red', linewidth=4)
-ax0.bar(total_blk_idx, ppl[:, 3], label='o',zorder=15, color=colors[6], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 0], label='q',zorder=16, color=colors[7], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 1], label='k',zorder=17, color=colors[6], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 2], label='v',zorder=12, color=colors[2], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 3], label='o',zorder=15, color='black', linewidth=4)
 ax0.bar(total_blk_idx, ppl[:, 4], label='gate',zorder=14, color=colors[4], linewidth=4)
-ax0.bar(total_blk_idx, ppl[:, 5], label='up',zorder=13, color=colors[2], linewidth=4)
+ax0.bar(total_blk_idx, ppl[:, 5], label='up',zorder=13, color='red', linewidth=4)
 ax0.bar(total_blk_idx, ppl[:, 6], label='down',zorder=11, color='green', linewidth=4)
 # 10].bar(total_blk_idx, ppl[:, 6], label='down_proj',zorder=1, c=colors[3], linewidth=4)
 ax0.grid(c='0.8') # axis='y',
@@ -125,12 +135,12 @@ ax0.tick_params(axis='x', which='major', labelsize=0)
 for i in total_blk_idx:
     order = np.argsort(ppl[i])[::-1]
 
-    ax1.bar(i, q[i], label='q',zorder=np.where(order == 0)[0][0] + 10, color='black', linewidth=4)
-    ax1.bar(i, k[i], label='k',zorder=np.where(order == 1)[0][0] + 10, color=colors[1], linewidth=4)
-    ax1.bar(i, v[i], label='v',zorder=np.where(order == 2)[0][0] + 10, color='red', linewidth=4)
-    ax1.bar(i, o[i], label='o',zorder=np.where(order == 3)[0][0] + 10, color=colors[6], linewidth=4)
+    ax1.bar(i, q[i], label='q',zorder=np.where(order == 0)[0][0] + 10, color=colors[7], linewidth=4)
+    ax1.bar(i, k[i], label='k',zorder=np.where(order == 1)[0][0] + 10, color=colors[6], linewidth=4)
+    ax1.bar(i, v[i], label='v',zorder=np.where(order == 2)[0][0] + 10, color=colors[2], linewidth=4)
+    ax1.bar(i, o[i], label='o',zorder=np.where(order == 3)[0][0] + 10, color='black', linewidth=4)
     ax1.bar(i, gate[i], label='gate',zorder=np.where(order == 4)[0][0] + 10, color=colors[4], linewidth=4)
-    ax1.bar(i, up[i], label='up',zorder=np.where(order == 5)[0][0] + 10, color=colors[2], linewidth=4)
+    ax1.bar(i, up[i], label='up',zorder=np.where(order == 5)[0][0] + 10, color='red', linewidth=4)
     ax1.bar(i, down[i], label='down',zorder=np.where(order == 6)[0][0] + 10, color='green', linewidth=4)
 
 # ax1.bar(total_blk_idx, ppl[:, 6], label='down',zorder=1, color='green', linewidth=4)
