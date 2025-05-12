@@ -2,52 +2,52 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
+LLAMA_2_7B=Llama-2-7b-hf
+LLAMA_2_13B=Llama-2-13b-hf
+LLAMA_2_70B=Llama-2-70b-hf
+
+LLAMA_31_8B=Llama-3.1-8B
+LLAMA_31_70B=Llama-3.1-70B
+LLAMA_31_8B_INSTRUCT=Llama-3.1-8B-Instruct
+
+QWEN_25_7B=Qwen-2.5-7B
+QWEN_25_14B=Qwen-2.5-14B
+QWEN_25_32B=Qwen-2.5-32B
+QWEN_25_72B=Qwen-2.5-72B
+
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
-# MODEL_NAME=Llama-3.1-8B-Instruct
+# MODEL_NAME=${LLAMA_2_7B}
+# MODEL_NAME=${LLAMA_2_13B}
+MODEL_NAME=${LLAMA_2_70B}
 CONFIG=config/llama.json
 DTYPE=float16
 
 # MODEL_PATH=/SSD/huggingface/meta-llama
-# # MODEL_NAME=Llama-3.1-8B
-# MODEL_NAME=Llama-3.1-70B
-# # MODEL_NAME=Llama-3.1-8B-Instruct
+# MODEL_NAME=${LLAMA_31_8B}
+# # MODEL_NAME=${LLAMA_31_70B}
+# # MODEL_NAME=${LLAMA_31_8B_INSTRUCT}
 # CONFIG=config/llama.json
 # DTYPE=bfloat16
 
 # MODEL_PATH=/SSD/huggingface/Qwen
-# # MODEL_NAME=Qwen2.5-7B
-# # MODEL_NAME=Qwen2.5-14B
-# # MODEL_NAME=Qwen2.5-32B
-# MODEL_NAME=Qwen2.5-72B
+# # MODEL_NAME=${QWEN_25_7B}
+# # MODEL_NAME=${QWEN_25_14B}
+# # MODEL_NAME=${QWEN_25_32B}
+# MODEL_NAME=${QWEN_25_72B}
 # DTYPE=bfloat16
 # CONFIG=config/qwen2.json
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
-METHOD="hqq"
-METHOD_TEXT="hqq"
+METHOD=hqq
+METHOD_TEXT=hqq
 
 Q_BITS="2 3 4"
-Q_BITS_TEXT="234"
+Q_BITS_TEXT=234
 # Q_BITS="2 4"
-# Q_BITS_TEXT="24"
+# Q_BITS_TEXT=24
 AXIS=1
 GROUP_SIZE=128
-QSCALE=false
-QZERO=false
-
-# PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
-# PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
-# PASS_LINEAR_LIST="1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
-# PASS_LINEAR_LIST="0.self_attn.q_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
-
-# PASS_LINEAR_LIST="0.self_attn.q_proj 0.self_attn.v_proj 0.mlp.gate_proj 0.mlp.up_proj 0.mlp.down_proj 1.self_attn.v_proj 1.self_attn.o_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 79.mlp.down_proj" # Llama-3.1-70B
-
-# PASS_LINEAR_LIST="1.mlp.gate_proj 62.mlp.down_proj 63.mlp.up_proj 63.mlp.down_proj" # Qwen2.5-32B
-# PASS_LINEAR_LIST="1.mlp.down_proj 3.self_attn.v_proj 79.mlp.up_proj 79.mlp.down_proj" # Qwen2.5-72B
-
 
 LINEAR_SENSITIVITY_FILE=/NAS/SJ/nsgaquant/csv/sensitivity/${MODEL_NAME}_hqq_loss_24_1axis_128gs_jsd.csv
 IQR_THRESHOLD=10
@@ -57,9 +57,6 @@ IQR_THRESHOLD=10
 QMODEL_PATHS_LIST=()
 for B in ${Q_BITS}
 do
-    # QMODEL_PATHS+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" )
-    # QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_float16" )
-    # QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_bfloat16" )
     QMODEL_PATHS_LIST+=( "/SSD/hqq/${MODEL_NAME}_${B}bit_${GROUP_SIZE}gs_${AXIS}axis_${DTYPE}" )
 done
 # QMODEL_PATHS=( "/SSD/hqq/${MODEL_NAME}_2bit_64gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_3bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}" "/SSD/hqq/${MODEL_NAME}_4bit_${GROUP_SIZE}gs_${AXIS}axis_qscale_${QSCALE}_qzero_${QZERO}")
@@ -106,14 +103,31 @@ SEC_OBJ_RANGE_LARGE=5
 # # LAYER_PRUNE_RANGE_SMALL=1.0
 # LAYER_PRUNE_RANGE_LARGE=1.0
 
-N_DOE=250
-ITER=100
+# N_DOE=250
+# ITER=200
 
-# N_DOE=300
-# ITER=250
-
-# N_DOE=600
-# ITER=250
+if [ "${MODEL_NAME}" == "${QWEN_25_7B}" ]; then
+    N_DOE=200
+    ITER=200
+elif [ "${MODEL_NAME}" == "${LLAMA_2_7B}" ] || [ "${MODEL_NAME}" == "${LLAMA_31_8B}" ] || [ "${MODEL_NAME}" == "${LLAMA_31_8B_INSTRUCT}" ]; then
+    N_DOE=250
+    ITER=200
+elif [ "${MODEL_NAME}" == "${LLAMA_2_13B}" ]; then
+    N_DOE=300
+    ITER=200
+elif [ "${MODEL_NAME}" == "${QWEN_25_14B}" ]; then
+    N_DOE=350
+    ITER=200
+elif [ "${MODEL_NAME}" == "${QWEN_25_32B}" ]; then
+    N_DOE=450
+    ITER=250
+elif [ "${MODEL_NAME}" == "${LLAMA_2_70B}" ] || [ "${MODEL_NAME}" == "${LLAMA_31_70B}" ] || [ "${MODEL_NAME}" == "${QWEN_25_72B}" ]; then
+    N_DOE=600
+    ITER=250
+else
+	echo "Invalid model name: ${MODEL_NAME}"
+	exit
+fi
 
 N_ITER=50
 GA_POP_SIZE=200
@@ -138,7 +152,7 @@ SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_it
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${DATASET}_${N_SAMPLE}sample
 # SAVE=save/search/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${GA_ALGORITHM}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_mut_${MUT_PROB}_layer_prune_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_linear_group
 
-N_PROC=2
+N_PROC=1
 
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} search.py \
 --gpu_id ${DEVICES} \
@@ -187,6 +201,17 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 
 # --use_linear_group
 # --resume ${RESUME} \
+
+# PASS_LINEAR_LIST="0.self_attn.v_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj" # Llama-2-7b
+# PASS_LINEAR_LIST="0.self_attn.v_proj 0.mlp.down_proj 1.self_attn.v_proj 1.mlp.down_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 39.mlp.down_proj" # Llama-2-13b
+# PASS_LINEAR_LIST="1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
+# PASS_LINEAR_LIST="0.self_attn.q_proj 1.self_attn.v_proj 1.mlp.down_proj 31.mlp.down_proj"
+
+# PASS_LINEAR_LIST="0.self_attn.q_proj 0.self_attn.v_proj 0.mlp.gate_proj 0.mlp.up_proj 0.mlp.down_proj 1.self_attn.v_proj 1.self_attn.o_proj 2.self_attn.v_proj 3.self_attn.v_proj 3.mlp.down_proj 79.mlp.down_proj" # Llama-3.1-70B
+
+# PASS_LINEAR_LIST="1.mlp.gate_proj 62.mlp.down_proj 63.mlp.up_proj 63.mlp.down_proj" # Qwen2.5-32B
+# PASS_LINEAR_LIST="1.mlp.down_proj 3.self_attn.v_proj 79.mlp.up_proj 79.mlp.down_proj" # Qwen2.5-72B
+
 
 
 # METHOD=gptq
@@ -238,6 +263,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 #     # QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}bit_awq.pt" )
 #     QMODEL_PATHS+=( "/SSD/awq/${MODEL_NAME}_w${B}_g${GROUP_SIZE}_fake_${SCALE_BITS}scale_asym.pt" )
 # done
+
 # PASS_LINEAR_LIST="31.mlp.down_proj"
 # PASS_LINEAR_LIST="0.mlp.down_proj 39.mlp.up_proj 39.mlp.down_proj"
 

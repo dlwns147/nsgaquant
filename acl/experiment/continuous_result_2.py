@@ -136,16 +136,16 @@ colors = [
 ]
 
 # fig_path='acl/experiment/continous_result.png'
-fig_path = '/NAS/SJ/nsgaquant/acl/experiment/continuous_result.png'
+fig_path = '/NAS/SJ/nsgaquant/acl/experiment/continuous_result_2.png'
 
-font = {'size'   : 13}
+font = {'size'   : 15}
 plt.rc('font', **font)
 plt.rc('axes', axisbelow=True)
 
-linewidth = 2
-markersize = 6
+linewidth = 4
+markersize = 8
 
-fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 5)) 
+fig, (axes1, axes2) = plt.subplots(nrows=2, ncols=3, figsize=(20, 7)) 
 fig.subplots_adjust(hspace=0.5, wspace=0.1)
 
 our_7b_bits = np.array([2.10395078, 2.20369171, 2.254047927, 2.40349741, 2.50259067, 2.60427461, 2.75372409, 2.80246114, 2.99740933, 3.10249352, 3.20498705, 3.25194301, 3.40123057, 3.50291451, 3.60103627, 3.75275259, 3.80310881, 3.99222798]) + 0.25
@@ -178,16 +178,17 @@ owq_7b_acc = np.array([0.417384248, 0.439466138, 0.44401668, 0.480417192, 0.5129
 # gptq_7b_c4 = [44.10067749, 11.81025696, 8.531720161, 7.857592583, 7.523168087]
 # gptq_7b_acc = np.array([43.19096879, 60.69622798, 67.22225115, 68.55015288, 69.04313609])
 
-axes[0].plot(pbllm_7b_bits, pbllm_7b_c4, label='PB-LLM', marker='o', markersize=markersize, linewidth=linewidth, c = colors[3])
-axes[0].plot(bitstack_7b_bits, bitstack_7b_c4, label='BitStack', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
-axes[0].plot(our_7b_bits, our_7b_c4, label='AMQ', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
+axes1[0].plot(pbllm_7b_bits, pbllm_7b_c4, label='PB-LLM', marker='o', markersize=markersize, linewidth=linewidth, c = colors[3])
+axes1[0].plot(bitstack_7b_bits, bitstack_7b_c4, label='BitStack', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
+axes1[0].plot(our_7b_bits, our_7b_c4, label='AMQ', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
 # axes[0].scatter(discrete_memory[1:], awq_7b_c4[1:], label='AWQ', s=40, c=colors[4])
 # axes[0].scatter(discrete_memory[1:], gptq_7b_c4[1:], label='GPTQ', s=40, c=colors[3])
-axes[0].grid(c='0.8')
+axes1[0].grid(c='0.8')
 
 # ax_ins = inset_axes(axes[0], width="30%", height="30%", loc='upper left')
 
-ax = axes[0].twinx()
+# ax = axes[0].twinx()
+ax = axes2[0]
 ax.plot(pbllm_7b_bits, 100 * pbllm_7b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = colors[3])
 ax.plot(bitstack_7b_bits, 100 * bitstack_7b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
 ax.plot(our_7b_bits, 100 * our_7b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = 'red', zorder = 3)
@@ -196,18 +197,20 @@ ax.plot(our_7b_bits, 100 * our_7b_acc, linestyle = '--', marker='o', markersize=
 # ax.grid(c='0.8')
 ax.set_xticks([2.25, 2.75, 3.25, 3.75, 4.25])
 
-axes[0].set_ylim(0, 20)
-axes[0].set_yticks(range(0, 21, 5))
+axes1[0].set_xlim(2.2, 4.3)
+ax.set_xlim(2.2, 4.3)
+axes1[0].set_ylim(5, 20)
+axes1[0].set_yticks(range(5, 21, 5))
 
 ax.set_ylim(55, 75)
 ax.set_yticks(range(55, 76, 5))
-
+ax.grid()
 
 # ax.set_yticks(np.linspace(42, 70, 5))
 # axes[0].set_yticks(range(0, 35, 5))
 
 ax.tick_params(axis='both', which='major', labelsize=15)
-axes[0].tick_params(axis='both', which='major', labelsize=15)
+axes1[0].tick_params(axis='both', which='major', labelsize=15)
 
 
 pbllm_13b_bits = np.array([2.001, 2.197, 2.253, 2.4, 2.498, 2.603, 2.75, 2.799, 3.002, 3.198, 3.247, 3.401, 3.499, 3.597, 3.8, 4.003]) + 0.25
@@ -235,19 +238,20 @@ discrete_bit = [2.0, 3.0, 4.0]
 # axes[1].plot([3], [7.09], label='C4 PPL', linestyle='-', c='black')
 # axes[1].plot([3], [7.09], label='Zero-shot Average', linestyle='--', c='black')
 
-axes[1].plot(our_13b_bits, our_13b_c4, label='AMQ', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
-axes[1].plot(bitstack_13b_bits, bitstack_13b_c4, label='BitStack', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
-axes[1].plot(pbllm_13b_bits, pbllm_13b_c4, label='PB-LLM', marker='o', markersize=markersize, linewidth=linewidth, c = colors[3])
+axes1[1].plot(our_13b_bits, our_13b_c4, label='AMQ', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
+axes1[1].plot(bitstack_13b_bits, bitstack_13b_c4, label='BitStack', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
+axes1[1].plot(pbllm_13b_bits, pbllm_13b_c4, label='PB-LLM', marker='o', markersize=markersize, linewidth=linewidth, c = colors[3])
 # axes[1].scatter(owq_13b_bits, owq_13b_c4, label='OWQ', s=5,)
 # axes[1].set_title('Llama-2 13B')
 # axes[1].set_xlabel('Bits')
 # axes[1].set_ylabel('Perplexity')
-axes[1].grid(c='0.8')
+axes1[1].grid(c='0.8')
 # axes[0].legend(loc='upper right')
 # axes[1].legend()
 # axes[1].set_yscale('log')
 
-ax = axes[1].twinx()
+# ax = axes[1].twinx()
+ax = axes2[1]
 
 ax.plot(pbllm_13b_bits, 100 * pbllm_13b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = colors[3])
 # ax.scatter(owq_13b_bits, owq_13b_acc, s=5)
@@ -263,16 +267,21 @@ ax.set_xticks([2.25, 2.75, 3.25, 3.75, 4.25])
 # ax.plot(0, 0, linestyle = '--', c='black', label='Zero-shot Average')
 # ax.legend(loc='upper center', fontsize=15, ncol=2, bbox_to_anchor=(0.5, 1.315))
 
-axes[1].set_ylim(0, 20)
-axes[1].set_yticks(range(0, 21, 5))
+axes1[1].legend(loc = 'upper right', fontsize=20)
 
-ax.set_ylim(60, 75)
-ax.set_yticks(range(60, 76, 5))
+axes1[1].set_xlim(2.2, 4.3)
+ax.set_xlim(2.2, 4.3)
+
+axes1[1].set_ylim(5, 20)
+axes1[1].set_yticks(range(5, 21, 5))
+
+ax.set_ylim(55, 75)
+ax.set_yticks(range(55, 76, 5))
 # axes[1].set_yticks(np.linspace(7, 83, 5))
 
 ax.tick_params(axis='both', which='major', labelsize=15)
-axes[1].tick_params(axis='both', which='major', labelsize=15)
-
+axes1[1].tick_params(axis='both', which='major', labelsize=15)
+ax.grid()
 
 bitstack_70b_bits = np.array([2.2, 2.25, 2.4, 2.5, 2.6, 2.75, 2.8, 3, 3.2, 3.25, 3.4, 3.5, 3.6, 3.8, 4]) + 0.25
 bitstack_70b_w2 = [4.974086285, 4.913050175, 4.728073597, 4.609647274, 4.493756294, 4.337579727, 4.278894424, 4.069427013, 3.967707634, 3.948377371, 3.888819456, 3.85209775, 3.816739559, 3.747808456, 3.707520008]
@@ -286,20 +295,25 @@ our_70b_c4 = [7.627700806, 7.389309883, 7.246460438, 6.886165619, 6.714670658, 6
 our_70b_acc = [0.737667448, 0.738021299, 0.744922683, 0.743657972, 0.753498046, 0.755443093, 0.762817355, 0.76499475, 0.766131804, 0.76751751, 0.769627149, 0.769929044, 0.768681573, 0.771572233, 0.772659542, 0.772436607, 0.773729407, 0.776231165]
 our_70b_acc = np.array(our_70b_acc)
 
-axes[2].plot(our_70b_bits, our_70b_c4, label='AMQ', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
+axes1[2].plot(our_70b_bits, our_70b_c4, label='AMQ', marker='o', markersize=markersize, linewidth=linewidth, c = 'red')
 # axes[2].plot(pbllm_70b_bits, pbllm_70b_c4, label='PB-LLM', marker='o', markersize=markersize, linewidth=linewidth, c = colors[2])
-axes[2].plot(bitstack_70b_bits, bitstack_70b_c4, label='BitStack', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
-axes[2].grid(c='0.8')
+axes1[2].plot(bitstack_70b_bits, bitstack_70b_c4, label='BitStack', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
+axes1[2].grid(c='0.8')
 
-ax = axes[2].twinx()
+# ax = axes1[2].twinx()
+ax = axes2[2]
+
 ax.plot(our_70b_bits, 100 * our_70b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = 'red', zorder = 3)
 # ax.plot(pbllm_70b_bits, 100 * pbllm_70b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = colors[2])
 ax.plot(bitstack_70b_bits, 100 * bitstack_70b_acc, linestyle = '--', marker='o', markersize=markersize, linewidth=linewidth, c = 'orange')
 # ax.grid(c='0.8')
 ax.set_xticks([2.25, 2.75, 3.25, 3.75, 4.25])
 
-axes[2].set_ylim(5, 8)
-axes[2].set_yticks(range(5, 9, 1))
+axes1[2].set_xlim(2.2, 4.3)
+ax.set_xlim(2.2, 4.3)
+
+axes1[2].set_ylim(5, 8)
+axes1[2].set_yticks(range(5, 9, 1))
 
 ax.set_ylim(72, 80)
 ax.set_yticks(range(72, 81, 2))
@@ -308,7 +322,12 @@ ax.set_yticks(range(72, 81, 2))
 # axes[2].set_yticks(np.linspace(5, 9, 5))
 
 ax.tick_params(axis='both', which='major', labelsize=15)
-axes[2].tick_params(axis='both', which='major', labelsize=15)
+axes1[2].tick_params(axis='both', which='major', labelsize=15)
+ax.grid()
+
+for i in range(3):
+    axes1[i].set_xticks([2.25, 2.75, 3.25, 3.75, 4.25])
+
 
 fig.tight_layout() 
 plt.savefig(fig_path, dpi=300)
