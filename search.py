@@ -92,49 +92,45 @@ class Search:
         # self.args['pass_layer_list'] = pass_layer_list        
         
         self.linear_sensitivity_file = kwargs.pop('linear_sensitivity_file' , '')
-        self.iqr_threshold = kwargs.pop('iqr_threshold', 10)
+        # self.iqr_threshold = kwargs.pop('iqr_threshold', 10)
         pass_linear_list = []
+        if self.linear_sensitivity_file:
+            with open(self.linear_sensitivity_file, 'r') as f:
+                linear_list, sensitivity = list(csv.reader(f))
+                sensitivity = list(map(float, sensitivity))
+            sensitivity = np.nan_to_num(sensitivity, nan=float('inf'))
+            pass_linear_list = [linear_list[i] for i in np.where(sensitivity > np.median(sensitivity) * 2)[0]]
+            self.args['pass_linear_list'] = pass_linear_list
+            # # print(f'upper_bound: {np.median(sensitivity) * 2}')
+            # print(f'pass_linear_list: {pass_linear_list}')
+        
         # if self.linear_sensitivity_file:
         #     with open(self.linear_sensitivity_file, 'r') as f:
-        #         linear_list, sensitivity = list(csv.reader(f))
-        #         sensitivity = list(map(float, sensitivity))
+        #         linear_list, sensitivity_raw = list(csv.reader(f))
             
-        #     q1 = np.percentile(sensitivity, 25)
-        #     q3 = np.percentile(sensitivity, 75)
+        #     valid_vals = []
+        #     valid_indices = []
+        #     for i, s in enumerate(sensitivity_raw):
+        #         try:
+        #             val = float(s)
+        #             if math.isnan(val):
+        #                 pass_linear_list.append(linear_list[i])
+        #             else:
+        #                 valid_vals.append(val)
+        #                 valid_indices.append(i)
+        #         except ValueError:
+        #             pass_linear_list.append(linear_list[i])
+            
+        #     q1, q3 = np.percentile(valid_vals, [25, 75])
         #     iqr = q3 - q1
         #     upper_bound = q3 + self.iqr_threshold * iqr
-        #     pass_linear_list = [linear_list[i] for i in np.where(sensitivity > upper_bound)[0]]
+
+        #     for i, val in zip(valid_indices, valid_vals):
+        #         if val > upper_bound:
+        #             pass_linear_list.append(linear_list[i])
         #     self.args['pass_linear_list'] = pass_linear_list
         #     print(f'q1: {q1}, q3: {q3}, iqr: {iqr}, upper_bound: {upper_bound}')
         #     print(f'pass_linear_list: {pass_linear_list}')
-        
-        if self.linear_sensitivity_file:
-            with open(self.linear_sensitivity_file, 'r') as f:
-                linear_list, sensitivity_raw = list(csv.reader(f))
-            
-            valid_vals = []
-            valid_indices = []
-            for i, s in enumerate(sensitivity_raw):
-                try:
-                    val = float(s)
-                    if math.isnan(val):
-                        pass_linear_list.append(linear_list[i])
-                    else:
-                        valid_vals.append(val)
-                        valid_indices.append(i)
-                except ValueError:
-                    pass_linear_list.append(linear_list[i])
-            
-            q1, q3 = np.percentile(valid_vals, [25, 75])
-            iqr = q3 - q1
-            upper_bound = q3 + self.iqr_threshold * iqr
-
-            for i, val in zip(valid_indices, valid_vals):
-                if val > upper_bound:
-                    pass_linear_list.append(linear_list[i])
-            self.args['pass_linear_list'] = pass_linear_list
-            # print(f'q1: {q1}, q3: {q3}, iqr: {iqr}, upper_bound: {upper_bound}')
-            # print(f'pass_linear_list: {pass_linear_list}')
         
         self.evaluator = LlamaEvaluator(
             self.config,
