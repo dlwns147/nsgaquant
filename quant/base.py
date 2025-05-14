@@ -6,8 +6,7 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer
 from transformers import AutoModelForCausalLM
 from transformers.models.llama.modeling_llama import LlamaForCausalLM
 from datasets import load_dataset
-from utils.func import load_outlier
-import gc
+from utils.func import load_outlier, clean_up
 
 import sys
 sys.path.append('..')
@@ -106,7 +105,7 @@ def get_owq_calib_dataset(data="c4", tokenizer=None, n_samples=128, seed=0, seql
     return trainloader
 
 class BASE:
-    def __init__(self, model_name, config, arch, device_map, dev='cuda', group_size=128, prune=False, do_owq=False, owq=None):
+    def __init__(self, model_name, config, arch, device_map, dev='cuda', group_size=128, prune=False, do_owq=False, outlier_path=None):
         self.model_name = model_name
         self.config = config
         self.dev = dev
@@ -115,21 +114,20 @@ class BASE:
 
         self.prune = prune
         self.do_owq = do_owq
-        self.owq = None
+        self.outlier = None
         self.group_size = group_size
         if do_owq:
-            if isinstance(owq, str):
-                self.owq = torch.load(owq)
+            if isinstance(outlier_path, str):
+                self.outlier = torch.load(outlier_path)
             else:
-                self.owq = owq
+                self.outlier = outlier_path
         self.load_model(device_map='cpu')
         print(f'groupsize : {group_size}')
         
     def load_model(self, device_map='auto', use_cache=False):
         if hasattr(self, 'model'):
             del self.model
-            gc.collect()
-            torch.cuda.empty_cache()
+            clean_up()
 
         model_config = AutoConfig.from_pretrained(self.model_name, trust_remote_code=True)
         model_config.use_cache = use_cache
@@ -140,12 +138,9 @@ class BASE:
                                                 trust_remote_code=True, 
                                                 config=model_config,
                                                 )
-        self.model.use_cache = False
         self.model.eval()        
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True, use_fast=False)
-        
-        gc.collect()
-        torch.cuda.empty_cache()
+        clean_up()
 
     def prune_model(self):
         self.model = skip_llama.block_replace(self.model)

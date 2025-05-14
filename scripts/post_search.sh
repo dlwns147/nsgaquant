@@ -13,8 +13,9 @@ Q_BITS_TEXT="234"
 
 # METHOD="hqq layer_prune"
 # METHOD=hqq
-METHOD=awq
-# METHOD=gptq
+# METHOD=awq
+METHOD=gptq
+# METHOD=qeft
 # METHOD="awq layer_prune"
 
 GROUP_SIZE=128
@@ -32,11 +33,13 @@ done
 QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 
 N_OUTLIER=32
-OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
+OUTLIER_DATASET=wikitext2
+OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}_${OUTLIER_DATASET}/outlier.pth
 
 COMP_OBJ=bits
 COMP_OBJ_TEXT=bits
-TARGET_COMP_OBJ_VAL=3.0
+# TARGET_COMP_OBJ_VAL=3.0
+TARGET_COMP_OBJ_VAL=3.25
 # TARGET_COMP_OBJ_VAL=2.0
 
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
@@ -51,6 +54,7 @@ MAX_COMP_OBJ=$(echo "scale=3; $TARGET_COMP_OBJ_VAL + $COMP_OBJ_THRESHOLD" | bc)
 
 EXPR_FOLDER=save/search/quant
 
+# EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
 EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_100.stats
 # EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
 # EXPR_FILE=2502012035_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_300.stats
@@ -86,8 +90,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --zeroshot \
 --tasks ${TASKS} \
 --zeroshot_batch_size ${ZEROSHOT_BATCH_SIZE}
-# --latency_table_file ${LATENCY_TABLE}
 # --outlier_path ${OUTLIER_PATH} \
+# --latency_table_file ${LATENCY_TABLE}
 # --only_front \
 
 
