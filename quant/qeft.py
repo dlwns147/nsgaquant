@@ -19,11 +19,10 @@ import transformers
 
 from .base import BASE, get_owq_calib_dataset
     
-class OWQ(BASE):
-    def __init__(self, model_name, config, arch, device_map, group_size=128, dev='cuda', prune=False, do_owq=False, owq=None, **kwargs):
-        super().__init__(model_name, config, arch, device_map=device_map, group_size=group_size, dev=dev, prune=prune, do_owq=do_owq, owq=owq)
-        self.method = 'owq'
-
+class QEFT(BASE):
+    def __init__(self, model_name, config, arch, device_map, group_size=128, dev='cuda', prune=False, do_owq=False, outlier_path=None, **kwargs):
+        super().__init__(model_name, config, arch, device_map=device_map, group_size=group_size, dev=dev, prune=prune, do_owq=do_owq, outlier_path=outlier_path)
+        self.method = 'qeft'
 
     @torch.no_grad()
     def run(
@@ -35,7 +34,7 @@ class OWQ(BASE):
         # dataset='wikitext2',
         reorder=True,
         # reorder=False,
-        target_rank=32,
+        # target_rank=32,
         seed=42,
         sym=False,
         true_sequential=False,
@@ -110,6 +109,7 @@ class OWQ(BASE):
         owq_layers = meta['owq_layers']
         ratios = meta['ratios']
         n_out_dict = {l:[0] * len(layers) for l in owq_layers.keys()}
+        target_rank = self.outlier['n_outlier']
         if target_rank is not None:
             for l, owq in owq_layers.items():
                 if owq:
@@ -166,19 +166,19 @@ class OWQ(BASE):
                         frob_norm_error = None
 
                     key = f"{meta['prefix']}.{i}.{name}"
-                    outidx = torch.tensor(self.owq[key]) if key in self.owq and wbits != math.floor(wbits) else None
-                    # print(f'key : {key}, outidx : {outidx}, wbits : {wbits}, key in self.owq : {key in self.owq}')
+                    outidx = torch.tensor(self.outlier[key]) if key in self.outlier and wbits != math.floor(wbits) else None
+                    # print(f'key : {key}, outidx : {outidx}, wbits : {wbits}, key in self.outlier : {key in self.outlier}')
                     out_ids = gptq_owq[name].hessian_sorting(
                         actorder=act_order, 
                         frob_norm=frob_norm_error, 
-                        # outidx=torch.tensor(self.owq[key]) if key in self.owq and name not in meta['sequential'][1] and wbits != math.floor(wbits) else None, 
-                        outidx=torch.tensor(self.owq[key]) if key in self.owq and wbits != math.floor(wbits) else None, 
+                        # outidx=torch.tensor(self.outlier[key]) if key in self.outlier and name not in meta['sequential'][1] and wbits != math.floor(wbits) else None, 
+                        outidx=torch.tensor(self.outlier[key]) if key in self.outlier and wbits != math.floor(wbits) else None, 
                         # outidx=outidx if name not in meta['sequential'][1] + meta['sequential'][3] and wbits != math.floor(wbits) else None, 
                         )
                     gptq_owq[name].quantizer.out_ids = out_ids
                     gptq_owq[name].quantizer.n_out = out_ids.numel()
                     gptq_owq[name].quantizer.reorder = reorder # if name not in meta['sequential'][1] else False
-                    # print(f'n_out_dict[name][i] : {n_out_dict[name][i]}, n_out : {out_ids.numel()}, self.owq[key] : {self.owq[key] if key in self.owq else 0}')
+                    # print(f'n_out_dict[name][i] : {n_out_dict[name][i]}, n_out : {out_ids.numel()}, self.outlier[key] : {self.outlier[key] if key in self.outlier else 0}')
 
                 if not no_frob_norm:
                     del W
@@ -190,12 +190,12 @@ class OWQ(BASE):
                     key = f"{meta['prefix']}.{i}.{name}"
                     # print(f"Quantizing {key}")
                     if name not in meta['sequential'][1] and name not in meta['sequential'][3]:
-                        global_ids = torch.tensor(self.owq[key])
+                        global_ids = torch.tensor(self.outlier[key])
                     # print(f'out_ids : {gptq_owq[name].quantizer.out_ids.tolist()}')
-                    # print(f'self.owq[key] : {self.owq[key] if key in self.owq else 0}') 
+                    # print(f'self.outlier[key] : {self.outlier[key] if key in self.outlier else 0}') 
                     # print(f'global_ids : {global_ids.tolist()}')
-                    # if key in self.owq:
-                    #     print(f'(gptq_owq[name].quantizer.out_ids == self.owq[key]).sum() : {(gptq_owq[name].quantizer.out_ids == self.owq[key]).sum()}')
+                    # if key in self.outlier:
+                    #     print(f'(gptq_owq[name].quantizer.out_ids == self.outlier[key]).sum() : {(gptq_owq[name].quantizer.out_ids == self.outlier[key]).sum()}')
                     # print('=' * 20)
                     if nearest_owq:
                         if gptq_owq[name].quantizer.reorder:

@@ -158,10 +158,8 @@ def main(args):
 
     for idx in I:
         # print(f'Selected arch[{idx}] {args.sec_obj}: {pf[idx, 1]:.4f}, metric: {pf[idx, 0]:.4f}, arch: {ps[idx]}')
-        n_attn = int(sum(ps[idx]["layer"]["self_attn"])) if "layer" in ps[idx] else 0
-        n_mlp = int(sum(ps[idx]["layer"]["mlp"])) if "layer" in ps[idx] else 0
         # print(f'arch : {ps[idx]}')
-        print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:].tolist()}, metric: {pf[idx, 0].item():.4f}, attns : {n_attn}, mlps : {n_mlp}')
+        print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:].tolist()}, metric: {pf[idx, 0].item():.4f}')
                 
     latency_table = None
     if args.latency_table_file:
@@ -169,9 +167,9 @@ def main(args):
             latency_table = json.load(f)
 
     model_id = f'{args.model_path}/{args.model_name}'
-    awq_gptq_owq = 'awq' in args.method or 'gptq' in args.method or 'owq' in args.method
+    awq_gptq_qeft = 'awq' in args.method or 'gptq' in args.method or 'qeft' in args.method
     
-    if awq_gptq_owq:
+    if awq_gptq_qeft:
         args.quant_model_bits = []
         args.quant_model_paths = []
 
@@ -199,24 +197,16 @@ def main(args):
         accelerator.print(arch)
         
         linear_bits = np.concatenate(list(arch['linear'].values()))
-        do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)
-        print(f'do_owq : {do_owq}, awq_gptq_owq : {awq_gptq_owq}')
-        if awq_gptq_owq:
-            method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else 'owq' if 'owq' in args.method else None
-            model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path)
+        do_qeft = ((linear_bits - linear_bits.astype(int)).sum() != 0)
+        print(f'do_qeft : {do_qeft}, awq_gptq_qeft : {awq_gptq_qeft}')
+        if awq_gptq_qeft:
+            method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else 'qeft' if 'qeft' in args.method else None
+            model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_qeft, outlier_path=args.outlier_path)
         else:
             model = evaluator.sample(arch)
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
         latency = measure_latency(model, generation=True, device=model.device) if args.latency else 0
-        # arch_list.append(arch)
-        # metric_list.append(pf[idx, 0])
-        # ppl_list.append({d: metric[d] for d in args.datasets})
-        # bits_list.append(complexity['bits'])
-        # param_list.append(complexity['params'])
-        # sparsity_list.append(complexity['sparsity'])
-        # complexity_list.append(complexity[args.sec_obj])  
-        # latency_list.append(latency)
-        print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}\n')
+        print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}')
         
         if args.zeroshot:
             clean_up()
@@ -240,7 +230,7 @@ def main(args):
             #         print(f'{task} acc_norm : {task_result["acc_norm,none"]}')
             #     else:
             #         print(f'{task} acc : {task_result["acc,none"]}')
-        if awq_gptq_owq:
+        if awq_gptq_qeft:
             del model
             clean_up()
 

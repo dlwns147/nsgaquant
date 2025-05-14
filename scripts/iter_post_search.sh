@@ -26,10 +26,10 @@ DTYPE=float16
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
-# METHOD=awq
-# METHOD_TEXT=awq
-# METHOD=owq
-# METHOD_TEXT=owq
+METHOD=awq
+METHOD_TEXT=awq
+# METHOD=qeft
+# METHOD_TEXT=qeft
 
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
@@ -52,7 +52,8 @@ done
 QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 
 N_OUTLIER=32
-OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}_wikitext2/outlier.pth
+OUTLIER_DATASET=wikitext2
+OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}_${OUTLIER_DATASET}/outlier.pth
 
 COMP_OBJ="bits"
 COMP_OBJ_TEXT=bits
