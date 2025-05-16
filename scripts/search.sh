@@ -16,9 +16,9 @@ QWEN_25_32B=Qwen2.5-32B
 QWEN_25_72B=Qwen2.5-72B
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=${LLAMA_2_7B}
+MODEL_NAME=${LLAMA_2_7B}
 # MODEL_NAME=${LLAMA_2_13B}
-MODEL_NAME=${LLAMA_2_70B}
+# MODEL_NAME=${LLAMA_2_70B}
 CONFIG=config/llama.json
 DTYPE=float16
 
@@ -50,7 +50,7 @@ AXIS=1
 GROUP_SIZE=128
 
 LINEAR_SENSITIVITY_FILE=/NAS/SJ/nsgaquant/csv/sensitivity/${MODEL_NAME}_hqq_loss_24_1axis_128gs_jsd.csv
-IQR_THRESHOLD=10
+# IQR_THRESHOLD=10
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
 
@@ -145,8 +145,8 @@ SAVE_ITER=1
 # LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_7b_lpe_24bit_iter10000.json
 # LATENCY_TABLE=/NAS/JG/QAS4SD/llama2_13b_lpe_24bit_iter10000.json
 
-SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_${GROUP_SIZE}gs_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}
-# SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}_outlier_${OUTLIER_TEXT}
+SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_${GROUP_SIZE}gs_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_pop_${GA_POP_SIZE}_${SUBSET_POP_SIZE}_${PREDICTOR}_${SEED}seed
+# SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_${GROUP_SIZE}gs_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${N_OUTLIER}_${OUTLIER_DATASET}_outlier_${GA_POP_SIZE}_${SUBSET_POP_SIZE}_${PREDICTOR}_${SEED}seed_${OUTLIER_BITS_TEXT}_${OUTLIER_DATASET}
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_${DATASET}_${N_SAMPLE}sample_${PREDICTOR}_outlier_${OUTLIER_TEXT}_mixed
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${DATASET}_${N_SAMPLE}sample_2_64
 # SAVE=save/search/quant/${TODAY}_${MODEL_NAME}_${OBJ}_${METRIC}_${METHOD_TEXT}_iter_${ITER}_${Q_BITS_TEXT}_obj_${SEC_OBJ_RANGE_SMALL}_${SEC_OBJ_RANGE_LARGE}_${LOSS_FUNC}_co_${CROSSOVER_PROB}_mut_${MUT_PROB}_lp_${LAYER_PRUNE_RANGE_SMALL}_${LAYER_PRUNE_RANGE_LARGE}_${DATASET}_${N_SAMPLE}sample
@@ -181,8 +181,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --n_sample ${N_SAMPLE} \
 --dataset ${DATASET} \
 --save_iter ${SAVE_ITER} \
---linear_sensitivity_file ${LINEAR_SENSITIVITY_FILE} \
---iqr_threshold ${IQR_THRESHOLD}
+--linear_sensitivity_file ${LINEAR_SENSITIVITY_FILE}
+
 # --pass_linear_list ${PASS_LINEAR_LIST}
 # --only_outlier_bits
 # --base_outlier_bits ${OUTLIER_BITS} \
