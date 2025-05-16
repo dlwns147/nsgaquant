@@ -71,7 +71,7 @@ class Search:
         
         # self.config['mpe_table_json'] = kwargs.pop('mpe_table_json', '/NAS/JG/QAS4SD/llama2_7b_lpe_24bit.json')
 
-        assert (outlier_path and len(n_outlier) > 0) or (not outlier_path and len(n_outlier) == 0), "must use outlier_path, outlier_bits and n_outlier together when using outlier channel"
+        assert (outlier_path and len(n_outlier) > 1) or (not outlier_path and len(n_outlier) == 1)
         
         outlier_bits = {l: [] for l in config['linear']}
         if outlier_path and base_outlier_bits and not (len(n_outlier) == 1 and 0 in n_outlier) :
