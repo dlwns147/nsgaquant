@@ -54,8 +54,10 @@ MAX_COMP_OBJ=$(echo "scale=3; $TARGET_COMP_OBJ_VAL + $COMP_OBJ_THRESHOLD" | bc)
 
 EXPR_FOLDER=save/search/quant
 
+EXPR_FILE=2505150011_Llama-2-7b-hf_bits_loss_hqq_iter_200_234_128gs_obj_2_5_jsd_co_0.9_mut_0.1_wikitext2_128sample_pop_200_100_rbf_0seed/iter_200.stats
+
 # EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
-EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_100.stats
+# EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_100.stats
 # EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
 # EXPR_FILE=2502012035_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_300.stats
 # EXPR_FILE=2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
@@ -68,11 +70,11 @@ DATASETS="wikitext2"
 
 SEED=0
 # FRONT_SAMPLE=0.1
-# FRONT_SAMPLE=0.2
-FRONT_SAMPLE=0.25
+FRONT_SAMPLE=0.2
+# FRONT_SAMPLE=0.25
 
-SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${MIN_COMP_OBJ}_${MAX_COMP_OBJ}_${METHOD}
-# SAVE=save/result/${TODAY}_${MODEL_NAME}_pareto_front_${METHOD}_${FRONT_SAMPLE}_sample_${SEED}seed_${DATASETS}
+# SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${MIN_COMP_OBJ}_${MAX_COMP_OBJ}_${METHOD}
+SAVE=save/result/${TODAY}_${MODEL_NAME}_pareto_front_${METHOD}_${FRONT_SAMPLE}_sample_${SEED}seed_${DATASETS}
 N=1
 
 N_PROC=1
@@ -94,14 +96,13 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --expr ${EXPR_FOLDER}/${EXPR_FILE} \
 --datasets ${DATASETS} \
 --method ${METHOD} \
---prefer ${PREFER} \
---zeroshot \
---tasks ${TASKS} \
---zeroshot_batch_size ${ZEROSHOT_BATCH_SIZE}
-
-# --only_front \
-# --front_sample ${FRONT_SAMPLE} \
-# --seed ${SEED}
+--only_front \
+--front_sample ${FRONT_SAMPLE} \
+--seed ${SEED}
+# --prefer ${PREFER} \
+# --zeroshot \
+# --tasks ${TASKS} \
+# --zeroshot_batch_size ${ZEROSHOT_BATCH_SIZE}
 
 # --outlier_path ${OUTLIER_PATH} \
 # --latency_table_file ${LATENCY_TABLE}
