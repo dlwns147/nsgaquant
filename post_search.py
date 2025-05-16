@@ -14,7 +14,7 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from utils.func import init_accelerator, get_net_info, clean_up
+from utils.func import init_accelerator, get_net_info, clean_up, set_seed
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
 from quant.model import get_quantized_model
@@ -67,6 +67,7 @@ class HighTradeoffPoints(DecisionMaking):
 
 def main(args):
     print(args)
+    set_seed(args.seed)
 
     with open(args.config, 'r') as f:
         config = json.load(f)[args.model_name]
@@ -95,7 +96,19 @@ def main(args):
     n_comp_obj_min, n_comp_obj_max = len(args.comp_obj_min), len(args.comp_obj_max)
     assert n_comp_obj == n_comp_obj_min and n_comp_obj_min == n_comp_obj_max
     
-    if n_comp_obj_min > 0:
+    if args.only_front:
+        assert 0 <= args.front_sample and args.front_sample <= 1
+        front = NonDominatedSorting().do(F, only_non_dominated_front=True)
+        if args.front_sample < 1:
+            front = np.random.choice(front, size=int(len(front) * args.front_sample), replace=False)
+            front.sort()
+        # sort_idx = np.argsort(F[front, 0])
+        pf = F[front, :]
+        ps = np.array(subnets)[sort_idx][front]
+        comp_list = {c: [] for c in args.comp_obj}
+        metric_list = {d: [] for d in args.datasets}
+    
+    elif n_comp_obj_min > 0:
         # assert args.sec_obj_range[0] >= min(args.quant_model_bits) and args.sec_obj_range[1] <= max(args.quant_model_bits), f'Target bits range should be in [small model bits, large model bits]'
         # range_idx = np.argwhere(np.logical_and(F[:, 1] > args.sec_obj_range[0], F[:, 1] < args.sec_obj_range[1])).flatten()
         flag = np.ones((F.shape[0]), dtype=bool)
@@ -106,11 +119,6 @@ def main(args):
         pf = F[range_idx, :]
         ps = np.array(subnets)[sort_idx][range_idx]
 
-    elif args.only_front:
-        front = NonDominatedSorting().do(F, only_non_dominated_front=True)
-        pf = F[front, :]
-        ps = np.array(subnets)[sort_idx][front]
-        
     else:
         pf = F
         ps = np.array(subnets)[sort_idx]
@@ -207,6 +215,19 @@ def main(args):
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
         latency = measure_latency(model, generation=True, device=model.device) if args.latency else 0
         print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}')
+        if args.only_front and args.save and args.results_csv_file:
+            for c in args.comp_obj:
+                comp_list[c].append(complexity[c])
+            for d in args.datasets:
+                metric_list[d].append(metric[d])
+
+            os.makedirs(args.save, exist_ok=True)
+            with open(os.path.join(args.save, args.results_csv_file), 'w') as f:
+                writer = csv.writer(f)
+                for c in args.comp_obj:
+                    writer.writerow(comp_list[c])
+                for d in args.datasets:
+                    writer.writerow(metric_list[d])
         
         if args.zeroshot:
             clean_up()
@@ -311,7 +332,7 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--group_size', type=int, default=-1,
                         help='')
-    parser.add_argument('--save', type=str, default='.tmp',
+    parser.add_argument('--save', type=str, default='',
                         help='location of dir to save')
     parser.add_argument('--expr', type=str, default='',
                         help='location of search experiment dir')
@@ -336,6 +357,10 @@ if __name__ == '__main__':
     parser.add_argument('--last_layer', type=str, default='',
                         help='')
     parser.add_argument('--only_front', action='store_true', help='')
+    parser.add_argument('--front_sample', type=float, default=1,
+                        help='')
+    parser.add_argument('--seed', type=int, default=0,
+                        help='')
     parser.add_argument('--results_file', type=str, default='results.txt',
                         help='')
     parser.add_argument('--results_csv_file', type=str, default='results.csv',

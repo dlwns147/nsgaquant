@@ -21,7 +21,7 @@ from pymoo.operators.crossover.binx import BinomialCrossover
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.operators.mutation.pm import PolynomialMutation
 
-from search_space.llama import LlamaQuantSearchSpace, LlamaSearchSpace #, LlamaLinearGroupSearchSpace
+from search_space.llama import LlamaQuantSearchSpace # LlamaSearchSpace, LlamaLinearGroupSearchSpace
 from predictor.factory import get_predictor
 from utils.func import get_net_info, init_accelerator, set_seed
 from utils.ga import MySampling, BinaryCrossover, MyMutation, IntegerFromFloatMutation, IntMutation
@@ -61,7 +61,7 @@ class Search:
         self.metric = kwargs.pop('metric', 'loss')
         outlier_path = kwargs.pop('outlier_path' , '')
         base_outlier_bits = sorted(kwargs.pop('base_outlier_bits', []))
-        n_outlier = kwargs.pop('n_outlier' , 0)
+        n_outlier = kwargs.pop('n_outlier' , [0])
         
         self.latency_table = None
         latency_table = kwargs.pop('latency_table_file', None)
@@ -74,12 +74,13 @@ class Search:
         assert (outlier_path and base_outlier_bits and n_outlier > 0) or (not outlier_path and not base_outlier_bits and n_outlier == 0), "must use outlier_path, outlier_bits and n_outlier together when using outlier channel"
         
         outlier_bits = {l: [] for l in config['linear']}
-        if outlier_path and base_outlier_bits and n_outlier > 0:
+        if outlier_path and base_outlier_bits and not (len(n_outlier) == 1 and 0 in n_outlier) :
             for linear in config['linear']:
                 for base_bits in base_outlier_bits:
-                    _, in_dim = config['linear_shape'][linear]
-                    avg_linear_bits = ((in_dim - n_outlier) * base_bits + n_outlier * 16) / (in_dim)
-                    outlier_bits[linear].append(avg_linear_bits)
+                    for n_out in n_outlier:
+                        _, in_dim = config['linear_shape'][linear]
+                        avg_linear_bits = ((in_dim - n_out) * base_bits + n_out * 16) / (in_dim)
+                        outlier_bits[linear].append(avg_linear_bits)
 
         # pass_layer_list = kwargs.pop('pass_layer_list', [])
         # layer_sensitivity_file = kwargs.pop('layer_sensitivity_file' , '')
@@ -599,7 +600,7 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--outlier_path', type=str, default='',
                         help='')
-    parser.add_argument('--n_outlier', type=int, default=0, 
+    parser.add_argument('--n_outlier', type=int, nargs='+', default=[0], 
                         help='')
     parser.add_argument('--only_outlier_bits', action='store_true', help='')
     # parser.add_argument('--latency_table_file', type=str, default=None,
@@ -612,8 +613,8 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--linear_sensitivity_file', type=str, default='',
                         help='')
-    parser.add_argument('--iqr_threshold', type=float, default=10, 
-                        help='')
+    # parser.add_argument('--iqr_threshold', type=float, default=10, 
+    #                     help='')
     
     cfgs = parser.parse_args()
     main(cfgs)
