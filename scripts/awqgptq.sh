@@ -2,19 +2,19 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-# MODEL_PATH=/SSD/huggingface/meta-llama
-# # MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
-# # MODEL=meta-llama/Llama-2-70b-hf
-# CONFIG=config/llama.json
-# DTYPE=float16
-
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-3.1-8B
-# MODEL_NAME=Llama-3.1-70B
-# MODEL_NAME=Llama-3.1-8B-Instruct
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
+# MODEL=meta-llama/Llama-2-70b-hf
 CONFIG=config/llama.json
-DTYPE=bfloat16
+DTYPE=float16
+
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# MODEL_NAME=Llama-3.1-8B
+# # MODEL_NAME=Llama-3.1-70B
+# # MODEL_NAME=Llama-3.1-8B-Instruct
+# CONFIG=config/llama.json
+# DTYPE=bfloat16
 
 # MODEL_PATH=/SSD/huggingface/Qwen
 # # MODEL_NAME=Qwen2.5-7B
@@ -54,8 +54,8 @@ BATCH_SIZE=16
 N=1
 DATASETS="wikitext2 c4"
 
-GROUP_SIZE=128
-# GROUP_SIZE=-1
+# GROUP_SIZE=128
+GROUP_SIZE=-1
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${METHOD}_${BITS}
 
@@ -78,7 +78,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --datasets ${DATASETS} \
 --method ${METHOD} \
 --group_size ${GROUP_SIZE} \
---zeroshot \
---tasks ${TASKS} \
---zeroshot_batch_size ${BATCH_SIZE}
+# --zeroshot \
+# --tasks ${TASKS} \
+# --zeroshot_batch_size ${BATCH_SIZE}
 # --clip_asym \

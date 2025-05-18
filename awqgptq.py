@@ -14,7 +14,7 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from utils.func import init_accelerator, get_net_info, cleanup
+from utils.func import init_accelerator, get_net_info, clean_up
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
 from quant.model import get_quantized_model
@@ -97,6 +97,7 @@ def main(args):
         # latency_table=latency_table,
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
+        group_size=args.group_size,
     )
 
     arch = dict()
@@ -114,21 +115,21 @@ def main(args):
     else:
         model = evaluator.sample(arch)
 
-    del evaluator
-    cleanup()
-    from hqq.utils.patching import prepare_for_inference
-    prepare_for_inference(model, backend="bitblas") 
-    
-    lat = measure_latency(model, True, 'cuda', batch_size=1)
-    print(f'lat : {lat}, token/s = {128/lat}')
-    exit()
+    # del evaluator
+    # clean_up()
+    # from hqq.utils.patching import prepare_for_inference
+    # prepare_for_inference(model, backend="bitblas") 
+    # lat = measure_latency(model, True, 'cuda', batch_size=1)
+    # print(f'lat : {lat}, token/s = {128/lat}')
+    # exit()
 
     metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
     accelerator.print(arch)
+    print(f'complexity: {[f"{k}: {v}" for k, v in complexity.items()]}')
     print(f'ppl: {[p for p in metric.values()]}\n')
     
     del evaluator
-    cleanup()
+    clean_up()
     print(f'memory : {torch.cuda.memory_allocated()}')
     
     if args.zeroshot:        
