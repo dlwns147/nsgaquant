@@ -15,19 +15,19 @@ QWEN_25_14B=Qwen2.5-14B
 QWEN_25_32B=Qwen2.5-32B
 QWEN_25_72B=Qwen2.5-72B
 
-MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=${LLAMA_2_7B}
-# MODEL_NAME=${LLAMA_2_13B}
-# MODEL_NAME=${LLAMA_2_70B}
-CONFIG=config/llama.json
-DTYPE=float16
-
 # MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=${LLAMA_31_8B}
-# # MODEL_NAME=${LLAMA_31_70B}
-# # MODEL_NAME=${LLAMA_31_8B_INSTRUCT}
+# MODEL_NAME=${LLAMA_2_7B}
+# # MODEL_NAME=${LLAMA_2_13B}
+# # MODEL_NAME=${LLAMA_2_70B}
 # CONFIG=config/llama.json
-# DTYPE=bfloat16
+# DTYPE=float16
+
+MODEL_PATH=/SSD/huggingface/meta-llama
+# MODEL_NAME=${LLAMA_31_8B}
+MODEL_NAME=${LLAMA_31_70B}
+# MODEL_NAME=${LLAMA_31_8B_INSTRUCT}
+CONFIG=config/llama.json
+DTYPE=bfloat16
 
 # MODEL_PATH=/SSD/huggingface/Qwen
 # # MODEL_NAME=${QWEN_25_7B}
