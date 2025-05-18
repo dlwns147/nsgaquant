@@ -74,7 +74,12 @@ def main(args):
 
     accelerator, device_map = init_accelerator(args.gpu_id, config)
 
-    latency_table = None
+    arch = dict()
+    arch['linear'] = {linear: [args.bits] * config['n_block'] for linear in config['linear']}
+    accelerator.print(arch)
+
+    # accelerator.print(get_net_info(arch, config, args.group_size)['bits'])
+    # exit()
 
     model_id = f'{args.model_path}/{args.model_name}'
 
@@ -99,10 +104,6 @@ def main(args):
         quant_model_paths=args.quant_model_paths,
         group_size=args.group_size,
     )
-
-    arch = dict()
-    arch['linear'] = {linear: [args.bits] * config['n_block'] for linear in config['linear']}
-    accelerator.print(arch)
     
     linear_bits = np.concatenate(list(arch['linear'].values()))
     do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)

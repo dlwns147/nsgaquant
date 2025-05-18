@@ -2,27 +2,32 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
-# MODEL=meta-llama/Llama-2-70b-hf
-CONFIG=config/llama.json
-DTYPE=float16
+# MODEL_PATH=/SSD/huggingface/meta-llama
+# # MODEL_NAME=Llama-2-7b-hf
+# # MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-70b-hf
+# CONFIG=config/llama.json
+# DTYPE=float16
 
 # MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-3.1-8B
-# # MODEL_NAME=Llama-3.1-70B
+# # MODEL_NAME=Llama-3.1-8B
+# MODEL_NAME=Llama-3.1-70B
 # # MODEL_NAME=Llama-3.1-8B-Instruct
 # CONFIG=config/llama.json
 # DTYPE=bfloat16
 
 # MODEL_PATH=/SSD/huggingface/Qwen
 # # MODEL_NAME=Qwen2.5-7B
-# MODEL_NAME=Qwen2.5-14B
+# # MODEL_NAME=Qwen2.5-14B
 # # MODEL_NAME=Qwen2.5-32B
-# # MODEL_NAME=Qwen2.5-70B
+# MODEL_NAME=Qwen2.5-72B
 # CONFIG=config/qwen2.json
 # DTYPE=bfloat16
+
+MODEL_PATH=/SSD/huggingface/mistralai
+MODEL_NAME=Mistral-7B-v0.3
+DTYPE=bfloat16
+CONFIG=config/mistral.json
 
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
@@ -62,6 +67,7 @@ SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${METHOD}_${BITS}
 TARGET_COMP_OBJ=bits
 # TARGET_BITS_LIST=(2 3 4)
 BITS=3
+# BITS=4
 # BITS=16
 N_PROC=1
 
