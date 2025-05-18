@@ -47,6 +47,7 @@ def simple_dispatch_model(model, device_map):
 
     for n, d in device_map.items():
         m = get_module_by_name_suffix(model, n)
+        # print(f'n: {n}, d: {d}, m: {m}')
         if d != "cpu":
             d = torch.device(d)
             hook = AlignDevicesHook(d, io_same_device=True, place_submodules=True)
