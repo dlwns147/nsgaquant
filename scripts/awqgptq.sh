@@ -43,8 +43,8 @@ done
 QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 
 
-METHOD=hqq
-# METHOD=awq
+# METHOD=hqq
+METHOD=awq
 # METHOD=gptq
 
 COMP_OBJ="bits"
@@ -52,15 +52,15 @@ COMP_OBJ_TEXT=bits
 
 
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
-BATCH_SIZE=16
+# BATCH_SIZE=16
 # BATCH_SIZE=32
-# BATCH_SIZE=64
+BATCH_SIZE=64
 
 N=1
 DATASETS="wikitext2 c4"
 
-# GROUP_SIZE=128
-GROUP_SIZE=-1
+GROUP_SIZE=128
+# GROUP_SIZE=-1
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${METHOD}_${BITS}
 
