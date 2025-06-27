@@ -134,9 +134,12 @@ def main(args):
     print(f'memory : {torch.cuda.memory_allocated()}')
     
     if args.zeroshot:        
-        results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size, task_list=args.tasks)
-        acc_norm = [task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] for task_result in results.values()]
-        acc = [task_result['acc,none'] for task_result in results.values()]
+        results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), task_list=args.tasks, num_fewshot=args.num_fewshot, batch_size=args.zeroshot_batch_size)
+        acc_norm = [task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] if 'acc,none' in task_result else 0 for task_result in results.values()]
+        acc = [task_result['acc,none'] if 'acc,none' in task_result else 0 for task_result in results.values()]
+        em_strict = [task_result['exact_match,strict-match'] if 'exact_match,strict-match' in task_result else 0 for task_result in results.values()]
+        em_flexible = [task_result['exact_match,flexible-extract'] if 'exact_match,flexible-extract' in task_result else 0 for task_result in results.values()]
+        em = em_strict + em_flexible
         
         task = list(results.keys())
         avg_acc_norm = np.mean(acc_norm)
@@ -144,12 +147,8 @@ def main(args):
         print(f'avg_acc_norm : {avg_acc_norm}, avg_acc : {avg_acc}')
         print(f'task : {task}')
         print(f'acc_norm : {acc_norm}')
-        print(f'acc : {acc}')
-    if use_awq_or_gptq:
-        del model
-        torch.cuda.empty_cache()
-        gc.collect()
-
+        print(f'em : {em}')
+        
     print(args)
     return
 
@@ -226,7 +225,9 @@ if __name__ == '__main__':
     parser.add_argument('--tasks', type=str, nargs='+', default=['piqa','winogrande','hellaswag','arc_challenge','arc_easy', 'lambada_openai', 'boolq'])
     parser.add_argument('--zeroshot_csv_file', type=str, default=None,
                         help='')
-    parser.add_argument('--zeroshot_batch_size', type=int, default=64,
+    parser.add_argument('--zeroshot_batch_size', type=int, default=None,
+                        help='')
+    parser.add_argument('--num_fewshot', type=int, default=None,
                         help='')
 
     cfgs = parser.parse_args()

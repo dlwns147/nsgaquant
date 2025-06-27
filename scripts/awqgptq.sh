@@ -2,12 +2,12 @@ DEVICES=${1}
 TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-# MODEL_PATH=/SSD/huggingface/meta-llama
-# # MODEL_NAME=Llama-2-7b-hf
-# # MODEL_NAME=Llama-2-13b-hf
+MODEL_PATH=/SSD/huggingface/meta-llama
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
-# CONFIG=config/llama.json
-# DTYPE=float16
+CONFIG=config/llama.json
+DTYPE=float16
 
 # MODEL_PATH=/SSD/huggingface/meta-llama
 # # MODEL_NAME=Llama-3.1-8B
@@ -24,10 +24,10 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # CONFIG=config/qwen2.json
 # DTYPE=bfloat16
 
-MODEL_PATH=/SSD/huggingface/mistralai
-MODEL_NAME=Mistral-7B-v0.3
-DTYPE=bfloat16
-CONFIG=config/mistral.json
+# MODEL_PATH=/SSD/huggingface/mistralai
+# MODEL_NAME=Mistral-7B-v0.3
+# DTYPE=bfloat16
+# CONFIG=config/mistral.json
 
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
@@ -50,11 +50,15 @@ METHOD=awq
 COMP_OBJ="bits"
 COMP_OBJ_TEXT=bits
 
-
-TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
+# TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
+# TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
+# TASKS="mmlu"
 # BATCH_SIZE=16
 # BATCH_SIZE=32
-BATCH_SIZE=64
+# BATCH_SIZE=64
+# NUM_FEWSHOT=0
+
+TASKS="gsm8k"
 
 N=1
 DATASETS="wikitext2 c4"
@@ -84,7 +88,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --datasets ${DATASETS} \
 --method ${METHOD} \
 --group_size ${GROUP_SIZE} \
-# --zeroshot \
-# --tasks ${TASKS} \
-# --zeroshot_batch_size ${BATCH_SIZE}
+--zeroshot \
+--tasks ${TASKS} \
+# --zeroshot_batch_size ${BATCH_SIZE} \
+# --num_fewshot ${NUM_FEWSHOT}
 # --clip_asym \

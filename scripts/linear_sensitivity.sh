@@ -1,16 +1,16 @@
 DEVICES=${1}
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
-# MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-# # MODEL_NAME=Llama-2-13b-hf
-# # MODEL_NAME=Llama-2-70b-hf
-# DTYPE=float16
-# CONFIG=config/llama.json
+MODEL_PATH=/SSD/huggingface/meta-llama
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-70b-hf
+DTYPE=float16
+CONFIG=config/llama.json
 
 # MODEL_PATH=/SSD/huggingface/meta-llama
 # MODEL_NAME=Llama-3.1-8B
-# MODEL_NAME=Llama-3.1-70B
+# # MODEL_NAME=Llama-3.1-70B
 # # MODEL_NAME=Llama-3.1-8B-Instruct
 # DTYPE=bfloat16
 # CONFIG=config/llama.json
@@ -23,12 +23,13 @@ PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 # DTYPE=bfloat16
 # CONFIG=config/qwen2.json
 
-MODEL_PATH=/SSD/huggingface/mistralai
-MODEL_NAME=Mistral-7B-v0.3
-DTYPE=bfloat16
-CONFIG=config/mistral.json
+# MODEL_PATH=/SSD/huggingface/mistralai
+# MODEL_NAME=Mistral-7B-v0.3
+# DTYPE=bfloat16
+# CONFIG=config/mistral.json
 
-N_SAMPLE=128
+N_SAMPLE=32
+# N_SAMPLE=128
 
 METHOD="hqq"
 METHOD_TEXT="hqq"
@@ -49,16 +50,15 @@ QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 # LOSS_FUNC=cross_entropy
 LOSS_FUNC=jsd
 
-LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
-PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
+# DATASET=wikitext2
+DATASET=c4
+
+LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_${LOSS_FUNC}_${DATASET}_${N_SAMPLE}sample.csv
+PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_${LOSS_FUNC}_${DATASET}_${N_SAMPLE}sample.csv
 # LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_loss_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz_${LOSS_FUNC}.csv
 # PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_ppl_${Q_BITS_TEXT}_${AXIS}axis_${GROUP_SIZE}gs_false_qs_false_qz_${LOSS_FUNC}.csv
 # LOSS_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_${DATASET}_loss_${Q_BITS_TEXT}_64_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
 # PPL_CSV_FILE=csv/sensitivity/${MODEL_NAME}_${METHOD}_${DATASET}_ppl_${Q_BITS_TEXT}_64_${GROUP_SIZE}gs_${LOSS_FUNC}.csv
-
-
-DATASET=wikitext2
-# DATASET=c4
 
 
 N_PROC=1

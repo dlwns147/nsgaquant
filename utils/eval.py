@@ -505,7 +505,7 @@ def measure_latency(model, generation, device, batch_size=64, prompt_length=64, 
 
 torch.no_grad()
 def eval_zeroshot(model, tokenizer, task_list=['piqa','winogrande','hellaswag','arc_challenge','arc_easy'], 
-        num_fewshot=0, batch_size=64):
+        num_fewshot=None, batch_size=None):
     
     import os
     from lm_eval.models.huggingface import HFLM
@@ -531,7 +531,7 @@ def eval_zeroshot(model, tokenizer, task_list=['piqa','winogrande','hellaswag','
     #     ]  # we don't want errors if a wildcard ("*") task name was used
     
     # model.tie_weights = lambda: None
-    hflm = HFLM(pretrained=model, tokenizer=tokenizer, batch_size=batch_size)# , batch_size='auto')
+    hflm = HFLM(pretrained=model, tokenizer=tokenizer, batch_size=batch_size if batch_size is not None else 1)# , batch_size='auto')
     
     results = evaluator.simple_evaluate(
         model=hflm,
