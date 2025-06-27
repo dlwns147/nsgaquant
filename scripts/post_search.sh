@@ -42,7 +42,8 @@ COMP_OBJ_TEXT=bits
 TARGET_COMP_OBJ_VAL=3.25
 # TARGET_COMP_OBJ_VAL=2.0
 
-TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
+# TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
+TASKS="mmlu"
 ZEROSHOT_BATCH_SIZE=16
 
 TARGET_COMP_OBJ=bits

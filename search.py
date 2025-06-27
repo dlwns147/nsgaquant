@@ -100,7 +100,7 @@ class Search:
                 linear_list, sensitivity = list(csv.reader(f))
                 sensitivity = list(map(float, sensitivity))
             sensitivity = np.nan_to_num(sensitivity, nan=float('inf'))
-            pass_linear_list = [linear_list[i] for i in np.where(sensitivity > np.median(sensitivity) * 2)[0]]
+            pass_linear_list = [linear_list[i] for i in np.where(sensitivity > np.median(sensitivity) *args.sensitivity_threshold)[0]]
             self.args['pass_linear_list'] = pass_linear_list
             # # print(f'upper_bound: {np.median(sensitivity) * 2}')
             # print(f'pass_linear_list: {pass_linear_list}')
@@ -502,6 +502,7 @@ class SubsetProblem(Problem):
         f = np.full((x.shape[0], 1), np.nan)
         g = np.full((x.shape[0], 1), np.nan)
 
+        # import pdb; pdb.set_trace()
         for i, _x in enumerate(x):
             # append selected candidates to archive then sort
             tmp = np.sort(np.concatenate((self.archive, self.candidates[_x])))
@@ -613,8 +614,8 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--linear_sensitivity_file', type=str, default='',
                         help='')
-    # parser.add_argument('--iqr_threshold', type=float, default=10, 
-    #                     help='')
+    parser.add_argument('--sensitivity_threshold', type=float, default=2, 
+                        help='')
     
     cfgs = parser.parse_args()
     main(cfgs)
