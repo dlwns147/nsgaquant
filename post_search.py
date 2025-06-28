@@ -234,7 +234,7 @@ def main(args):
             # model.use_cache = False
             model.config.use_cache = False
             
-            results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), batch_size=args.zeroshot_batch_size, task_list=args.tasks)
+            results = eval_zeroshot(model, tokenizer=get_tokenizer(model_id), task_list=args.tasks, num_fewshot=args.num_fewshot, batch_size=args.zeroshot_batch_size)
             acc_norm = [task_result['acc_norm,none'] if 'acc_norm,none' in task_result else task_result['acc,none'] if 'acc,none' in task_result else 0 for task_result in results.values()]
             acc = [task_result['acc,none'] if 'acc,none' in task_result else 0 for task_result in results.values()]
             em_strict = [task_result['exact_match,strict-match'] if 'exact_match,strict-match' in task_result else 0 for task_result in results.values()]
