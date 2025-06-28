@@ -58,7 +58,7 @@ COMP_OBJ_TEXT=bits
 # BATCH_SIZE=64
 # NUM_FEWSHOT=0
 
-TASKS="gsm8k"
+TASKS=gsm8k
 
 N=1
 DATASETS="wikitext2 c4"
