@@ -93,6 +93,7 @@ class Search:
         # self.args['pass_layer_list'] = pass_layer_list        
         
         self.linear_sensitivity_file = kwargs.pop('linear_sensitivity_file' , '')
+        self.sensitivity_threshold = kwargs.pop('sensitivity_threshold', 2)
         # self.iqr_threshold = kwargs.pop('iqr_threshold', 10)
         pass_linear_list = []
         if self.linear_sensitivity_file:
@@ -100,7 +101,7 @@ class Search:
                 linear_list, sensitivity = list(csv.reader(f))
                 sensitivity = list(map(float, sensitivity))
             sensitivity = np.nan_to_num(sensitivity, nan=float('inf'))
-            pass_linear_list = [linear_list[i] for i in np.where(sensitivity > np.median(sensitivity) *args.sensitivity_threshold)[0]]
+            pass_linear_list = [linear_list[i] for i in np.where(sensitivity > np.median(sensitivity) * self.sensitivity_threshold)[0]]
             self.args['pass_linear_list'] = pass_linear_list
             # # print(f'upper_bound: {np.median(sensitivity) * 2}')
             # print(f'pass_linear_list: {pass_linear_list}')
