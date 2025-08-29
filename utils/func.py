@@ -63,8 +63,8 @@ def compute_bits(arch, config, group_size=-1):
         for blk, bit in enumerate(bits):
             for linear in linear_group.split(','):
                 out_dim, in_dim = config['linear_shape'][linear]
-                group_size = in_dim if group_size == -1 else group_size
-                bit += 32 / group_size if bit < 16 else 0
+                c_group_size = in_dim if group_size == -1 else group_size
+                bit += 32 / c_group_size if bit < 16 else 0
                 memory_usage += int(out_dim) * int(in_dim) * bit * (arch['layer'][config['hierarchy'][linear]][blk] if 'layer' in arch else 1)
                 
     return memory_usage / config['model_numel']
