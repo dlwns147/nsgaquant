@@ -204,14 +204,14 @@ def main(args):
         # arch['linear'] = {linear: [4] * config['n_block'] for linear in config['linear']}
         accelerator.print(arch)
         
-        linear_bits = np.concatenate(list(arch['linear'].values()))
-        do_qeft = ((linear_bits - linear_bits.astype(int)).sum() != 0)
-        print(f'do_qeft : {do_qeft}, awq_gptq_qeft : {awq_gptq_qeft}')
-        if awq_gptq_qeft:
-            method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else 'qeft' if 'qeft' in args.method else None
-            model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_qeft, outlier_path=args.outlier_path)
-        else:
-            model = evaluator.sample(arch)
+        # linear_bits = np.concatenate(list(arch['linear'].values()))
+        # do_qeft = ((linear_bits - linear_bits.astype(int)).sum() != 0)
+        # print(f'do_qeft : {do_qeft}, awq_gptq_qeft : {awq_gptq_qeft}')
+        # if awq_gptq_qeft:
+        #     method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else 'qeft' if 'qeft' in args.method else None
+        #     model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_qeft, outlier_path=args.outlier_path)
+        # else:
+        model = evaluator.sample(arch)
         metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
         latency = measure_latency(model, generation=True, device=model.device) if args.latency else 0
         print(f'Selected arch[{idx}] {args.comp_obj}: {pf[idx, 1:]}, ppl: {[p for p in metric.values()]}, metric: {pf[idx, 0]:.4f} complexity: {complexity}, latency: {latency}')
