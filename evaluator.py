@@ -12,6 +12,7 @@ from utils.func import *
 from utils.data import get_loader
 from utils.eval import eval_metric, get_logits
 from utils.dispatch import simple_dispatch_model
+from quant.model import get_quantized_model
 
 from model.skip_llama import block_replace
 
@@ -44,8 +45,10 @@ class LlamaEvaluator:
                  **kwargs):
         
         # model_id = os.path.join(model_path, model_name)
+        self.model_id = model_id
         self.method = method
         self.model = None
+        self.device_map = device_map
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
 
         # with accelerator.main_process_first():
@@ -54,6 +57,7 @@ class LlamaEvaluator:
 
         self.loss_func = loss_func
         self.outlier = dict()
+        self.dense_logits = {dataset: None for dataset in self.train_loaders.keys()}
         if loss_func == 'jsd' or outlier is not None:
             # model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', device_map=device_map, low_cpu_mem_usage=True)
             model = get_hfmodel(model_id, dtype=dtype, device_map=device_map)
@@ -71,9 +75,6 @@ class LlamaEvaluator:
                             
             del model; gc.collect(); torch.cuda.empty_cache()
 
-        if loss_func != 'jsd':
-            self.dense_logits = {dataset: None for dataset in self.train_loaders.keys()}
-
         self.quant_models = list()
         if 'hqq' in method:
             if quant_model_paths and quant_model_bits:
@@ -83,7 +84,7 @@ class LlamaEvaluator:
                 self.quant_models = [load_hqq_model(p, device_map) for p in quant_model_paths]
             self.quant_model_bits = quant_model_bits
 
-        elif 'awq' in method or 'gptq' in method or 'owq' in method:
+        elif 'awq' in method or 'gptq' in method or 'qeft' in method:
             pass
 
         else:
@@ -114,7 +115,7 @@ class LlamaEvaluator:
         # from time import time
         # sample_start = time()
         # self.validate_arch(arch)
-        if 'hqq' in self.method or 'awq' in self.method or 'gptq' in self.method or 'owq' in self.method:
+        if 'hqq' in self.method:
             for linear_group, linear_group_bits in arch['linear'].items():
                 for blk_idx, bits in enumerate(linear_group_bits):
                     flag = False
@@ -140,6 +141,15 @@ class LlamaEvaluator:
                     # if inference:
                     #     convert_model_to_ft(self.model)
                     #     replace_generate_functions()
+        elif 'awq' in self.method or 'gptq' in self.method or 'qeft' in self.method:
+            if hasattr(self, 'model'):
+                del self.model
+                clean_up()
+            method = 'awq' if 'awq' in self.method else 'gptq' if 'gptq' in self.method else 'qeft' if 'qeft' in self.method else None
+            # model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_qeft, outlier_path=args.outlier_path)
+            self.model = get_quantized_model(method=method, arch=arch, model_name=self.model_id, device_map=self.device_map, group_size=self.group_size, config=self.config, prune='layer_prune' in self.method, do_owq=method=='qeft', outlier_path=self.outlier)
+            self.model.eval()
+            self.model.config.use_cache = False
 
         # if 'layer_prune' in self.method:
         if 'layer' in arch:
@@ -190,24 +200,23 @@ class LlamaEvaluator:
             for linear_group in config['linear']:
                 for linear in linear_group.split(','):
                     delsubattr(blk, linear)
-        gc.collect()
-        torch.cuda.empty_cache()
+        clean_up()
 
-    def eval_woo(self, accelerator, arch, model, metric, loss_func='cross_entropy'):
-        # if metric == 'latency':
-        #     measure_latency(model=self.sample(arch))
-        if metric == 'ppl':
-            loaders = self.test_loaders
-        elif metric == 'loss':
-            loaders = self.train_loaders
-        else:
-            raise NotImplementedError(f"metric should be 'ppl' or 'loss', not {metric}")
-        metric_list = dict()
-        for dataset, loader in loaders.items():
-            metric_list[dataset] = eval_metric(model=model, accelerator=accelerator, metric=metric, loader=loader, seqlen=self.seqlen, loss_func=loss_func, dense_logits_list=self.dense_logits[dataset])
-        complexity = get_net_info(arch, self.config, self.latency_table)
-        torch.cuda.empty_cache()
-        return metric_list, complexity
+    # def eval_woo(self, accelerator, arch, model, metric, loss_func='cross_entropy'):
+    #     # if metric == 'latency':
+    #     #     measure_latency(model=self.sample(arch))
+    #     if metric == 'ppl':
+    #         loaders = self.test_loaders
+    #     elif metric == 'loss':
+    #         loaders = self.train_loaders
+    #     else:
+    #         raise NotImplementedError(f"metric should be 'ppl' or 'loss', not {metric}")
+    #     metric_list = dict()
+    #     for dataset, loader in loaders.items():
+    #         metric_list[dataset] = eval_metric(model=model, accelerator=accelerator, metric=metric, loader=loader, seqlen=self.seqlen, loss_func=loss_func, dense_logits_list=self.dense_logits[dataset])
+    #     complexity = get_net_info(arch, self.config, self.latency_table)
+    #     torch.cuda.empty_cache()
+    #     return metric_list, complexity
 
 # def measure_latency(args):
 #     print(args)

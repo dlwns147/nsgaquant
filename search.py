@@ -271,23 +271,39 @@ class Search:
                                     'winner': metric_predictor.winner if self.predictor == 'as' else metric_predictor.name,
                                     'rmse': rmse, 'rho': rho, 'tau': tau, 'total_time': iter_time}, 'iteration' : it}, handle)
                     if self.debug:
-                        from pymoo.visualization.scatter import Scatter
-                        # plot
-                        plot = Scatter(legend={'loc': 'lower right'})
-                        F = np.full((len(archive), 2), np.nan)
-                        F[:, 0] = np.array([x[2] for x in archive])  # second obj. (complexity)
-                        F[:, 1] = np.array([x[1] for x in archive])  # performance
-                        plot.add(F, s=5, facecolors='none', edgecolors='b', label='archive')
-                        F = np.full((len(candidates), 2), np.nan)
-                        F[:, 0] = np.array(complexity)
-                        # F[:, 1] = 100 - np.array(c_metric)
-                        F[:, 1] = np.array(c_metric)
-                        plot.add(F, s=10, color='r', label='candidates evaluated')
-                        F = np.full((len(candidates), 2), np.nan)
-                        F[:, 0] = np.array(complexity)
-                        F[:, 1] = c_metric_pred[:, 0]
-                        plot.add(F, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
-                        plot.save(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
+                        # from pymoo.visualization.scatter import Scatter
+                        # # plot
+                        # plot = Scatter(legend={'loc': 'lower right'})
+                        # F = np.full((len(archive), 2), np.nan)
+                        # F[:, 0] = np.array([x[2] for x in archive])  # second obj. (complexity)
+                        # F[:, 1] = np.array([x[1] for x in archive])  # performance
+                        # plot.add(F, s=5, facecolors='none', edgecolors='b', label='archive')
+                        # F = np.full((len(candidates), 2), np.nan)
+                        # F[:, 0] = np.array(complexity)
+                        # # F[:, 1] = 100 - np.array(c_metric)
+                        # F[:, 1] = np.array(c_metric)
+                        # plot.add(F, s=10, color='r', label='candidates evaluated')
+                        # F = np.full((len(candidates), 2), np.nan)
+                        # F[:, 0] = np.array(complexity)
+                        # F[:, 1] = c_metric_pred[:, 0]
+                        # plot.add(F, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
+                        # plot.save(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
+                        import matplotlib.pyplot as plt
+                        cand_comp_np = np.array(complexity)
+                        fig, axe = plt.subplots(nrows=1, ncols=1, figsize=(5, 5))
+                        comp = np.array([x[2] for x in archive])  # comp obj
+                        perf = np.array([x[1] for x in archive])  # performance
+                        axe.scatter(comp, perf, s=5, facecolors='none', edgecolors='b', label='archive')
+                        cand_perf = np.array(c_metric)
+                        axe.scatter(cand_comp_np, cand_perf, s=10, color='r', label='candidates evaluated')
+                        cand_pred_perf = c_metric_pred[:, 0]
+                        axe.scatter(cand_comp_np, cand_pred_perf, s=10, facecolors='none', edgecolors='g', label='candidates predicted')
+                        axe.legend()
+                        axe.grid(c='0.8') 
+                        axe.set_xlabel('f1')
+                        axe.set_ylabel('f2')
+                        fig.tight_layout() 
+                        plt.savefig(os.path.join(self.save_path, 'iter_{}.png'.format(it)))
             accelerator.wait_for_everyone()
 
         if accelerator.is_main_process:

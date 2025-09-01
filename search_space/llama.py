@@ -136,11 +136,17 @@ class LlamaQuantSearchSpace:
         # sample one arch with least (lb of hyperparameters) and most complexity (ub of hyperparameters)
         data = []
         # if math.isclose(self.sec_obj_range[0], min(self.quant_model_bits)):
-        data.append(self.sample(q=[min(self.q_proj_option)], k=[min(self.k_proj_option)], v=[min(self.v_proj_option)], o=[min(self.o_proj_option)], down=[min(self.down_proj_option)], up=[min(self.up_proj_option)], gate=[min(self.gate_proj_option)])[0])
-        n_doe -= 1
-        # if math.isclose(self.sec_obj_range[-1], max(self.quant_model_bits)):
-        data.append(self.sample(q=[max(self.q_proj_option)], k=[max(self.k_proj_option)], v=[max(self.v_proj_option)], o=[max(self.o_proj_option)], down=[max(self.down_proj_option)], up=[max(self.up_proj_option)], gate=[max(self.gate_proj_option)])[0])
-        n_doe -= 1
+        # data.append(self.sample(q=[min(self.q_proj_option)], k=[min(self.k_proj_option)], v=[min(self.v_proj_option)], o=[min(self.o_proj_option)], down=[min(self.down_proj_option)], up=[min(self.up_proj_option)], gate=[min(self.gate_proj_option)])[0])
+        # n_doe -= 1
+        # # if math.isclose(self.sec_obj_range[-1], max(self.quant_model_bits)):
+        # data.append(self.sample(q=[max(self.q_proj_option)], k=[max(self.k_proj_option)], v=[max(self.v_proj_option)], o=[max(self.o_proj_option)], down=[max(self.down_proj_option)], up=[max(self.up_proj_option)], gate=[max(self.gate_proj_option)])[0])
+        # n_doe -= 1
+        # for bits in self.q_proj_option:
+        #     data.append(self.sample(q=[bits], k=[bits], v=[bits], o=[bits], down=[bits], up=[bits], gate=[bits])[0])
+        #     n_doe -= 1
+        for q, k, v, o, gate, up, down in zip(self.q_proj_option, self.k_proj_option, self.v_proj_option, self.o_proj_option, self.gate_proj_option, self.up_proj_option, self.down_proj_option):
+            data.append(self.sample(q=[q], k=[k], v=[v], o=[o], gate=[gate], up=[up], down=[down])[0])
+            n_doe -= 1
         data.extend(self.sample(n_samples=n_doe, pool=pool))
         return data
 
@@ -342,12 +348,18 @@ class LlamaQEFTSearchSpace:
     def initialize(self, n_doe, pool=[]):
         # sample one arch with least (lb of hyperparameters) and most complexity (ub of hyperparameters)
         data = []
-        # if math.isclose(self.sec_obj_range[0], min(self.quant_model_bits)):
-        data.append(self.sample(q=[min(self.q_proj_option)], k=[min(self.k_proj_option)], v=[min(self.v_proj_option)], o=[min(self.o_proj_option)], down=[min(self.down_proj_option)], up=[min(self.up_proj_option)], gate=[min(self.gate_proj_option)])[0])
-        n_doe -= 1
-        # if math.isclose(self.sec_obj_range[-1], max(self.quant_model_bits)):
-        data.append(self.sample(q=[max(self.q_proj_option)], k=[max(self.k_proj_option)], v=[max(self.v_proj_option)], o=[max(self.o_proj_option)], down=[max(self.down_proj_option)], up=[max(self.up_proj_option)], gate=[max(self.gate_proj_option)])[0])
-        n_doe -= 1
+        # # if math.isclose(self.sec_obj_range[0], min(self.quant_model_bits)):
+        # data.append(self.sample(q=[min(self.q_proj_option)], k=[min(self.k_proj_option)], v=[min(self.v_proj_option)], o=[min(self.o_proj_option)], down=[min(self.down_proj_option)], up=[min(self.up_proj_option)], gate=[min(self.gate_proj_option)])[0])
+        # n_doe -= 1
+        # # if math.isclose(self.sec_obj_range[-1], max(self.quant_model_bits)):
+        # data.append(self.sample(q=[max(self.q_proj_option)], k=[max(self.k_proj_option)], v=[max(self.v_proj_option)], o=[max(self.o_proj_option)], down=[max(self.down_proj_option)], up=[max(self.up_proj_option)], gate=[max(self.gate_proj_option)])[0])
+        # n_doe -= 1
+        # for bits in self.q_proj_option:
+        #     data.append(self.sample(q=[bits], k=[bits], v=[bits], o=[bits], down=[bits], up=[bits], gate=[bits])[0])
+        #     n_doe -= 1
+        for q, k, v, o, gate, up, down in zip(self.q_proj_option, self.k_proj_option, self.v_proj_option, self.o_proj_option, self.gate_proj_option, self.up_proj_option, self.down_proj_option):
+            data.append(self.sample(q=[q], k=[k], v=[v], o=[o], gate=[gate], up=[up], down=[down])[0])
+            n_doe -= 1   
         data.extend(self.sample(n_samples=n_doe, pool=pool))
         return data
 
