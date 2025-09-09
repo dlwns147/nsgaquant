@@ -42,9 +42,15 @@ COMP_OBJ_TEXT=bits
 TARGET_COMP_OBJ_VAL=3.25
 # TARGET_COMP_OBJ_VAL=2.0
 
-# TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
-TASKS="mmlu"
-ZEROSHOT_BATCH_SIZE=16
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy boolq openbookqa social_iqa" # lambada_openai OSError: Repetition level histogram size mismatch
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy boolq" # lambada_openai OSError: Repetition level histogram size mismatch
+NUM_FEWSHOT=0
+ZEROSHOT_BATCH_SIZE=8
+
+# TASKS="mmlu"
+# NUM_FEWSHOT=5
+# ZEROSHOT_BATCH_SIZE=4
+
 
 TARGET_COMP_OBJ=bits
 COMP_OBJ_THRESHOLD=0.005

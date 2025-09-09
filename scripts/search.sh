@@ -23,9 +23,9 @@ CONFIG=config/llama.json
 DTYPE=float16
 
 # MODEL_PATH=/SSD/huggingface/meta-llama
-# # MODEL_NAME=${LLAMA_31_8B}
+# MODEL_NAME=${LLAMA_31_8B}
 # # MODEL_NAME=${LLAMA_31_70B}
-# MODEL_NAME=${LLAMA_31_8B_INSTRUCT}
+# # MODEL_NAME=${LLAMA_31_8B_INSTRUCT}
 # CONFIG=config/llama.json
 # DTYPE=bfloat16
 
@@ -49,7 +49,7 @@ Q_BITS_TEXT=234
 AXIS=1
 GROUP_SIZE=128
 
-LINEAR_SENSITIVITY_FILE=/NAS/SJ/nsgaquant/csv/sensitivity/${MODEL_NAME}_hqq_loss_24_1axis_128gs_jsd.csv
+LINEAR_SENSITIVITY_FILE=/NAS/SJ/nsgaquant/csv/sensitivity/${MODEL_NAME}_hqq_loss_24_1axis_128gs_jsd_wikitext2_128sample.csv
 # IQR_THRESHOLD=10
 
 # PASS_LAYER_LIST="0.self_attn 0.mlp 1.self_attn 1.mlp 31.mlp"
@@ -83,9 +83,9 @@ DATASET=wikitext2
 
 # N_SAMPLE=8
 # N_SAMPLE=16
-N_SAMPLE=32
+# N_SAMPLE=32
 # N_SAMPLE=64
-# N_SAMPLE=128
+N_SAMPLE=128
 
 OBJ=bits
 SEC_OBJ_RANGE_SMALL=${Q_BITS:0:1}

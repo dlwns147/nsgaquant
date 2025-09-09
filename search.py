@@ -410,7 +410,7 @@ class Search:
 
         pop = res.pop[not_duplicate]
         if sum(not_duplicate) >= K:
-            indices = self._subset_selection(pop, F[front, 1:], K, self.subset_pop_size)
+            indices = self._subset_selection(pop, F[front, 1], K, self.subset_pop_size)
             pop = pop[indices]
 
         # the following lines corresponding to Algo 1 line 11 / Fig. 3(c)-(d) in the paper
