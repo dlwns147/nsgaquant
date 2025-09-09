@@ -12,8 +12,8 @@ Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
 # METHOD="hqq layer_prune"
-METHOD=hqq
-# METHOD=awq
+# METHOD=hqq
+METHOD=awq
 # METHOD=gptq
 # METHOD=qeft
 # METHOD="awq layer_prune"
@@ -42,7 +42,7 @@ COMP_OBJ_TEXT=bits
 TARGET_COMP_OBJ_VAL=3.25
 # TARGET_COMP_OBJ_VAL=2.0
 
-TASKS="piqa winogrande hellaswag arc_challenge arc_easy boolq openbookqa social_iqa" # lambada_openai OSError: Repetition level histogram size mismatch
+# TASKS="piqa winogrande hellaswag arc_challenge arc_easy boolq openbookqa social_iqa" # lambada_openai OSError: Repetition level histogram size mismatch
 TASKS="piqa winogrande hellaswag arc_challenge arc_easy boolq" # lambada_openai OSError: Repetition level histogram size mismatch
 NUM_FEWSHOT=0
 ZEROSHOT_BATCH_SIZE=8
@@ -102,6 +102,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --datasets ${DATASETS} \
 --method ${METHOD} \
 --prefer ${PREFER} \
+--clip_asym \
 --zeroshot \
 --tasks ${TASKS} \
 --zeroshot_batch_size ${ZEROSHOT_BATCH_SIZE}

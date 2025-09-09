@@ -42,6 +42,7 @@ class LlamaEvaluator:
                  loss_func='cross_entropy',
                  latency_table=None,
                  inference=False,
+                 clip_asym=True,
                  **kwargs):
         
         # model_id = os.path.join(model_path, model_name)
@@ -73,7 +74,8 @@ class LlamaEvaluator:
                             if key in outlier:
                                 self.outlier[f'{blk_idx}.{linear}'] = [outlier[key], get_fp16_channel(getsubattr(getblock(model, config)[blk_idx], linear), outlier[key])]
                             
-            del model; gc.collect(); torch.cuda.empty_cache()
+            del model
+            clean_up()
 
         self.quant_models = list()
         if 'hqq' in method:
@@ -99,6 +101,7 @@ class LlamaEvaluator:
         self.latency_table = latency_table
         self.seqlen = seqlen
         self.group_size = group_size
+        self.clip_asym = clip_asym
         
         if self.model is not None:
             self.model.eval()
@@ -147,7 +150,7 @@ class LlamaEvaluator:
                 clean_up()
             method = 'awq' if 'awq' in self.method else 'gptq' if 'gptq' in self.method else 'qeft' if 'qeft' in self.method else None
             # model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_qeft, outlier_path=args.outlier_path)
-            self.model = get_quantized_model(method=method, arch=arch, model_name=self.model_id, device_map=self.device_map, group_size=self.group_size, config=self.config, prune='layer_prune' in self.method, do_owq=method=='qeft', outlier_path=self.outlier)
+            self.model = get_quantized_model(method=method, arch=arch, model_name=self.model_id, device_map=self.device_map, group_size=self.group_size, config=self.config, prune='layer_prune' in self.method, do_owq=method=='qeft', outlier_path=self.outlier, clip_asym=self.clip_asym)
             self.model.eval()
             self.model.config.use_cache = False
 

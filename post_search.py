@@ -194,7 +194,8 @@ def main(args):
         seqlen=args.seqlen,
         n_sample=args.n_sample,
         datasets=args.datasets,
-        latency_table=latency_table
+        latency_table=latency_table,
+        clip_asym=args.clip_asym
     )
 
     for idx in tqdm(I):
@@ -386,6 +387,7 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--num_fewshot', type=int, default=None,
                         help='')
-
+    parser.add_argument('--clip_asym', action='store_true', help='')
+    
     cfgs = parser.parse_args()
     main(cfgs)
