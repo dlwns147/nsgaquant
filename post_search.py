@@ -14,7 +14,7 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from utils.func import init_accelerator, get_net_info, clean_up, set_seed
+from utils.func import init_accelerator, get_net_info, clean_up, set_seed, process_dtype
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
 from quant.model import get_quantized_model
@@ -78,6 +78,7 @@ def main(args):
             latency_table = json.load(f)
     
     accelerator, device_map = init_accelerator(args.gpu_id, config)
+    dtype = process_dtype(args.dtype)
 
     with open(args.expr, 'r') as f:
         result_json = json.load(open(args.expr))
@@ -184,6 +185,7 @@ def main(args):
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
+        dtype=dtype,
         device_map=device_map,
         model_id=model_id,
         method=args.method,
@@ -319,6 +321,8 @@ if __name__ == '__main__':
                         help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
+    parser.add_argument('--dtype', type=str, default='auto', choices=['float16', 'float', 'fp16', 'bfloat16', 'bfloat', 'bf16', 'auto'],
+                        help='')
     parser.add_argument('--config', type=str, default='config/llama.json',
                         help='')
     parser.add_argument('--comp_obj', type=str, nargs='+', default=['bits'], 

@@ -20,8 +20,8 @@ import transformers
 from .base import BASE, get_owq_calib_dataset
     
 class QEFT(BASE):
-    def __init__(self, model_name, config, arch, device_map, group_size=128, dev='cuda', prune=False, do_owq=False, outlier_path=None, **kwargs):
-        super().__init__(model_name, config, arch, device_map=device_map, group_size=group_size, dev=dev, prune=prune, do_owq=do_owq, outlier_path=outlier_path)
+    def __init__(self, model_name, config, arch, device_map, dtype='auto', group_size=128, dev='cuda', prune=False, do_owq=False, outlier_path=None, **kwargs):
+        super().__init__(model_name, config, arch, device_map=device_map, dtype=dtype, group_size=group_size, dev=dev, prune=prune, do_owq=do_owq, outlier_path=outlier_path)
         self.method = 'qeft'
 
     @torch.no_grad()

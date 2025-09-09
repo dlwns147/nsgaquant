@@ -287,3 +287,13 @@ def load_outlier(model, outlier, config):
             if key in outlier:
                 outlier[f'{blk_idx}.{linear}'] = [outlier[key], get_fp16_channel(getsubattr(getblock(model, config)[blk_idx], linear), outlier[key])]
     return outlier
+
+def process_dtype(dtype):
+    if dtype in ['float16', 'float', 'fp16']:
+        return torch.float16
+    elif dtype in ['bfloat16', 'bfloat', 'bf16']:
+        return torch.bfloat16
+    elif dtype == 'auto':
+        return 'auto'
+    else:
+        raise NotImplementedError(dtype)

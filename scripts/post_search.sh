@@ -6,7 +6,8 @@ MODEL_PATH=/SSD/huggingface/meta-llama
 MODEL_NAME=Llama-2-7b-hf
 # MODEL_NAME=Llama-2-13b-hf
 CONFIG=config/llama.json
-DTYPE=float16
+# DTYPE=float16
+DTYPE=bfloat16
 
 Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
@@ -88,6 +89,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
+--dtype ${DTYPE} \
 --config ${CONFIG} \
 --comp_obj ${COMP_OBJ} \
 --comp_obj_min ${MIN_COMP_OBJ[*]} \

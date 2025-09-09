@@ -105,12 +105,13 @@ def get_owq_calib_dataset(data="c4", tokenizer=None, n_samples=128, seed=0, seql
     return trainloader
 
 class BASE:
-    def __init__(self, model_name, config, arch, device_map, dev='cuda', group_size=128, prune=False, do_owq=False, outlier_path=None):
+    def __init__(self, model_name, config, arch, device_map, dtype='auto', dev='cuda', group_size=128, prune=False, do_owq=False, outlier_path=None):
         self.model_name = model_name
         self.config = config
         self.dev = dev
         self.device_map = device_map
         self.arch = arch
+        self.dtype = dtype
 
         self.prune = prune
         self.do_owq = do_owq
@@ -121,10 +122,10 @@ class BASE:
                 self.outlier = torch.load(outlier_path)
             else:
                 self.outlier = outlier_path
-        self.load_model(device_map='cpu')
+        self.load_model(device_map='cpu', dtype=dtype)
         print(f'groupsize : {group_size}')
         
-    def load_model(self, device_map='auto', use_cache=False):
+    def load_model(self, device_map='auto', dtype='auto', use_cache=False):
         if hasattr(self, 'model'):
             del self.model
             clean_up()
@@ -132,12 +133,12 @@ class BASE:
         model_config = AutoConfig.from_pretrained(self.model_name, trust_remote_code=True)
         model_config.use_cache = use_cache
         self.model = AutoModelForCausalLM.from_pretrained(self.model_name, 
-                                                torch_dtype='auto',
-                                                device_map=device_map,
-                                                low_cpu_mem_usage=True,
-                                                trust_remote_code=True, 
-                                                config=model_config,
-                                                )
+                                                        torch_dtype=dtype,
+                                                        device_map=device_map,
+                                                        low_cpu_mem_usage=True,
+                                                        trust_remote_code=True, 
+                                                        config=model_config,
+                                                        )
         self.model.eval()        
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True, use_fast=False)
         clean_up()

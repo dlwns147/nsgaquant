@@ -23,7 +23,7 @@ from pymoo.operators.mutation.pm import PolynomialMutation
 
 from search_space.llama import LlamaQuantSearchSpace # LlamaSearchSpace, LlamaLinearGroupSearchSpace
 from predictor.factory import get_predictor
-from utils.func import get_net_info, init_accelerator, set_seed
+from utils.func import get_net_info, init_accelerator, set_seed, process_dtype
 from utils.ga import MySampling, BinaryCrossover, MyMutation, IntegerFromFloatMutation, IntMutation
 
 class Search:
@@ -577,6 +577,8 @@ if __name__ == '__main__':
     parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
                         help='')
     parser.add_argument('--group_size', type=int, default=-1,
+                        help='')
+    parser.add_argument('--dtype', type=str, default='auto', choices=['float16', 'float', 'fp16', 'bfloat16', 'bfloat', 'bf16', 'auto'],
                         help='')
     
     parser.add_argument('--dataset', type=str, default='wikitext2',

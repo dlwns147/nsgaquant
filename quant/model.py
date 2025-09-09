@@ -11,8 +11,8 @@ METHOD = {
     'qeft': QEFT
 }
 
-def get_quantized_model(method, arch, model_name, device_map, group_size=128, config=None, dev='cuda', prune=False, do_owq=False, outlier_path=None, **kwargs):
-    method = METHOD[method](model_name=model_name, config=config, device_map=device_map, group_size=group_size, dev=dev, arch=arch, prune=prune, do_owq=do_owq, outlier_path=outlier_path, **kwargs)
+def get_quantized_model(method, arch, model_name, device_map, dtype='auto', group_size=128, config=None, dev='cuda', prune=False, do_owq=False, outlier_path=None, **kwargs):
+    method = METHOD[method](model_name=model_name, config=config, device_map=device_map, dtype=dtype, group_size=group_size, dev=dev, arch=arch, prune=prune, do_owq=do_owq, outlier_path=outlier_path, **kwargs)
 
     if prune:
         print('Pruning the model')

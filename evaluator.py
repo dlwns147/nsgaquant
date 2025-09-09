@@ -50,6 +50,7 @@ class LlamaEvaluator:
         self.method = method
         self.model = None
         self.device_map = device_map
+        self.dtype = dtype
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
 
         # with accelerator.main_process_first():
@@ -150,7 +151,7 @@ class LlamaEvaluator:
                 clean_up()
             method = 'awq' if 'awq' in self.method else 'gptq' if 'gptq' in self.method else 'qeft' if 'qeft' in self.method else None
             # model = get_quantized_model(method, arch, model_id, device_map, group_size=args.group_size, config=config, prune='layer_prune' in args.method, do_owq=do_qeft, outlier_path=args.outlier_path)
-            self.model = get_quantized_model(method=method, arch=arch, model_name=self.model_id, device_map=self.device_map, group_size=self.group_size, config=self.config, prune='layer_prune' in self.method, do_owq=method=='qeft', outlier_path=self.outlier, clip_asym=self.clip_asym)
+            self.model = get_quantized_model(method=method, arch=arch, model_name=self.model_id, device_map=self.device_map, group_size=self.group_size, config=self.config, prune='layer_prune' in self.method, do_owq=method=='qeft', outlier_path=self.outlier, clip_asym=self.clip_asym, dtype=self.dtype)
             self.model.eval()
             self.model.config.use_cache = False
 
