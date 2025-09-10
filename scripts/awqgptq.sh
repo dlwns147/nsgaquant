@@ -42,43 +42,54 @@ do
 done
 QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 
-
-# METHOD=hqq
-METHOD=awq
-# METHOD=gptq
-
 COMP_OBJ="bits"
 COMP_OBJ_TEXT=bits
 
 # TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq"
 # TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
-# TASKS="mmlu"
-# BATCH_SIZE=16
 # BATCH_SIZE=32
-# BATCH_SIZE=64
 # NUM_FEWSHOT=0
 
-TASKS=gsm8k
+# TASKS="mmlu"
+# BATCH_SIZE=4
+# BATCH_SIZE=32
+# BATCH_SIZE=64
+# NUM_FEWSHOT=5
+
+# TASKS=gsm8k
+# BATCH_SIZE=4
+# NUM_FEWSHOT=5
 
 N=1
 DATASETS="wikitext2 c4"
 
-GROUP_SIZE=128
+# METHOD=fp16
+# BITS=16
 # GROUP_SIZE=-1
+
+# METHOD=hqq
+METHOD=awq
+# METHOD=gptq
+BITS=3
+# BITS=4
+# BITS=16
+
+# GROUP_SIZE=128
+# GROUP_SIZE=-1
+
+
 
 SAVE=save/result/${TODAY}_${MODEL_NAME}_${COMP_OBJ}_${METHOD}_${BITS}
 
 TARGET_COMP_OBJ=bits
 # TARGET_BITS_LIST=(2 3 4)
-BITS=3
-# BITS=4
-# BITS=16
-N_PROC=1
 
+N_PROC=1
 CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --num_machines=1 --main_process_port=${PORT_NUM} awqgptq.py \
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
+--dtype ${DTYPE} \
 --quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
 --config ${CONFIG} \
@@ -88,8 +99,8 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --datasets ${DATASETS} \
 --method ${METHOD} \
 --group_size ${GROUP_SIZE} \
---zeroshot \
---tasks ${TASKS} \
+# --clip_asym
+# --zeroshot \
+# --tasks ${TASKS} \
 # --zeroshot_batch_size ${BATCH_SIZE} \
 # --num_fewshot ${NUM_FEWSHOT}
-# --clip_asym \

@@ -90,7 +90,7 @@ class LlamaEvaluator:
         elif 'awq' in method or 'gptq' in method or 'qeft' in method:
             pass
 
-        else:
+        elif 'fp16' in method:
             # self.model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype='auto', low_cpu_mem_usage=True, device_map=device_map, cache_dir=cache_dir)
             self.model = get_hfmodel(model_id, dtype=dtype, device_map=device_map)
 

@@ -14,14 +14,9 @@ from evaluator import LlamaEvaluator
 from tqdm import tqdm
 import csv
 from matplotlib import pyplot as plt
-from utils.func import init_accelerator, get_net_info, clean_up
+from utils.func import init_accelerator, get_net_info, clean_up, process_dtype, get_hfmodel
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
-from quant.model import get_quantized_model
-import gc
-
-import datasets
-datasets.config.HF_DATASETS_TRUST_REMOTE_CODE = True 
 
 class HighTradeoffPoints(DecisionMaking):
 
@@ -73,22 +68,15 @@ def main(args):
         config = json.load(f)[args.model_name]
 
     accelerator, device_map = init_accelerator(args.gpu_id, config)
+    dtype = process_dtype(args.dtype)
 
     arch = dict()
     arch['linear'] = {linear: [args.bits] * config['n_block'] for linear in config['linear']}
     accelerator.print(arch)
 
-    # accelerator.print(get_net_info(arch, config, args.group_size)['bits'])
-    # exit()
+    accelerator.print(get_net_info(arch, config, args.group_size))
 
     model_id = f'{args.model_path}/{args.model_name}'
-
-    use_awq_or_gptq = 'awq' in args.method or 'gptq' in args.method
-    method = 'awq' if 'awq' in args.method else 'gptq' if 'gptq' in args.method else None
-    
-    if use_awq_or_gptq or args.bits == 16:
-        args.quant_model_bits = []
-        args.quant_model_paths = []
 
     evaluator = LlamaEvaluator(
         config=config,
@@ -103,18 +91,20 @@ def main(args):
         quant_model_bits=args.quant_model_bits,
         quant_model_paths=args.quant_model_paths,
         group_size=args.group_size,
+        dtype=dtype,
+        clip_asym=args.clip_asym
     )
     
-    linear_bits = np.concatenate(list(arch['linear'].values()))
-    do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)
-    print(f'do_owq : {do_owq}, use_awq_or_gptq : {use_awq_or_gptq}')
-    if args.bits == 16:
-        from utils.func import get_hfmodel
-        model = get_hfmodel(model_id, dtype='auto', device_map=device_map)
-    elif use_awq_or_gptq:
-        model = get_quantized_model(method, arch, model_id, device_map, config=config, group_size=args.group_size, prune='layer_prune' in args.method, do_owq=do_owq, owq_path=args.outlier_path, clip_asym=args.clip_asym)
-    else:
-        model = evaluator.sample(arch)
+    # linear_bits = np.concatenate(list(arch['linear'].values()))
+    # do_owq = ((linear_bits - linear_bits.astype(int)).sum() != 0)
+    # print(f'do_owq : {do_owq}, use_awq_or_gptq : {use_awq_or_gptq}')
+    
+    # if args.bits == 16:
+    #     model = get_hfmodel(model_id, dtype=dtype, device_map=device_map)
+    # elif use_awq_gptq_qeft:
+    #     model = get_quantized_model(method, arch, model_id, device_map, dtype=dtype, config=config, group_size=args.group_size, prune='layer_prune' in args.method, do_owq='qeft' in args.method, owq_path=args.outlier_path, clip_asym=args.clip_asym)
+    # else:
+    model = evaluator.sample(arch)
 
     # del evaluator
     # clean_up()
@@ -155,13 +145,14 @@ def main(args):
 
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_path', type=str, default='',
                         help='file path to supernet weights')
     parser.add_argument('--model_name', type=str, default='',
                         help='file path to supernet weights')
+    parser.add_argument('--dtype', type=str, default='auto', choices=['float16', 'float', 'fp16', 'bfloat16', 'bfloat', 'bf16', 'auto'],
+                        help='')
     parser.add_argument('--config', type=str, default='config/llama.json',
                         help='')
     parser.add_argument('--bits', type=int, default=2,
@@ -177,7 +168,7 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--gpu_id', type=str, default='0',
                         help='id of available gpus')
-    parser.add_argument('--method', type=str, nargs='+', default=[],
+    parser.add_argument('--method', type=str, nargs='+', default=[], choices=['fp16', 'awq', 'gptq', 'hqq', 'qeft'],
                         help='')
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
                         help='')

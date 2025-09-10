@@ -17,10 +17,6 @@ from matplotlib import pyplot as plt
 from utils.func import init_accelerator, get_net_info, clean_up, set_seed, process_dtype
 from utils.eval import measure_latency, eval_zeroshot
 from utils.data import get_tokenizer
-from quant.model import get_quantized_model
-
-import datasets
-datasets.config.HF_DATASETS_TRUST_REMOTE_CODE = True 
 
 class HighTradeoffPoints(DecisionMaking):
 
@@ -178,10 +174,6 @@ def main(args):
     model_id = f'{args.model_path}/{args.model_name}'
     awq_gptq_qeft = 'awq' in args.method or 'gptq' in args.method or 'qeft' in args.method
     
-    if awq_gptq_qeft:
-        args.quant_model_bits = []
-        args.quant_model_paths = []
-
     evaluator = LlamaEvaluator(
         config=config,
         accelerator=accelerator,
@@ -259,7 +251,7 @@ def main(args):
             #         print(f'{task} acc : {task_result["acc,none"]}')
             
         if awq_gptq_qeft:
-            del model
+            del model, evaluator.model
             clean_up()
 
     print(args)
@@ -333,7 +325,9 @@ if __name__ == '__main__':
                         help='')
     parser.add_argument('--gpu_id', type=str, default='0',
                         help='id of available gpus')
-    parser.add_argument('--method', type=str, nargs='+', default=[],
+    # parser.add_argument('--method', type=str, nargs='+', default=[],
+    #                     help='')
+    parser.add_argument('--method', type=str, nargs='+', default=[], choices=['fp16', 'awq', 'gptq', 'hqq', 'qeft'],
                         help='')
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
                         help='')
