@@ -2,8 +2,8 @@ DEVICES=${1}
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-# MODEL_NAME=Llama-2-7b-hf
-MODEL_NAME=Llama-2-13b-hf
+MODEL_NAME=Llama-2-7b-hf
+# MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
 CONFIG=config/llama.json
 DTYPE=float16
@@ -30,14 +30,14 @@ LOSS_FUNC=jsd
 METHOD="hqq"
 METHOD_TEXT="hqq"
 
-Q_BITS="3 4"
-Q_BITS_TEXT=34
+# Q_BITS="3 4"
+# Q_BITS_TEXT=34
 
 # Q_BITS="2 3"
 # Q_BITS_TEXT=23
 
-# Q_BITS="2 4"
-# Q_BITS_TEXT=24
+Q_BITS="2 4"
+Q_BITS_TEXT=24
 
 AXIS=1
 GROUP_SIZE=128
@@ -67,6 +67,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
+--group_size ${GROUP_SIZE} \
 --method ${METHOD} \
 --quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \

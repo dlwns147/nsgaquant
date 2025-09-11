@@ -99,7 +99,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --datasets ${DATASETS} \
 --method ${METHOD} \
 --group_size ${GROUP_SIZE} \
-# --clip_asym
+--clip_asym
 # --zeroshot \
 # --tasks ${TASKS} \
 # --zeroshot_batch_size ${BATCH_SIZE} \

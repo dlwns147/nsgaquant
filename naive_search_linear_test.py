@@ -57,8 +57,17 @@ def greedy_search_linear(args):
     start_point = time()
 
     phase = 0
+    
+    for linear in linear_list:
+        linear, blk_idx = linear.split('.')
+        blk_idx = int(blk_idx)
+        arch['linear'][linear][blk_idx] = min(args.quant_model_bits) if args.descending else max(args.quant_model_bits)
+        loss, _ = evaluator.eval(accelerator=accelerator, arch=arch, metric='loss', loss_func=args.loss_func)
+        loss = loss[args.dataset]
+            
+    
     while True:
-        cur_bit = get_net_info(arch, config, group_size=args.group_size)['bits']
+        cur_bit = get_net_info(arch, config)['bits']
         if (not args.descending and cur_bit >= args.target_bit) or (args.descending and cur_bit <= args.target_bit) or len(alive_linear_list) == 0:
             break
         phase += 1
@@ -94,7 +103,7 @@ def greedy_search_linear(args):
         # replaced_linear_list.append(selected_layer)
         arch['linear'][min_loss_linear][min_loss_blk_idx] = min(args.quant_model_bits) if args.descending else max(args.quant_model_bits)
 
-        cur_bit = get_net_info(arch, config, group_size=args.group_size)['bits']
+        cur_bit = get_net_info(arch, config)['bits']
         bits_list.append(cur_bit)
         min_loss_list.append(min_loss)
         min_loss_linear_list.append(selected_layer)
@@ -170,8 +179,6 @@ if __name__ == '__main__':
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
                         help='')
     parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
-                        help='')
-    parser.add_argument('--group_size', type=int, default=128,
                         help='')
     parser.add_argument('--target_bit', type=float, default=3,
                         help='')

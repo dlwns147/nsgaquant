@@ -8,7 +8,7 @@ import gc
 import json
 
 from evaluator import LlamaEvaluator
-from utils.func_utils import get_net_info
+from utils.func import get_net_info
 
 def naive_search_linear(args):
 
