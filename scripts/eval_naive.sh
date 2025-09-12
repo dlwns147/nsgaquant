@@ -29,11 +29,11 @@ Q_BITS_TEXT="24"
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
 
-METHOD=hqq
-METHOD_TEXT=hqq
+# METHOD=hqq
+# METHOD_TEXT=hqq
 
-# METHOD=awq
-# METHOD_TEXT=awq
+METHOD=awq
+METHOD_TEXT=awq
 
 # METHOD="awq layer_prune"
 # METHOD_TEXT=awq_layer_prune
@@ -78,6 +78,7 @@ eval_naive.py \
 --gpu_id ${DEVICES} \
 --model_path ${MODEL_PATH} \
 --model_name ${MODEL_NAME} \
+--group_size ${GROUP_SIZE} \
 --config ${CONFIG} \
 --quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \

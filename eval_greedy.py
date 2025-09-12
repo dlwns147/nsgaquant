@@ -38,6 +38,7 @@ def eval(args):
         outlier=torch.load(args.outlier_path) if args.outlier_path else None,
         seqlen=args.seqlen,
         n_sample=args.n_sample,
+        group_size=args.group_size,
         datasets=args.datasets
     )
 
@@ -66,7 +67,7 @@ def eval(args):
         blk_idx, layer, linear = linear.split('.')
         blk_idx = int(blk_idx)
         arch['linear'][f'{layer}.{linear}'][blk_idx] = min(args.quant_model_bits)
-        bits_list.append(abs(get_net_info(arch, config)['bits'] - args.target_bit))
+        bits_list.append(abs(get_net_info(arch, config, group_size=args.group_size)['bits'] - args.target_bit))
 
     last_layer_idx = bits_list.index(min(bits_list))
     last_layer = linear_list[last_layer_idx]
@@ -79,6 +80,8 @@ def eval(args):
         arch['linear'][f'{layer}.{linear}'][blk_idx] = min(args.quant_model_bits)
 
     print(f'target_bit : {args.target_bit}, last_layer : {last_layer}, greedy_search_result : {args.greedy_search_result}')
+    print(f'arch: {arch}')
+    print(f'complexity: {get_net_info(arch, config, group_size=args.group_size)}')
 
     # from copy import deepcopy
     # model = deepcopy(evaluator.sample(arch))
@@ -97,9 +100,9 @@ def eval(args):
     # exit()
 
     ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl')
+    # complexity = get_net_info(arch, config, group_size=args.group_size)
     print(f'bits : {complexity["bits"]}, ppl :{list(ppl.values())}')
 
-    model = evaluator.sample(arch)
     del evaluator
     clean_up()
     print(f'memory : {torch.cuda.memory_allocated()}')
@@ -135,6 +138,8 @@ if __name__ == '__main__':
     parser.add_argument('--quant_model_bits', type=float, nargs='+', default=[], 
                         help='')
     parser.add_argument('--quant_model_paths', type=str, nargs='+', default=[], 
+                        help='')
+    parser.add_argument('--group_size', type=int, default=-1,
                         help='')
     parser.add_argument('--datasets', type=str, nargs='+', default=['wikitext2', 'c4'], 
                         help='')
