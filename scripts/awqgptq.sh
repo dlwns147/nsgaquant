@@ -3,18 +3,19 @@ TODAY=`date +%y%m%d%H%M`
 PORT_NUM=$(( ( RANDOM % 10000 )  + 10000 ))
 
 MODEL_PATH=/SSD/huggingface/meta-llama
-MODEL_NAME=Llama-2-7b-hf
-# MODEL_NAME=Llama-2-13b-hf
+# MODEL_NAME=Llama-2-7b-hf
+MODEL_NAME=Llama-2-13b-hf
 # MODEL_NAME=Llama-2-70b-hf
 CONFIG=config/llama.json
 DTYPE=float16
 
 # MODEL_PATH=/SSD/huggingface/meta-llama
 # # MODEL_NAME=Llama-3.1-8B
-# MODEL_NAME=Llama-3.1-70B
-# # MODEL_NAME=Llama-3.1-8B-Instruct
+# # MODEL_NAME=Llama-3.1-70B
+# MODEL_NAME=Llama-3.1-8B-Instruct
 # CONFIG=config/llama.json
-# DTYPE=bfloat16
+# # DTYPE=bfloat16
+# DTYPE=float16
 
 # MODEL_PATH=/SSD/huggingface/Qwen
 # # MODEL_NAME=Qwen2.5-7B
@@ -70,11 +71,11 @@ DATASETS="wikitext2 c4"
 # METHOD=hqq
 METHOD=awq
 # METHOD=gptq
-BITS=3
-# BITS=4
+# BITS=2
+BITS=4
 # BITS=16
 
-# GROUP_SIZE=128
+GROUP_SIZE=128
 # GROUP_SIZE=-1
 
 

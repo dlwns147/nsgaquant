@@ -13,7 +13,7 @@ import time
 from accelerate import Accelerator
 
 from evaluator import LlamaEvaluator
-from utils.func import init_accelerator, cleanup, get_net_info
+from utils.func import init_accelerator, clean_up, get_net_info
 from utils.eval import load_and_eval_ppl, eval_zeroshot
 
 
@@ -83,7 +83,7 @@ def eval(args):
 
     model = evaluator.sample(arch)
     del evaluator
-    cleanup()
+    clean_up()
     print(f'memory : {torch.cuda.memory_allocated()}')
     if args.zeroshot:
         from transformers import AutoTokenizer

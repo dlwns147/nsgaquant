@@ -248,6 +248,7 @@ def apply_awq(model, awq_results, q_config, arch, clip_asym, do_owq, outlier):
 
     layers = get_blocks(model)
     # for i in tqdm(range(len(layers)), desc="pseudo weight quantization..."):
+    # import pdb; pdb.set_trace()
     for i, layer in tqdm(enumerate(layers), desc="pseudo weight quantization..."):
         named_linears = {name: m for name, m in layer.named_modules() if isinstance(m, nn.Linear)}
         for n, m in named_linears.items():
@@ -258,10 +259,24 @@ def apply_awq(model, awq_results, q_config, arch, clip_asym, do_owq, outlier):
                 orig = m.weight.data[:, outlier[key]].detach().clone()
                 m.weight.data[:, outlier[key]] = 0
 
+            target_path = f'model.layers.{i}.{n}'
+            if  target_path in ["model.layers.15.self_attn.v_proj", "model.layers.23.mlp.down_proj"]:
+                weight, scale, zero_point = pseudo_quantize_tensor(
+                    m.weight.data, n_bit=int(arch['linear'][n][i]), get_scale_zp=True,
+                    **q_config
+                )
+                save_list = {'weight': weight.detach().cpu(), 'scale': scale.detach().cpu(), 'zero_point':zero_point.detach().cpu()}
+                
+                import os
+                save_path = os.path.join('/NAS/SJ/nsgaquant/save', '_'.join(target_path.split('.')) + '_4bit_weights.pth')
+                torch.save(save_list, save_path)
+                
+            
             m.weight.data = pseudo_quantize_tensor(
                 m.weight.data, n_bit=int(arch['linear'][n][i]),
                 **q_config
             )
+            
 
             if do_owq and is_owq(arch['linear'][n][i]) and key in outlier:
                 m.weight.data[:, outlier[key]] = orig

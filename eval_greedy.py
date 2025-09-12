@@ -13,7 +13,7 @@ import time
 from accelerate import Accelerator
 
 from evaluator import LlamaEvaluator
-from utils.func import init_accelerator, cleanup, get_net_info
+from utils.func import init_accelerator, clean_up, get_net_info
 from utils.eval import load_and_eval_ppl, eval_zeroshot, measure_latency, get_graph_wrapper, measure_latency_v2
 
 
@@ -80,28 +80,28 @@ def eval(args):
 
     print(f'target_bit : {args.target_bit}, last_layer : {last_layer}, greedy_search_result : {args.greedy_search_result}')
 
-    from copy import deepcopy
-    model = deepcopy(evaluator.sample(arch))
-    del evaluator
-    cleanup()
-    from hqq.utils.patching import prepare_for_inference
-    prepare_for_inference(model, backend="bitblas")
+    # from copy import deepcopy
+    # model = deepcopy(evaluator.sample(arch))
+    # del evaluator
+    # clean_up()
+    # from hqq.utils.patching import prepare_for_inference
+    # prepare_for_inference(model, backend="bitblas")
 
-    def maybe_wrap(use_cuda_graph):
-        return (lambda x: get_graph_wrapper(x)) if use_cuda_graph else (lambda x: x)
+    # def maybe_wrap(use_cuda_graph):
+    #     return (lambda x: get_graph_wrapper(x)) if use_cuda_graph else (lambda x: x)
     
-    model = maybe_wrap(True)(model.__class__)
-    # lat = measure_latency(model, True, 'cuda', batch_size=1)
-    tks = measure_latency_v2(model, True, 'cuda', use_cuda_graph=True)
-    print(f'token/s = {tks}')
-    exit()
+    # model = maybe_wrap(True)(model.__class__)
+    # # lat = measure_latency(model, True, 'cuda', batch_size=1)
+    # tks = measure_latency_v2(model, True, 'cuda', use_cuda_graph=True)
+    # print(f'token/s = {tks}')
+    # exit()
 
     ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl')
     print(f'bits : {complexity["bits"]}, ppl :{list(ppl.values())}')
 
     model = evaluator.sample(arch)
     del evaluator
-    cleanup()
+    clean_up()
     print(f'memory : {torch.cuda.memory_allocated()}')
     
     if args.zeroshot:

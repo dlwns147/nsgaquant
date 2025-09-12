@@ -33,7 +33,7 @@ class AWQ(BASE):
             print("Clipping symmetrically")
 
 
-    def run(self, nsamples=128, seqlen=512, no_zero_point=False):    
+    def run(self, nsamples=128, seqlen=512, no_zero_point=False):
         q_config = {
             "zero_point": not no_zero_point,  # by default True
             "q_group_size": self.group_size,  # whether to use group quantization
@@ -44,5 +44,37 @@ class AWQ(BASE):
         # self.model = simple_dispatch_model(self.model, self.device_map)
         self.model = dispatch_model(self.model, self.device_map)
         apply_awq(self.model, awq_results, q_config=q_config, arch=self.arch, clip_asym=self.clip_asym, do_owq=self.do_owq, outlier=self.outlier)
-        torch.cuda.empty_cache()
-        gc.collect()
+        # torch.cuda.empty_cache()
+        # gc.collect()
+        
+        target_path_list = ["model.layers.15.self_attn.v_proj", "model.layers.23.mlp.down_proj"]
+        for target_path in target_path_list:
+            # # 캡처 버퍼
+            save_list = {}
+
+            # 1) 원하는 모듈 경로 지정: 예) 5번째 디코더 레이어의 MLP down_proj
+            target_module = self.model.get_submodule(target_path)
+
+            # 2) forward hook: Linear의 '입력'은 hook의 input[0]
+            def save_input_hook(module, inputs, output):
+                x = inputs[0].detach()          # (batch, seq, hidden)
+                save_list['activations'] = x
+
+            hook_handle = target_module.register_forward_hook(save_input_hook)
+
+            # 3) 프롬프트 실행 (generate든 forward든 상관없지만, 전체 경로를 태우려면 use_cache=False가 유용)
+            prompt = "Hello, this is a quick test."
+            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+            with torch.inference_mode():
+                _ = self.model(inputs.input_ids[:, :1], use_cache=False)      # or model.generate(**tok(...))
+            
+                      
+            # 4) 저장 (예: PyTorch tensor 리스트로 저장)
+            import os
+            save_path = os.path.join('/NAS/SJ/nsgaquant/save', '_'.join(target_path.split('.')) + '_4bit_activations.pth')
+            torch.save(save_list, save_path)
+
+            # 훅 해제(선택)
+            hook_handle.remove()
+        exit()
+        

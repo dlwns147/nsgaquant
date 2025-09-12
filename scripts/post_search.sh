@@ -13,8 +13,8 @@ Q_BITS="2 3 4"
 Q_BITS_TEXT="234"
 
 # METHOD="hqq layer_prune"
-# METHOD=hqq
-METHOD=awq
+METHOD=hqq
+# METHOD=awq
 # METHOD=gptq
 # METHOD=qeft
 # METHOD="awq layer_prune"
@@ -39,8 +39,8 @@ OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}_${OUTLIER
 
 COMP_OBJ=bits
 COMP_OBJ_TEXT=bits
-# TARGET_COMP_OBJ_VAL=3.0
-TARGET_COMP_OBJ_VAL=3.25
+TARGET_COMP_OBJ_VAL=3.0
+# TARGET_COMP_OBJ_VAL=3.25
 # TARGET_COMP_OBJ_VAL=2.0
 
 # TASKS="piqa winogrande hellaswag arc_challenge arc_easy boolq openbookqa social_iqa" # lambada_openai OSError: Repetition level histogram size mismatch
@@ -62,8 +62,12 @@ MAX_COMP_OBJ=$(echo "scale=3; $TARGET_COMP_OBJ_VAL + $COMP_OBJ_THRESHOLD" | bc)
 
 EXPR_FOLDER=save/search/quant
 
-# EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
-EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_100.stats
+# EXPR_FILE=/NAS/SJ/nsgaquant/save/llama_2_7b_iter_200
+# EXPR_FILE=/NAS/SJ/nsgaquant/save/llama_2_13b_iter_200
+# EXPR_FILE=/NAS/SJ/nsgaquant/acl/EMNLP/70b_2_thre_iter_250.stats
+
+EXPR_FILE=2502061614_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_outlier_234/iter_200.stats
+# EXPR_FILE=2504100856_Llama-2-7b-hf_bits_loss_hqq_iter_100_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf/iter_100.stats
 # EXPR_FILE=2502101608_Llama-2-7b-hf_bits_loss_hqq_iter_300_234_obj_2_4.1_jsd_co_0.9_mut_0.1_wikitext2_32sample_rbf_outlier_234_mixed/iter_200.stats
 # EXPR_FILE=2502012035_Llama-2-7b-hf_bits_loss_hqq_layer_prune_iter_300_234_obj_1.99_4_jsd_co_0.9_mut_0.1_wikitext2_32sample_lp_0.001_1.0/iter_300.stats
 # EXPR_FILE=2501231721_Llama-2-13b-hf_bits_loss_hqq_iter_400_234_obj_2_4_jsd_co_0.9_mut_0.1_wikitext2_128sample/iter_400.stats
@@ -97,10 +101,10 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --quant_model_paths ${QMODEL_PATHS} \
 --quant_model_bits ${Q_BITS} \
 --group_size ${GROUP_SIZE} \
+--expr ${EXPR_FOLDER}/${EXPR_FILE} \
 -n ${N} \
 --save ${SAVE} \
 --debug \
---expr ${EXPR_FOLDER}/${EXPR_FILE} \
 --datasets ${DATASETS} \
 --method ${METHOD} \
 --prefer ${PREFER} \
@@ -108,6 +112,7 @@ CUDA_VISIBLE_DEVICES=${DEVICES} accelerate launch --num_processes=${N_PROC} --nu
 --zeroshot \
 --tasks ${TASKS} \
 --zeroshot_batch_size ${ZEROSHOT_BATCH_SIZE}
+# --expr ${EXPR_FOLDER}/${EXPR_FILE} \
 
 # --only_front \
 # --front_sample ${FRONT_SAMPLE} \
