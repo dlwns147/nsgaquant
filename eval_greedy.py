@@ -99,9 +99,9 @@ def eval(args):
     # print(f'token/s = {tks}')
     # exit()
 
-    ppl, complexity = evaluator.eval(accelerator=accelerator, arch=arch, metric='ppl')
-    # complexity = get_net_info(arch, config, group_size=args.group_size)
-    print(f'bits : {complexity["bits"]}, ppl :{list(ppl.values())}')
+    model = evaluator.sample(arch)
+    metric, complexity = evaluator.eval(arch=arch, metric='ppl', model=model, accelerator=accelerator)
+    print(f'bits : {complexity["bits"]}, ppl :{list(metric.values())}')
 
     del evaluator
     clean_up()

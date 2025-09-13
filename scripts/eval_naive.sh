@@ -29,11 +29,11 @@ Q_BITS_TEXT="24"
 # METHOD="hqq layer_prune"
 # METHOD_TEXT="hqq_layer_prune"
 
-# METHOD=hqq
-# METHOD_TEXT=hqq
+METHOD=hqq
+METHOD_TEXT=hqq
 
-METHOD=awq
-METHOD_TEXT=awq
+# METHOD=awq
+# METHOD_TEXT=awq
 
 # METHOD="awq layer_prune"
 # METHOD_TEXT=awq_layer_prune
@@ -55,7 +55,8 @@ QMODEL_PATHS=$(IFS=" " ; echo "${QMODEL_PATHS_LIST[*]}")
 N_OUTLIER=32
 OUTLIER_PATH=/NAS/SJ/nsgaquant/outlier/${MODEL_NAME}/w16_r${N_OUTLIER}/outlier.pth
 
-TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
+# TASKS="piqa winogrande hellaswag arc_challenge arc_easy lambada_openai boolq openbookqa social_iqa"
+TASKS="piqa winogrande hellaswag arc_challenge arc_easy boolq"
 
 
 LINEAR_SENSITIVITY=/NAS/SJ/nsgaquant/csv/sensitivity/${MODEL_NAME}_hqq_loss_24_1axis_128gs_jsd_wikitext2_128sample.csv
@@ -85,9 +86,9 @@ eval_naive.py \
 --linear_sensitivity ${LINEAR_SENSITIVITY} \
 --target_bit ${TARGET_BITS} \
 --datasets ${DATASETS} \
---method ${METHOD}
-# --zeroshot \
-# --tasks ${TASKS}
+--method ${METHOD} \
+--zeroshot \
+--tasks ${TASKS}
 
 # --outlier_path ${OUTLIER_PATH} \
 # --only_front \
